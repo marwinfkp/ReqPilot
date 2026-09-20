@@ -25,7 +25,6 @@ env:
   LLM_FIXTURE_MODE: replay
   LANGGRAPH_CHECKPOINT_BACKEND: memory
   REQPILOT_ENV: test
-  REQPILOT_SECRET_KEY: ci-only-not-a-real-secret
 
 jobs:
   quality:

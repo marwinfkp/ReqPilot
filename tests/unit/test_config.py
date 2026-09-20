@@ -34,11 +34,19 @@ def test_defaults_require_no_api_key() -> None:
 
 def test_network_provider_requires_a_key() -> None:
     with pytest.raises(ValidationError, match="LLM_API_KEY is required"):
-        Settings(_env_file=None, LLM_PROVIDER=LLMProvider.ANTHROPIC, LLM_API_KEY=None)
+        Settings(
+            _env_file=None,
+            LLM_PROVIDER=LLMProvider.ANTHROPIC,
+            LLM_API_KEY=None,
+        )
 
 
 def test_network_provider_accepts_a_key() -> None:
-    s = Settings(_env_file=None, LLM_PROVIDER=LLMProvider.ANTHROPIC, LLM_API_KEY="placeholder")
+    s = Settings(
+        _env_file=None,
+        LLM_PROVIDER=LLMProvider.ANTHROPIC,
+        LLM_API_KEY="placeholder",
+    )
     assert s.llm_api_key == "placeholder"
 
 
@@ -50,7 +58,11 @@ def test_ollama_needs_no_key() -> None:
 
 def test_production_rejects_the_development_secret() -> None:
     with pytest.raises(ValidationError, match="must be set to a real value"):
-        Settings(_env_file=None, REQPILOT_ENV=AppEnv.PRODUCTION)
+        Settings(
+            _env_file=None,
+            REQPILOT_ENV=AppEnv.PRODUCTION,
+            REQPILOT_SECRET_KEY="dev-only-not-a-real-secret",
+        )
 
 
 @pytest.mark.parametrize("bad", ["", "sometimes", "RECORD "])
