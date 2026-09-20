@@ -1,0 +1,35 @@
+# Example ruleset - demonstrates the versioned rule-configuration mechanism.
+#
+# This file exists so that loading, validation and versioning can be tested in
+# P0. It carries no real rules.
+#
+# The actual deterministic rulesets are added by the roadmap phases that use
+# them, and each will follow this same shape:
+#
+#   risk_matrix.yaml       3x3 likelihood x impact -> severity lookup
+#   mcda_weights.yaml      SDLC factor weights
+#   sdlc_rules.yaml        veto / require_top_n / boost overrides
+#   expected_controls.yaml per-domain control checklists
+#   quality_heuristics.yaml requirement quality checks
+#
+# Every ruleset MUST declare `name`, `version` and `rules`. The loader rejects a
+# file without them, because a rating or score must always be able to name the
+# ruleset version that produced it.
+
+name: example
+version: "1.0.0"
+description: >
+  Placeholder ruleset used to exercise the loader in P0. Contains no
+  operational rules and is not consumed by any engine.
+
+rules:
+  demonstration:
+    purpose: prove that nested structures load and are frozen
+    ordinal_scale:
+      - low
+      - medium
+      - high
+    lookup:
+      low: 1
+      medium: 2
+      high: 3

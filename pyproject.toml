@@ -1,0 +1,140 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "reqpilot"
+version = "0.1.0"
+description = "Agentic requirements engineering and SDLC recommendation assistant (university SE project)"
+readme = "README.md"
+# Architecture ADR-002 proposes Python 3.12. A floor is used rather than an exact
+# pin because 3.12 is not installed on the current development machine; see
+# docs/03-p0-foundations.md "Environment deviations".
+requires-python = ">=3.12"
+license = { text = "UNLICENSED" }
+
+# Dependency discipline (P0 instruction 9): only what P0 needs, plus what the
+# immediately following Requirements Repository phase will need on day one.
+# Deliberately absent: embeddings, vector search, document generation, parsing,
+# evaluation, and any provider SDK. Each is added by the roadmap phase that uses it.
+dependencies = [
+    "pydantic>=2.7",              # ADR-002: one type system for API, contracts, graph state
+    "pydantic-settings>=2.3",     # ADR-011: typed, fail-fast configuration
+    "sqlalchemy>=2.0",            # ADR-003
+    "alembic>=1.13",              # ADR-003: migrations
+    "psycopg[binary]>=3.1",       # ADR-003: PostgreSQL driver
+    "fastapi>=0.111",             # ADR-002: API layer boundary + health check
+    "uvicorn>=0.30",              # ADR-002: development server
+    "langgraph>=0.2",             # ADR-001: mandated orchestration framework
+    "langgraph-checkpoint-postgres>=2.0",  # architecture C.7: checkpoint store
+    "pyyaml>=6.0",                # architecture DQ-03: versioned rule/config data files
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",                  # formatting + linting
+    "mypy>=1.10",                 # type checking
+    "import-linter>=2.0",         # architecture V: enforces the dependency direction rule
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reqpilot"]
+
+# ---------------------------------------------------------------------------
+# Tests (ADR-012)
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+# The `llm` mark is opt-in and excluded by default so the default suite makes
+# zero external API calls (Phase 0 target ET-10).
+addopts = "-m 'not llm' --strict-markers"
+markers = [
+    "unit: deterministic logic, no I/O",
+    "integration: database, retrieval, gateway, artefacts",
+    "workflow: full graph paths, fixture-replayed",
+    "security: injection, RBAC, isolation, gate-bypass",
+    "llm: requires a real LLM provider - opt-in only, never in CI",
+]
+
+# ---------------------------------------------------------------------------
+# Lint / format
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "S", "C4", "SIM", "RUF"]
+ignore = [
+    "S101",  # assert: used throughout the test suite
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "N"]
+
+# ---------------------------------------------------------------------------
+# Types
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+packages = ["reqpilot"]
+mypy_path = "src"
+warn_unused_configs = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+# Third-party stubs are uneven this early; tighten as the codebase grows.
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# ---------------------------------------------------------------------------
+# Architecture boundaries (architecture section V, section A.4)
+#
+# THE load-bearing rule: the domain must stay usable, and testable, with no
+# LangGraph and no LLM code installed. This is the structural expression of
+# "governance lives outside the LLM" (architecture J.1).
+# ---------------------------------------------------------------------------
+[tool.importlinter]
+root_packages = ["reqpilot"]
+# Required so that contracts can forbid external packages by name - which is the
+# point of the first contract: the domain must not reach LangGraph itself, not
+# merely our wrapper around it.
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Domain is independent of orchestration and LLM code"
+type = "forbidden"
+source_modules = [
+    "reqpilot.domain",
+    "reqpilot.repositories",
+    "reqpilot.services",
+]
+forbidden_modules = [
+    "reqpilot.graph",
+    "reqpilot.agents",
+    "reqpilot.llm",
+    "langgraph",
+]
+
+[[tool.importlinter.contracts]]
+name = "Layered dependency direction: api -> services -> repositories -> domain"
+type = "layers"
+layers = [
+    "reqpilot.api",
+    "reqpilot.services",
+    "reqpilot.repositories",
+    "reqpilot.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "Domain does not depend on the web or API layer"
+type = "forbidden"
+source_modules = ["reqpilot.domain"]
+forbidden_modules = ["reqpilot.api", "reqpilot.web", "fastapi"]

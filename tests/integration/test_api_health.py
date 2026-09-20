@@ -1,0 +1,79 @@
+"""API health endpoint tests (architecture section S).
+
+P0 exposes health endpoints only. Two properties are worth pinning: liveness
+does not depend on the database, and no endpoint leaks configuration.
+"""
+
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+
+from reqpilot.api.app import create_app
+
+pytestmark = pytest.mark.integration
+
+
+@pytest.fixture
+def client() -> TestClient:
+    return TestClient(create_app())
+
+
+def test_liveness_needs_no_database(client: TestClient) -> None:
+    """Liveness must stay meaningful when the database is down."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["roadmap_phase"] == "P0 Foundations"
+
+
+def test_liveness_reports_the_provider_without_the_key(client: TestClient) -> None:
+    body = client.get("/health").json()
+    assert body["llm_provider"] == "stub"
+    assert "api_key" not in body
+    assert "llm_api_key" not in body
+
+
+def test_readiness_reports_rather_than_raises(client: TestClient) -> None:
+    """With no database running, readiness must return 503, not crash."""
+    response = client.get("/health/db")
+    assert response.status_code in (200, 503)
+    body = response.json()
+    assert "connected" in body
+    assert "pgvector" in body
+
+
+def test_readiness_does_not_leak_the_connection_string(client: TestClient) -> None:
+    """The database URL carries a password and must never appear in a response."""
+    body = client.get("/health/db").json()
+    blob = str(body)
+    assert "postgresql+psycopg://" not in blob
+    assert "password" not in blob.lower()
+
+
+def collect_paths(app) -> set[str]:
+    """Return every HTTP path the application exposes.
+
+    Read from the generated OpenAPI schema rather than by walking ``app.routes``:
+    the route objects are internal and their shape varies between FastAPI
+    versions, whereas the schema is the stable, public statement of what the
+    service exposes - which is exactly what these tests assert about.
+    """
+    return set(app.openapi().get("paths", {}))
+
+
+def test_health_endpoints_are_registered() -> None:
+    """Guard against the next test passing because it found no routes at all."""
+    paths = collect_paths(create_app())
+    assert "/health" in paths
+    assert "/health/db" in paths
+
+
+def test_no_domain_endpoints_are_exposed_yet() -> None:
+    """P0 must not have shipped Requirements Repository endpoints."""
+    paths = collect_paths(create_app())
+    assert not any(
+        p.startswith(("/api/v1/requirements", "/api/v1/baselines", "/api/v1/approval"))
+        for p in paths
+    )

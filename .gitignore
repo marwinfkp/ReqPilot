@@ -1,0 +1,46 @@
+# --- secrets and local configuration -------------------------------------
+# .env holds real credentials and must never be committed.
+# .env.example is the committed, placeholder-only contract.
+.env
+.env.*
+!.env.example
+
+# --- local-only data ------------------------------------------------------
+# Anything under data/private stays on the machine it was created on.
+data/private/*
+!data/private/README.md
+
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# --- tooling caches -------------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.cache/
+
+# --- editors and OS -------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- generated output -----------------------------------------------------
+reports/
+*.db
+*.sqlite3
+
+# --- tooling caches (continued) -------------------------------------------
+.import_linter_cache/

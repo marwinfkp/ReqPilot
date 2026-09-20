@@ -1,0 +1,32 @@
+# Local development database (architecture ADR-003).
+#
+# PostgreSQL 16 with pgvector, as one store for domain data, vectors, LangGraph
+# checkpoints and the append-only audit log.
+#
+#   docker compose up -d db
+#   alembic upgrade head
+#
+# The credentials below are local development defaults and are deliberately
+# obvious. They are not secrets and must not be reused anywhere real.
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: reqpilot-db
+    environment:
+      POSTGRES_USER: reqpilot
+      POSTGRES_PASSWORD: reqpilot_local_dev_only
+      POSTGRES_DB: reqpilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - reqpilot_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Migrations and tests should wait for readiness rather than race it.
+      test: ["CMD-SHELL", "pg_isready -U reqpilot -d reqpilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  reqpilot_pgdata:
