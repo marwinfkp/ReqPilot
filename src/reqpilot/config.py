@@ -16,13 +16,14 @@ migrations, starting the API, and running the default test suite all work with
 
 from __future__ import annotations
 
+import os
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 from typing import ClassVar
 
-from pydantic import Field, ValidationInfo, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, ValidationInfo, field_validator, model_validator
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 
 class AppEnv(StrEnum):
@@ -36,16 +37,27 @@ class AppEnv(StrEnum):
 class LLMProvider(StrEnum):
     """Provider selector for the gateway abstraction (ADR-006).
 
-    ``STUB`` is the P0 default: it makes no network call and needs no key, so
-    the project is usable end to end with zero external API access.
+    ``STUB`` is the default: it makes no network call and needs no key, so the
+    project is usable end to end with zero external API access.
 
-    The concrete provider and model tier remain **TBD** pending the open Phase 0
-    questions on budget and deployment; nothing here commits to either.
+    ``OPENAI`` is the provider the team selected at P3 closure (architecture Y).
+    It is implemented behind the gateway and used only when configured; the
+    model is whatever ``LLM_MODEL_DEFAULT`` names - nothing here fixes one.
+    ``ANTHROPIC`` and ``OLLAMA`` remain selectable names without an
+    implementation, and fail fast if chosen.
     """
 
     STUB = "stub"
+    OPENAI = "openai"
     ANTHROPIC = "anthropic"
     OLLAMA = "ollama"
+
+
+#: Values of ``REQPILOT_DOTENV`` that stop settings from reading ``.env``.
+#: The default test suite sets it (tests/conftest.py) so that a developer's
+#: ``.env`` - which may select a real provider and hold a real key - can never
+#: turn the offline suite into billable, networked calls (ADR-012, ET-10).
+DOTENV_OFF_VALUES = frozenset({"0", "off", "false", "no"})
 
 
 class EmbeddingProviderKind(StrEnum):
@@ -93,15 +105,27 @@ class Settings(BaseSettings):
     # --- LLM gateway (ADR-006) -------------------------------------------
     llm_provider: LLMProvider = Field(default=LLMProvider.STUB, alias="LLM_PROVIDER")
     llm_api_key: str | None = Field(default=None, alias="LLM_API_KEY")
-    # Model identifiers are configuration placeholders, not architectural
-    # commitments: the tier decision is still open.
+    # Model identifiers are configuration, never code: a network provider uses
+    # exactly the model named here, and refuses to start without one.
     llm_model_default: str | None = Field(default=None, alias="LLM_MODEL_DEFAULT")
     llm_model_reasoning: str | None = Field(default=None, alias="LLM_MODEL_REASONING")
-    llm_temperature: float = Field(default=0.0, ge=0.0, le=2.0, alias="LLM_TEMPERATURE")
+    # Empty means the provider SDK's own default endpoint.
+    llm_base_url: str | None = Field(default=None, alias="LLM_BASE_URL")
+    # Unset means "the provider's default" and is not sent: some models (the GPT-5
+    # family among them) reject a temperature parameter outright.
+    llm_temperature: float | None = Field(default=None, ge=0.0, le=2.0, alias="LLM_TEMPERATURE")
     llm_max_retries: int = Field(default=3, ge=0, le=10, alias="LLM_MAX_RETRIES")
     llm_timeout_seconds: int = Field(default=60, ge=1, alias="LLM_TIMEOUT_SECONDS")
     llm_fixture_mode: str = Field(default="replay", alias="LLM_FIXTURE_MODE")
     llm_fixture_dir: Path = Field(default=Path("tests/fixtures/llm"), alias="LLM_FIXTURE_DIR")
+    # Token prices for cost accounting (ET-08). Unset means "unknown", not zero:
+    # ReqPilot never assumes a price for whatever model is configured.
+    llm_price_input_per_1k: float | None = Field(
+        default=None, ge=0.0, alias="LLM_PRICE_INPUT_PER_1K"
+    )
+    llm_price_output_per_1k: float | None = Field(
+        default=None, ge=0.0, alias="LLM_PRICE_OUTPUT_PER_1K"
+    )
 
     # --- Retrieval (architecture J.4) ---------------------------------------
     # How many fused chunks a retrieval returns by default (J.4 / K.1 use k=8).
@@ -158,6 +182,40 @@ class Settings(BaseSettings):
             )
         return value
 
+    @field_validator(
+        "llm_model_default", "llm_model_reasoning", "llm_base_url", "llm_temperature", mode="before"
+    )
+    @classmethod
+    def _empty_is_unset(cls, value: object) -> object:
+        """An empty model, endpoint or temperature means "not configured"."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @model_validator(mode="after")
+    def _network_provider_needs_a_model(self) -> Settings:
+        """A network provider calls exactly the configured model - there is no default."""
+        if self.llm_provider is LLMProvider.OPENAI and not self.llm_model_default:
+            raise ValueError(
+                "LLM_MODEL_DEFAULT is required when LLM_PROVIDER=openai: the model is "
+                "configuration, and ReqPilot does not choose one."
+            )
+        return self
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Read ``.env`` unless ``REQPILOT_DOTENV`` switches it off for this process."""
+        if os.environ.get("REQPILOT_DOTENV", "").strip().lower() in DOTENV_OFF_VALUES:
+            return (init_settings, env_settings, file_secret_settings)
+        return (init_settings, env_settings, dotenv_settings, file_secret_settings)
+
     @field_validator("secret_key")
     @classmethod
     def _production_needs_a_real_secret(cls, value: str, info: ValidationInfo) -> str:
@@ -175,6 +233,14 @@ class Settings(BaseSettings):
                 "EMBEDDING_PROVIDER=hashing is a non-semantic test provider and is refused "
                 "in production; use sentence_transformers (architecture ADR-005)"
             )
+        return value
+
+    @field_validator("llm_price_input_per_1k", "llm_price_output_per_1k", mode="before")
+    @classmethod
+    def _empty_price_is_unknown(cls, value: object) -> object:
+        """An empty price in the environment means "not configured", never zero."""
+        if isinstance(value, str) and not value.strip():
+            return None
         return value
 
     @field_validator("llm_fixture_mode")

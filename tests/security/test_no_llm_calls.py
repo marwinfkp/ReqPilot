@@ -1,10 +1,15 @@
-"""Proof that P0 makes no external LLM call and needs no credentials.
+"""Proof that the default configuration makes no external LLM call and needs no credentials.
 
 An explicit P0 requirement, tested rather than asserted in prose: install, run,
-migrate and test must all work with zero API access.
+migrate and test must all work with zero API access. It still holds now that an
+OpenAI provider exists (P3 closure): that provider is used only when configured,
+and its SDK is not even imported otherwise.
 """
 
 from __future__ import annotations
+
+import subprocess
+import sys
 
 import pytest
 
@@ -43,21 +48,38 @@ def test_stub_returns_a_marked_response() -> None:
     assert response.model_id == "stub"
 
 
-def test_network_provider_is_not_implemented_in_p0() -> None:
-    """Selecting a real provider fails clearly rather than attempting a call."""
+def test_an_unimplemented_provider_fails_clearly_rather_than_calling_out() -> None:
+    """Selecting a provider with no implementation fails before any call is attempted."""
     settings = Settings(
         _env_file=None, LLM_PROVIDER=LLMProvider.ANTHROPIC, LLM_API_KEY="placeholder"
     )
-    with pytest.raises(NotImplementedError, match="not implemented in P0"):
+    with pytest.raises(NotImplementedError, match="not implemented"):
         build_gateway(settings)
 
 
-def test_no_provider_sdk_is_installed_or_imported() -> None:
-    """The gateway must not have pulled in a provider client as a dependency."""
-    import sys
+def test_the_default_configuration_imports_no_provider_sdk() -> None:
+    """Starting the app and building the default gateway loads no provider client.
 
-    for module in ("anthropic", "openai", "ollama"):
-        assert module not in sys.modules, f"{module} was imported during P0 tests"
+    Checked in a fresh interpreter, because other tests in this process may load
+    the OpenAI SDK deliberately (its adapter is tested offline, with its own types).
+    """
+    code = "\n".join(
+        [
+            "import sys",
+            "import reqpilot.main",
+            "from reqpilot.config import Settings",
+            "from reqpilot.llm import build_gateway",
+            "build_gateway(Settings(_env_file=None))",
+            "loaded = [m for m in ('anthropic', 'openai', 'ollama') if m in sys.modules]",
+            "assert not loaded, loaded",
+            "print('ok')",
+        ]
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    assert "ok" in result.stdout
 
 
 def test_recording_gateway_replays_without_calling_inner(tmp_path) -> None:

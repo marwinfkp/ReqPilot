@@ -4,7 +4,7 @@ One module, pure functions, no I/O. That combination is what makes
 ``(role x action x resource)`` assertable as a matrix in a single test file,
 which is the property the architecture asks for.
 
-Three design rules are enforced here rather than trusted to callers:
+The design rules enforced here rather than trusted to callers:
 
 1. **Deny by default.** An unknown action, an unknown role, or an actor with no
    roles is denied. There is no permissive fallthrough.
@@ -23,6 +23,11 @@ Three design rules are enforced here rather than trusted to callers:
    actor may administer the knowledge base or change a project's allowlist,
    jurisdictions or KB pin, whatever roles it holds (architecture E.1: agent
    roles write proposals only).
+6. **Decisions about AI proposals are human decisions.** From P3 a pipeline acts
+   on an analyst's behalf to record what a model proposed. It can never submit a
+   requirement for approval, withdraw one, commit a baseline, override a label,
+   resolve a review item, merge requirements, add a source or start a run -
+   whatever roles it carries (architecture A.1, E.1; ``FR-CLS-003``).
 """
 
 from __future__ import annotations
@@ -126,6 +131,7 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
     ),
     Action.AUDIT_VERIFY: frozenset({Role.AUDITOR}),
     Action.RUN_START: frozenset({Role.ANALYST}),
+    Action.RUN_RECORD: frozenset({Role.ANALYST}),
     Action.RUN_READ: frozenset(
         {
             Role.ANALYST,
@@ -213,6 +219,33 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
             Role.AUDITOR,
         }
     ),
+    # --- project sources, extraction and classification (P3) -------------
+    # The analyst owns the requirement set, so the analyst supplies sources,
+    # runs extraction and decides what becomes of each AI proposal. Reviewing
+    # roles read; they do not author (the P1 principle).
+    Action.SOURCE_CREATE: frozenset({Role.ANALYST}),
+    Action.SOURCE_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.CLASSIFICATION_PROPOSE: frozenset({Role.ANALYST}),
+    Action.CLASSIFICATION_OVERRIDE: frozenset({Role.ANALYST}),
+    Action.REVIEW_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.REVIEW_RESOLVE: frozenset({Role.ANALYST}),
+    Action.REQUIREMENT_MERGE: frozenset({Role.ANALYST}),
 }
 
 #: Actions an actor may perform without belonging to a project. For these the
@@ -235,13 +268,29 @@ _AUDITOR_READ_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.BASELINE_READ,
         Action.KB_SCOPE_READ,
         Action.EVIDENCE_READ,
+        Action.SOURCE_READ,
+        Action.REVIEW_READ,
     }
 )
 
 
 #: Actions no non-human actor may perform, whatever roles it holds: curating the
-#: shared corpus and changing a project's grounding scope (architecture E.1).
-_HUMAN_ONLY_ACTIONS: frozenset[Action] = frozenset({Action.KB_ADMINISTER, Action.KB_SCOPE_MANAGE})
+#: shared corpus and changing a project's grounding scope (architecture E.1),
+#: and every decision about an AI proposal or the approval path (rule 6).
+_HUMAN_ONLY_ACTIONS: frozenset[Action] = frozenset(
+    {
+        Action.KB_ADMINISTER,
+        Action.KB_SCOPE_MANAGE,
+        Action.REQUIREMENT_SUBMIT,
+        Action.REQUIREMENT_WITHDRAW,
+        Action.BASELINE_CREATE,
+        Action.CLASSIFICATION_OVERRIDE,
+        Action.REVIEW_RESOLVE,
+        Action.REQUIREMENT_MERGE,
+        Action.SOURCE_CREATE,
+        Action.RUN_START,
+    }
+)
 
 
 def can(actor: Actor, action: Action, resource: ResourceRef) -> Decision:

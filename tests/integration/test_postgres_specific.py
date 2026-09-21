@@ -123,6 +123,10 @@ def test_migrations_create_nothing_beyond_the_current_phase(pg_engine) -> None:
         # P2
         "normative_source", "control", "knowledge_item", "knowledge_chunk",
         "source_allowlist", "evidence",
+        # P3
+        "source_document", "source_chunk", "extraction_candidate",
+        "requirement_classification", "acceptance_criterion", "review_item",
+        "prompt_template", "model_version",
     }  # fmt: skip
     with pg_engine.connect() as conn:
         rows = conn.execute(

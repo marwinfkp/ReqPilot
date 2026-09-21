@@ -50,7 +50,7 @@ working assumptions, each isolated so that changing it does not invalidate the a
 | Orchestration | **Selected by you** | LangGraph |
 | Q2 jurisdiction | **Open** | India-centred set from P0 D.2; affects KB content only, not architecture |
 | Q3 team size / timeline | **Open** | ~4 people, ~14 weeks; affects phasing only |
-| Q4 LLM access and budget | **Open** | Hosted Claude API assumed; gateway abstraction makes this reversible (ADR-006) |
+| Q4 LLM access and budget | **Provider answered at P3 closure; budget open** | Hosted Claude API assumed; gateway abstraction makes this reversible (ADR-006). *P3 closure:* the team selected OpenAI, model set by configuration (section Y); no budget figure has been stated |
 | Q5 course constraints | **Open** | None assumed |
 | Q6 depth vs breadth | **Open** | One case study deep |
 
@@ -339,6 +339,8 @@ for a 40–80-item KB. `EmbeddingProvider` keeps a hosted swap cheap.
 ### ADR-006 · LLM provider and gateway — Anthropic Claude behind a provider abstraction
 
 **Status: Selected for the gateway abstraction** (architecture approved; the choke point, the offline stub and record/replay are implemented in P0). **The provider and model tier remain TBD** pending Phase 0 Q4 — no provider integration exists
+
+**Status update (P3 closure):** the team selected **OpenAI** as the provider, behind this same gateway (`reqpilot.llm.openai_provider`). The model is configuration (`LLM_MODEL_DEFAULT`, in use: `gpt-5.6-luna`), not code. The gateway decision and its seven obligations are unchanged. The Anthropic default and tiering below are the original proposal, kept for the record; they were not adopted. The reasoning tier is still undecided (section Y).
 
 **Context.** **Ten of the thirteen conceptual roles invoke or use LLM capabilities** (see E.0 for the
 4 + 5 + 1 + 3 categorisation). Quality of *structured* extraction is the dominant requirement; cost
@@ -2450,7 +2452,8 @@ called a probability (F.3). "ReqPilot gate" vs "generated-workflow gate" never m
 approved, so decisions that were recorded as *Proposed* pending that approval are now
 **Selected**. Three things remain genuinely open and are *not* marked Selected: the LLM
 provider, the model tier, and the deployment target — each waits on information the project
-does not yet have. Jurisdiction/KB content remains Proposed because it is content scope rather
+does not yet have. *(Updated at P3 closure: the provider and the default model tier are now
+Selected, below; the reasoning tier and the deployment target remain open.)* Jurisdiction/KB content remains Proposed because it is content scope rather
 than an architecture decision.
 
 | Decision | Selected value | Status | Reason |
@@ -2461,8 +2464,8 @@ than an architecture decision.
 | Vector / retrieval | pgvector + hybrid (RRF) | **Selected** | Metadata-filtered vector search in one SQL query makes allowlisting a join rather than a post-filter (ADR-004) |
 | Embeddings | Local `bge-small-en-v1.5` | **Selected** | Free, offline, deterministic; keeps document text on the machine and makes ET-10 achievable (ADR-005) |
 | LLM gateway abstraction | `LLMGateway` choke point | **Selected** | Gateway is the architectural decision; provider is swappable (ADR-006) |
-| LLM provider | Anthropic Claude (proposed), local via Ollama (fallback) | **TBD — decision required before the first phase needing model output** | Depends on Phase 0 Q4 (budget), unanswered. Only the `stub` provider exists |
-| LLM model tier | `claude-sonnet-5` default; `claude-opus-5` for conflict adjudication and SDLC explanation | **TBD — decision required before the first phase needing model output** | Depends on Phase 0 Q4 (budget), unanswered |
+| LLM provider | **OpenAI** (Responses API), behind `LLMGateway`; `stub` stays the offline default | **Selected (P3 closure)** | Team decision at P3 closure, replacing the TBD (originally proposed: Anthropic Claude, Ollama fallback). A configuration value, reversible per ADR-006. Budget (Q4) not stated |
+| LLM model tier | Default tier: the model in `LLM_MODEL_DEFAULT` (in use: `gpt-5.6-luna`) for extraction and classification. Reasoning tier (`LLM_MODEL_REASONING`, for conflict adjudication and SDLC explanation): not chosen | **Default tier Selected (P3 closure); reasoning tier TBD** | Configuration, not code. The reasoning tier is first needed in P5 |
 | Frontend | Jinja2 + HTMX + Tailwind | **Selected** | Server-side authorisation on every fragment; no second stack; the UI is forms and queues (ADR-008) |
 | Authentication | Server-side sessions + Argon2 | **Selected** | Immediate revocation; centralised testable policy (ADR-009) |
 | MFA | — | **Deferred** | `[P0 §E.2]`, recorded not dropped |

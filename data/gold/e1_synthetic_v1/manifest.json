@@ -1,0 +1,21 @@
+{
+  "name": "e1_synthetic",
+  "version": "1",
+  "benchmark_id": "E1-SYNTHETIC-v1",
+  "kind": "synthetic_reference_benchmark",
+  "role": "gold_transcript_1",
+  "role_note": "'gold_transcript_1' is the E1 harness's slot identifier for the set the P3 roadmap exit is measured on. This set is a synthetic reference benchmark: AI-generated, reviewed by the sole project author, NOT an independently annotated gold standard.",
+  "case_study": "retail loan origination (fictional)",
+  "reference_count": 60,
+  "reference_generation": "transcript and reference annotations written by the AI coding assistant (Claude, Anthropic) on 2026-09-21, independently of ReqPilot and of the evaluated model; offsets computed from exact quotes",
+  "review": "reviewed by Marwin Francis (project author) on 2026-09-21 before any ReqPilot run; accepted as drafted",
+  "harness": "services/evaluation/extraction_eval.py (E1 protocol, Phase 0 O.1), unchanged",
+  "frozen_at": "2026-09-21",
+  "frozen_by": "Marwin Francis (project author)",
+  "files": {
+    "BENCHMARK.md": "fe60c058602353b3cff8ad640c1c87d1c829ba4b0d9101c9759c2d5dc951522e",
+    "requirements.jsonl": "276df134507845f2960bc3448eb3c7f16bb48203b59c7c6d47bee342056867e5",
+    "REVIEW_SHEET.md": "fd42e0cdf6476f49530221d0fe59388ef66e6e0c27b91e1d7c63c177e0919cd4",
+    "transcripts/loan_origination_interview_e1_synthetic.md": "afc277958ebc043f052f8b7181add05d11908b7e6683456623968c8e9dde9625"
+  }
+}

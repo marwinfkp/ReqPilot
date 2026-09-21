@@ -34,7 +34,7 @@ def health() -> dict[str, Any]:
         "version": __version__,
         "environment": str(settings.app_env),
         "roadmap_phase": "P0 Foundations",
-        # Reported so an operator can confirm no provider is configured without
+        # Reported so an operator can confirm which provider is configured without
         # inspecting the environment. Never includes the key itself.
         "llm_provider": str(settings.llm_provider),
     }

@@ -1,9 +1,9 @@
 """The opt-in ``llm`` test category (ADR-012).
 
 This category is excluded by default via ``addopts`` in ``pyproject.toml`` and
-must never run in CI. It exists in P0 so the boundary is established and the
-mark is registered; no test here makes a network call, because P0 implements no
-provider.
+must never run in CI. It was established in P0 so the boundary and the mark
+exist. The live, billable OpenAI checks live beside this file
+(``test_openai_live.py``); this placeholder itself makes no call.
 
 Run explicitly with::
 

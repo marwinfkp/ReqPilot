@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from reqpilot.api.dependencies import CurrentActor, DbSession
 from reqpilot.api.lookup import require_found
+from reqpilot.domain.classification import display_label
 from reqpilot.domain.enums import (
     Action,
     ApprovalDecisionType,
@@ -40,9 +41,13 @@ from reqpilot.domain.requirement_ids import RequirementKind
 from reqpilot.services.approval import ApprovalService, required_roles, requires_all_roles
 from reqpilot.services.audit import AuditService
 from reqpilot.services.baseline import BaselineService
+from reqpilot.services.classification import RELABELLABLE_STATES, ClassificationService
+from reqpilot.services.extraction import RequirementRecordService
 from reqpilot.services.requirements import RequirementContent, RequirementService
+from reqpilot.services.review.service import ReviewQueueService
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+TEMPLATES.env.globals["label"] = display_label
 
 router = APIRouter(prefix="/ui", tags=["ui"], include_in_schema=False)
 
@@ -166,6 +171,19 @@ def requirement_view(
         for t in ApprovalService(session, actor).list_tasks(pid)
         if any(t.subject_id == v.id for v in versions)
     ]
+    # P3: the normalised record, labels with their history, criteria, reviews.
+    record = RequirementRecordService(session, actor).record(pid, requirement.id)
+    classification = ClassificationService(session, actor)
+    history = classification.history(pid, current.id) if current else []
+    review_items = (
+        [
+            i
+            for i in ReviewQueueService(session, actor).list(pid)
+            if i.requirement_version_id == current.id
+        ]
+        if current and record.open_review_items is not None
+        else []
+    )
     return TEMPLATES.TemplateResponse(
         request,
         "requirement.html",
@@ -180,6 +198,13 @@ def requirement_view(
             "actor_roles": sorted(actor.roles_in(pid)),
             "categories": list(RequirementCategory),
             "priorities": list(RequirementPriority),
+            "record": record,
+            "label_history": history,
+            "review_items": review_items,
+            "may_override": current is not None
+            and current.state in RELABELLABLE_STATES
+            and Role.ANALYST in actor.roles_in(pid),
+            "signal_caveat": "review-prioritisation signal, not a calibrated probability",
         },
     )
 

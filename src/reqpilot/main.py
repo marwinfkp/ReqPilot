@@ -14,6 +14,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from reqpilot.api.app import create_app as create_api_app
+from reqpilot.web.extraction import router as extraction_web_router
 from reqpilot.web.knowledge import router as knowledge_web_router
 from reqpilot.web.router import router as web_router
 
@@ -23,6 +24,7 @@ def create_app() -> FastAPI:
     app = create_api_app()
     app.include_router(web_router)
     app.include_router(knowledge_web_router)
+    app.include_router(extraction_web_router)
     return app
 
 

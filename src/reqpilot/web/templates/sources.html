@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Sources - {{ project.name }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/review">review queue</a>
+{% endblock %}
+{% block content %}
+<h1>Sources &mdash; {{ project.name }}</h1>
+<p class="note">Batch mode: add a transcript, meeting notes or document, then run
+extraction over it. Every requirement the model proposes is checked by code against
+the exact words of the source before it is stored, and nothing it produces is approved:
+approval is gate G1.</p>
+<p class="note warn">Model provider: <code>{{ provider }}</code>{% if not provider_is_model %}
+&mdash; <b>not a model</b>. This installation is configured with the offline stub
+(<code>LLM_PROVIDER=openai</code> selects the real provider), which no output contract
+accepts: a run will fail visibly rather than invent requirements.{% else %}
+&mdash; an external model. Only sources declared <code>synthetic</code> are sent to it;
+any other source is refused before a call is made.{% endif %}
+Sensitive-data masking is <b>not implemented</b> (roadmap P11); unmasked text may only
+ever leave this machine if it is declared <code>synthetic</code>.</p>
+
+<h2>Sources</h2>
+{% if sources %}
+<form method="post" action="/ui/projects/{{ project.id }}/analysis-runs">
+<table>
+  <tr><th></th><th>Title</th><th>Type</th><th>Sensitivity</th><th>Masking</th><th>Characters</th><th>Added</th></tr>
+  {% for s in sources %}
+  <tr>
+    <td>{% if may_run %}<input type="checkbox" name="source_ids" value="{{ s.id }}">{% endif %}</td>
+    <td><a href="/ui/sources/{{ s.id }}">{{ s.title }}</a></td>
+    <td class="mono">{{ s.doc_type.value }}</td>
+    <td class="mono">{{ s.sensitivity.value }}</td>
+    <td class="mono">{{ s.masking_status.value }}</td>
+    <td>{{ s.char_count }}</td>
+    <td class="muted">{{ s.created_at }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% if may_run %}
+<label>Identifier domain (FR-&lt;DOMAIN&gt;-nnn), e.g. LOAN</label>
+<input type="text" name="domain" value="LOAN" required>
+<p><button class="primary" type="submit">Extract and classify selected sources</button></p>
+{% endif %}
+</form>
+{% else %}
+<p class="note">No sources yet.</p>
+{% endif %}
+
+{% if may_add %}
+<fieldset>
+  <legend>Add a source (text)</legend>
+  <form method="post" action="/ui/projects/{{ project.id }}/sources">
+    <label>Title</label><input type="text" name="title" required>
+    <label>Type</label>
+    <select name="doc_type">{% for t in doc_types %}<option value="{{ t.value }}">{{ t.value }}</option>{% endfor %}</select>
+    <label>Declared sensitivity</label>
+    <select name="sensitivity">{% for v in sensitivities %}<option value="{{ v.value }}"{% if v.value == "unclassified" %} selected{% endif %}>{{ v.value }}</option>{% endfor %}</select>
+    <label>Text (a transcript as "Speaker: words" lines is segmented by speaker turn)</label>
+    <textarea name="text" rows="8" required></textarea>
+    <button class="primary" type="submit">Add</button>
+  </form>
+</fieldset>
+<fieldset>
+  <legend>Add a source (file: .txt, .md, .pdf, .docx)</legend>
+  <form method="post" action="/ui/projects/{{ project.id }}/sources/upload" enctype="multipart/form-data">
+    <label>Title</label><input type="text" name="title" required>
+    <label>Type</label>
+    <select name="doc_type">{% for t in doc_types %}<option value="{{ t.value }}">{{ t.value }}</option>{% endfor %}</select>
+    <label>Declared sensitivity</label>
+    <select name="sensitivity">{% for v in sensitivities %}<option value="{{ v.value }}"{% if v.value == "unclassified" %} selected{% endif %}>{{ v.value }}</option>{% endfor %}</select>
+    <label>File</label><input type="file" name="file" required>
+    <button class="primary" type="submit">Upload</button>
+  </form>
+</fieldset>
+{% endif %}
+
+<h2>Runs</h2>
+{% if runs %}
+<table>
+  <tr><th>Run</th><th>Status</th><th>Started</th><th>Finished</th></tr>
+  {% for r in runs %}
+  <tr><td class="mono"><a href="/ui/runs/{{ r.id }}">{{ r.id }}</a></td>
+      <td><span class="state">{{ r.status.value }}</span></td>
+      <td class="muted">{{ r.started_at }}</td><td class="muted">{{ r.finished_at or "" }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="muted">No runs yet.</p>
+{% endif %}
+{% endblock %}

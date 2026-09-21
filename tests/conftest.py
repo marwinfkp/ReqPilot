@@ -2,7 +2,9 @@
 
 Design rule for the whole suite (ADR-012): the ``unit``, ``integration``,
 ``workflow`` and ``security`` marks must run with **zero external API calls**.
-The ``llm`` mark is opt-in and excluded by ``addopts``.
+The ``llm`` mark is opt-in and excluded by ``addopts``. The suite never reads
+``.env`` or inherits ``LLM_*`` shell settings (see :mod:`tests.hermetic`), so a
+developer's real provider configuration cannot reach it.
 
 Database-backed tests use SQLite in memory where the behaviour under test is
 dialect-independent, and skip cleanly when a real PostgreSQL instance is not
@@ -21,6 +23,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+import tests.hermetic  # noqa: F401  - must run before any settings are loaded
 from reqpilot.config import AppEnv, LLMProvider, Settings
 from reqpilot.domain.enums import ActorKind, Role
 from reqpilot.domain.ids import ActorId, ProjectId, new_project_id, new_uuid

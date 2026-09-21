@@ -36,9 +36,11 @@ from reqpilot.domain.enums import ActorKind, Role
 from reqpilot.domain.ids import ActorId, ProjectId
 from reqpilot.domain.models.identity import ProjectMember, User
 from reqpilot.domain.policy import Actor
+from reqpilot.llm.gateway import LLMGateway, build_gateway
 from reqpilot.repositories.database import get_session_factory
 from reqpilot.retrieval.embeddings import EmbeddingProvider, provider_for
 from reqpilot.retrieval.rules import RetrievalRules, load_retrieval_rules
+from reqpilot.rules.extraction import ExtractionRules, load_extraction_rules
 
 
 def get_db() -> Iterator[Session]:
@@ -139,8 +141,31 @@ def get_retrieval_rules(settings: Annotated[Settings, Depends(get_settings)]) ->
     return _retrieval_rules(str(settings.rules_dir))
 
 
+@lru_cache(maxsize=4)
+def _extraction_rules(rules_dir: str) -> ExtractionRules:
+    return load_extraction_rules(Path(rules_dir))
+
+
+def get_extraction_rules(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ExtractionRules:
+    """The versioned extraction and classification ruleset, validated once per process."""
+    return _extraction_rules(str(settings.rules_dir))
+
+
+def get_llm_gateway(settings: Annotated[Settings, Depends(get_settings)]) -> LLMGateway:
+    """The one model access boundary (ADR-006), built from configuration.
+
+    The offline stub by default; the OpenAI provider when ``LLM_PROVIDER=openai``
+    (architecture Y). Either may sit behind recorded fixtures.
+    """
+    return build_gateway(settings)
+
+
 DbSession = Annotated[Session, Depends(get_db)]
 CurrentActor = Annotated[Actor, Depends(get_actor)]
 Embedder = Annotated[EmbeddingProvider, Depends(get_embedding_provider)]
 Rules = Annotated[RetrievalRules, Depends(get_retrieval_rules)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
+Gateway = Annotated[LLMGateway, Depends(get_llm_gateway)]
+ExtractionRulesDep = Annotated[ExtractionRules, Depends(get_extraction_rules)]

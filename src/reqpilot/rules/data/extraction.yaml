@@ -1,0 +1,59 @@
+# Extraction and classification ruleset (roadmap phase P3; architecture E #3,
+# E #5, F.2, M.5).
+#
+# Every value here decides what a model's proposal becomes - accepted, merged,
+# rejected, or sent to a human - so it is versioned data rather than code or
+# environment. Each extraction candidate, label and review item records the
+# version of this file that governed it.
+#
+# Values marked PROVISIONAL are starting points. The signals they are compared
+# against are heuristic review-prioritisation signals produced by the model,
+# NOT calibrated probabilities (approved Phase 0 H.1, O.2 S8). They are to be
+# re-set from measured behaviour once E1 has run against gold transcript #1
+# (approved Phase 0 H.2: ET-07 "re-baseline after P3").
+#
+# Project-document segmentation sizes are not repeated here: they are the J.3
+# values in retrieval.yaml, used by both phases.
+
+name: extraction
+version: "1.0.0"
+description: >
+  Extraction validation limits, near-duplicate handling, and the review
+  thresholds that send AI proposals to the human review queue.
+
+rules:
+  segmentation:
+    # A transcript line "Speaker: text" is a speaker turn only when the label
+    # is at most this long; longer prefixes are ordinary sentences with a colon.
+    max_speaker_label_chars: 60
+
+  extraction:
+    # Segments sent in one extraction call. Larger sources are split into
+    # consecutive windows of segments, each its own agent run (D3 bounding).
+    max_segments_per_call: 40
+    # FR-EXT-003: every statement is rewritten into this declarative form.
+    statement_prefix: "The system shall"
+    max_statement_chars: 1000
+    max_quote_chars: 2000
+    # An extraction whose model review signal is below this goes to review.
+    min_review_signal: 0.5 # PROVISIONAL
+
+  dedupe:
+    # FR-EXT-005. Only exact duplicates are merged automatically: two proposals
+    # of the same kind, in one batch, whose statements are identical after
+    # normalisation (case, punctuation and whitespace). Nothing is lost in such
+    # a merge - every source span of both is kept.
+    auto_merge: exact_normalised
+    # Anything merely similar is NOT merged: a negation or a changed number can
+    # leave most words identical while reversing the meaning. At or above this
+    # token-set Jaccard similarity a human is asked to decide.
+    review_similarity: 0.8 # PROVISIONAL
+
+  classification:
+    # FR-CLS-002: a label whose model review signal is below this enters the
+    # human review queue. The label is kept, marked as needing review.
+    review_threshold: 0.6 # PROVISIONAL
+
+  acceptance_criteria:
+    max_per_requirement: 5
+    max_clause_chars: 500

@@ -1,0 +1,12 @@
+# Active prompt-template versions, and the locked sha256 of every version's file
+# (architecture F.5, Phase 0 DQ-04). The registry refuses to load a template
+# whose file no longer matches its lock: changing a prompt means a new version.
+#
+# The hash is over the file with line endings normalised to LF, so it does not
+# depend on the platform a checkout was made on.
+active:
+  requirement_extraction: "1.0.0"
+  requirement_classification: "1.0.0"
+locked:
+  requirement_extraction@1.0.0: "6ed48601cc05add136aa5984128d95f4df449da99ce359e38f1b973ff492098e"
+  requirement_classification@1.0.0: "5fa3028a730f15e422959bc1ad9a7e3489878090f61757d983bd26b99c5ab37a"

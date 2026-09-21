@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ document.title }}{% endblock %}
+{% block nav %}<a href="/ui/projects/{{ project_id }}/sources">back to sources</a>{% endblock %}
+{% block content %}
+<h1>{{ document.title }}</h1>
+<table>
+  <tr><th>Type</th><td class="mono">{{ document.doc_type.value }}</td></tr>
+  <tr><th>Declared sensitivity</th><td class="mono">{{ document.sensitivity.value }}</td></tr>
+  <tr><th>Masking</th><td class="mono">{{ document.masking_status.value }} ({{ document.masker_id }})</td></tr>
+  <tr><th>Content hash</th><td class="mono">{{ document.content_hash }}</td></tr>
+  <tr><th>Characters</th><td>{{ document.char_count }}</td></tr>
+</table>
+<p class="muted">Every segment below is exactly the slice of the stored text between its
+offsets. Requirements cite these segments and offsets; the offsets are computed by code,
+never taken from a model.</p>
+<h2>Segments</h2>
+<table>
+  <tr><th>#</th><th>Span</th><th>Speaker</th><th>Strategy</th><th>Text</th></tr>
+  {% for c in chunks %}
+  <tr><td>{{ c.ordinal }}</td><td class="mono">[{{ c.char_start }}, {{ c.char_end }})</td>
+      <td>{{ c.speaker or "" }}</td><td class="mono">{{ c.strategy.value }}</td><td>{{ c.text }}</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -98,6 +98,21 @@ KNOWLEDGE_BASE_TABLES = {
 }
 
 
+#: Tables the extraction-and-classification phase adds (architecture G.3, G.4,
+#: G.7, M.5): the project corpus, proposals, labels, criteria, the review queue,
+#: and prompt and model provenance.
+EXTRACTION_TABLES = {
+    "source_document",
+    "source_chunk",
+    "extraction_candidate",
+    "requirement_classification",
+    "acceptance_criterion",
+    "review_item",
+    "prompt_template",
+    "model_version",
+}
+
+
 def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None:
     """The schema must not run ahead of the roadmap.
 
@@ -105,7 +120,12 @@ def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None
     table set here, and anything outside the union is a table that arrived early.
     """
     present = set(inspect(migrated_db).get_table_names()) - {"alembic_version"}
-    permitted = FOUNDATION_TABLES | REQUIREMENTS_REPOSITORY_TABLES | KNOWLEDGE_BASE_TABLES
+    permitted = (
+        FOUNDATION_TABLES
+        | REQUIREMENTS_REPOSITORY_TABLES
+        | KNOWLEDGE_BASE_TABLES
+        | EXTRACTION_TABLES
+    )
     unexpected = present - permitted
     assert not unexpected, f"migrations created out-of-scope tables: {sorted(unexpected)}"
 
@@ -170,3 +190,44 @@ def test_downgrading_p2_removes_exactly_the_knowledge_base(
         engine.dispose()
         get_settings.cache_clear()
     command.upgrade(config, "head")
+
+
+def test_downgrading_p3_removes_exactly_the_extraction_tables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rolling P3 back leaves P0-P2 intact, including ``agent_run`` as P0 made it."""
+    url = sqlite_url(tmp_path / "p3-down.db")
+    monkeypatch.setenv("DATABASE_URL", url)
+    get_settings.cache_clear()
+    config = alembic_config(url)
+    command.upgrade(config, "head")
+    command.downgrade(config, "0004_p2_knowledge_base")
+
+    engine = create_engine(url, future=True)
+    try:
+        inspector = inspect(engine)
+        present = set(inspector.get_table_names()) - {"alembic_version"}
+        assert not present & EXTRACTION_TABLES, "downgrade left P3 tables behind"
+        assert present >= FOUNDATION_TABLES | REQUIREMENTS_REPOSITORY_TABLES | KNOWLEDGE_BASE_TABLES
+        agent_run_columns = {c["name"] for c in inspector.get_columns("agent_run")}
+        assert not {"attempts", "error_code", "review_signal", "cost_estimate", "finished_at"} & (
+            agent_run_columns
+        )
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
+    command.upgrade(config, "head")
+
+
+def test_every_revision_id_fits_the_alembic_version_column() -> None:
+    """``alembic_version.version_num`` is VARCHAR(32) on PostgreSQL.
+
+    SQLite does not enforce the length, so a longer revision id passes every
+    SQLite test and then fails the first real upgrade. Found in P3; pinned here.
+    """
+    import re
+
+    for path in sorted((REPO_ROOT / "alembic" / "versions").glob("*.py")):
+        match = re.search(r'^revision: str = "([^"]+)"', path.read_text(encoding="utf-8"), re.M)
+        assert match is not None, f"{path.name} declares no revision"
+        assert len(match.group(1)) <= 32, f"{path.name}: revision id longer than 32 characters"

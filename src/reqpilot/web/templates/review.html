@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Review queue - {{ project.name }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/sources">sources</a>
+  <a href="/ui/projects/{{ project.id }}/tasks">approvals (G1)</a>
+{% endblock %}
+{% block content %}
+<h1>AI-proposal review queue</h1>
+<p class="note warn"><b>This is not approval.</b> {{ not_approval }}</p>
+<p class="muted">Ordered by lowest review signal first, then age (architecture M.5).
+Review signals are a {{ signal_caveat }}.
+{% if show == "open" %}<a href="?show=all">show resolved too</a>{% else %}<a href="?show=open">open only</a>{% endif %}</p>
+
+{% if items %}
+<table>
+  <tr><th>Reason</th><th>About</th><th>Label</th><th>Signal</th><th>Detail</th><th>Status</th><th>Decide</th></tr>
+  {% for i in items %}
+  <tr>
+    <td class="mono">{{ i.reason.value }}</td>
+    <td>{% if i.requirement_version_id %}<span class="mono">version {{ i.requirement_version_id }}</span>{% else %}<span class="mono">{{ i.subject_type }} {{ i.subject_id }}</span>{% endif %}
+      {% if i.related_subject_id %}<div class="muted">and version <span class="mono">{{ i.related_subject_id }}</span></div>{% endif %}</td>
+    <td>{{ label(i.category) if i.category else "" }}</td>
+    <td>{{ "%.2f"|format(i.review_signal) if i.review_signal is not none else "" }}</td>
+    <td class="mono">{{ i.detail }}</td>
+    <td><span class="state">{{ i.status.value }}</span>{% if i.resolution %} <span class="mono">{{ i.resolution.value }}</span>{% endif %}</td>
+    <td>
+      {% if i.status.value == "open" and may_resolve %}
+      <form method="post" action="/ui/review-items/{{ i.id }}/resolve">
+        <select name="resolution">{% for r in allowed[i.reason] %}<option value="{{ r }}">{{ r }}</option>{% endfor %}</select>
+        <input type="text" name="note" placeholder="note (required to reject, override or merge)">
+        {% if "overridden" in allowed[i.reason] %}
+        <select name="categories" multiple size="4">{% for c in categories %}<option value="{{ c.value }}">{{ label(c) }}</option>{% endfor %}</select>
+        {% endif %}
+        {% if "merged" in allowed[i.reason] %}
+        <select name="keep"><option value="related">keep the other (earlier)</option><option value="subject">keep this one</option></select>
+        {% endif %}
+        <button type="submit">Resolve</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="note">Nothing to review.</p>
+{% endif %}
+{% endblock %}

@@ -403,6 +403,17 @@ class AuditEventType(StrEnum):
     KB_CONTROL_ADDED = "KB_CONTROL_ADDED"
     KB_SCOPE_CHANGED = "KB_SCOPE_CHANGED"
 
+    # Extraction and classification (added by the extraction phase). The first
+    # four are named in architecture O.2; the review and merge events follow the
+    # P1/P2 precedent of a phase adding the events it raises.
+    EXTRACTION_PROPOSED = "EXTRACTION_PROPOSED"
+    EXTRACTION_VALIDATED = "EXTRACTION_VALIDATED"
+    CLASSIFICATION_PROPOSED = "CLASSIFICATION_PROPOSED"
+    HUMAN_OVERRIDE = "HUMAN_OVERRIDE"
+    REVIEW_ITEM_RAISED = "REVIEW_ITEM_RAISED"
+    REVIEW_ITEM_RESOLVED = "REVIEW_ITEM_RESOLVED"
+    REQUIREMENTS_MERGED = "REQUIREMENTS_MERGED"
+
 
 class Action(StrEnum):
     """Actions the policy can authorise (architecture ADR-009).
@@ -420,6 +431,9 @@ class Action(StrEnum):
     AUDIT_VERIFY = "audit.verify"
     RUN_START = "run.start"
     RUN_READ = "run.read"
+    #: Writing a run's own records - agent runs, proposals, review items. The
+    #: pipeline does this on the analyst's behalf; it decides nothing.
+    RUN_RECORD = "run.record"
     APPROVAL_DECIDE = "approval.decide"
 
     # Requirements repository
@@ -442,6 +456,19 @@ class Action(StrEnum):
     EVIDENCE_CREATE = "evidence.create"
     EVIDENCE_READ = "evidence.read"
 
+    # Project sources, extraction and classification
+    SOURCE_CREATE = "source.create"
+    SOURCE_READ = "source.read"
+    #: Recording a model's classification proposal. The pipeline does this on
+    #: the analyst's behalf; the proposal is never authoritative.
+    CLASSIFICATION_PROPOSE = "classification.propose"
+    #: A human replacing a requirement version's labels (``FR-CLS-003``).
+    CLASSIFICATION_OVERRIDE = "classification.override"
+    REVIEW_READ = "review.read"
+    REVIEW_RESOLVE = "review.resolve"
+    #: Merging a duplicate into another requirement, keeping both source links.
+    REQUIREMENT_MERGE = "requirement.merge"
+
 
 class ResourceType(StrEnum):
     """Resource types the policy can authorise against."""
@@ -460,3 +487,122 @@ class ResourceType(StrEnum):
     KNOWLEDGE_CHUNK = "knowledge_chunk"
     SOURCE_ALLOWLIST = "source_allowlist"
     EVIDENCE = "evidence"
+    SOURCE_DOCUMENT = "source_document"
+    EXTRACTION_CANDIDATE = "extraction_candidate"
+    CLASSIFICATION = "requirement_classification"
+    REVIEW_ITEM = "review_item"
+
+
+# ---------------------------------------------------------------------------
+# Extraction and classification (roadmap phase P3)
+# ---------------------------------------------------------------------------
+
+
+class SourceDocumentType(StrEnum):
+    """What a project source document is (``FR-ING-001``; architecture G.3).
+
+    Project content only. A normative source is curated into the knowledge base
+    (P2), never uploaded as project content: the two corpora carry different
+    trust classes and are never mixed (architecture J.1).
+    """
+
+    TRANSCRIPT = "transcript"
+    MEETING_NOTES = "meeting_notes"
+    POLICY = "policy"
+    LEGACY_SPECIFICATION = "legacy_specification"
+    AUDIT_FINDING = "audit_finding"
+
+
+class DataSensitivity(StrEnum):
+    """The uploader's declared sensitivity of a source (``FR-ING-004``).
+
+    Declared, not detected: automatic sensitivity classification belongs with the
+    masking pipeline (``FR-ING-003``), which is not implemented yet. The value
+    matters now because it decides whether content may leave the machine at all
+    (see the LLM gateway's egress rule).
+    """
+
+    #: Fictional or team-authored material with no real person's data in it.
+    SYNTHETIC = "synthetic"
+    #: Not yet classified. Treated as sensitive.
+    UNCLASSIFIED = "unclassified"
+    CONFIDENTIAL = "confidential"
+
+
+class MaskingStatus(StrEnum):
+    """Whether a source's stored text passed a protective masking stage (J.2)."""
+
+    NOT_MASKED = "not_masked"
+    MASKED = "masked"
+
+
+class CandidateStatus(StrEnum):
+    """What happened to one extraction proposal.
+
+    ``PROPOSED`` is the only non-terminal value; a candidate is decided once.
+    """
+
+    PROPOSED = "proposed"
+    #: Validated and persisted as a requirement version.
+    ACCEPTED = "accepted"
+    #: An exact duplicate of another candidate in the same batch. Its source
+    #: spans were added to that candidate's requirement.
+    MERGED = "merged"
+    #: Failed deterministic validation. Never persisted as a requirement.
+    REJECTED = "rejected"
+
+
+class ProposalSource(StrEnum):
+    """Who produced a label or an acceptance criterion."""
+
+    AGENT = "agent"
+    HUMAN = "human"
+
+
+class ReviewReason(StrEnum):
+    """Why an AI-produced proposal needs a human look (``FR-CLS-002``).
+
+    The review queue is for AI proposals. It is **not** approval: requirements
+    are approved only at gate G1.
+    """
+
+    #: The model's output failed schema validation, including after the repair.
+    MALFORMED_OUTPUT = "malformed_output"
+    #: A proposal cited no source, or a source that does not resolve (FR-EXT-007).
+    UNRESOLVED_SOURCE = "unresolved_source"
+    #: A proposal failed another deterministic extraction check.
+    EXTRACTION_INVALID = "extraction_invalid"
+    #: The model's own review signal for an extraction is below the threshold.
+    LOW_EXTRACTION_SIGNAL = "low_extraction_signal"
+    #: A classification label's review signal is below the threshold.
+    LOW_CLASSIFICATION_SIGNAL = "low_classification_signal"
+    #: The model proposed a label outside the thirteen approved categories.
+    UNKNOWN_LABEL = "unknown_label"
+    #: No valid label survived validation, or the classification call failed.
+    CLASSIFICATION_FAILED = "classification_failed"
+    #: Two requirements look alike but are not identical; a human decides.
+    POSSIBLE_DUPLICATE = "possible_duplicate"
+    #: Proposed acceptance criteria failed validation and were not stored.
+    ACCEPTANCE_CRITERIA_INVALID = "acceptance_criteria_invalid"
+
+
+class ReviewStatus(StrEnum):
+    OPEN = "open"
+    RESOLVED = "resolved"
+
+
+class ReviewResolution(StrEnum):
+    """How a human closed a review item. None of these approves anything."""
+
+    #: The proposal stands as the model made it.
+    ACCEPTED = "accepted"
+    #: The proposal is discarded (a requirement is withdrawn through P1).
+    REJECTED = "rejected"
+    #: A human replaced the labels (``FR-CLS-003``).
+    OVERRIDDEN = "overridden"
+    #: Duplicates merged, keeping every source link.
+    MERGED = "merged"
+    #: Look-alikes confirmed as different requirements.
+    KEPT_DISTINCT = "kept_distinct"
+    #: Seen and recorded; nothing to change (e.g. a rejected proposal).
+    ACKNOWLEDGED = "acknowledged"

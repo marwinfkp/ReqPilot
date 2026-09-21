@@ -104,3 +104,8 @@ def test_current_phase_endpoints_are_present() -> None:
     assert any(p.startswith("/api/v1/kb/") for p in paths)
     assert any(p.endswith("/retrievals") for p in paths)
     assert any(p.endswith("/kb-allowlist") for p in paths)
+    # P3: sources, batch analysis runs, the review queue, classification.
+    assert any(p.endswith("/sources") for p in paths)
+    assert any(p.endswith("/analysis-runs") for p in paths)
+    assert any(p.endswith("/review-items") for p in paths)
+    assert any(p.endswith("/classification") for p in paths)

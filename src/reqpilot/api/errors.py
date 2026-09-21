@@ -20,13 +20,17 @@ from reqpilot.domain.errors import (
     AuthorizationError,
     BaselineInvariantError,
     CitationError,
+    ClassificationError,
+    EgressRefusedError,
     EmbeddingUnavailableError,
     EvidenceIntegrityError,
     ImmutableRecordError,
     LicenceViolationError,
     ProjectIsolationError,
+    PromptRegistryError,
     ReqPilotError,
     RequirementIdError,
+    ReviewError,
     RuleConfigurationError,
     StateTransitionError,
     UngroundedRetrievalError,
@@ -50,6 +54,12 @@ ERROR_STATUS: tuple[tuple[type[Exception], int], ...] = (
     # before the general citation case, of which it is a subclass.
     (EvidenceIntegrityError, status.HTTP_409_CONFLICT),
     (CitationError, status.HTTP_404_NOT_FOUND),
+    # AI-proposal decisions refused in the current state (P3).
+    (ClassificationError, status.HTTP_409_CONFLICT),
+    (ReviewError, status.HTTP_409_CONFLICT),
+    # A trust-boundary refusal is not the caller's input error.
+    (EgressRefusedError, status.HTTP_409_CONFLICT),
+    (PromptRegistryError, status.HTTP_500_INTERNAL_SERVER_ERROR),
     # The server cannot do the work here and now; the request is not at fault.
     (EmbeddingUnavailableError, status.HTTP_503_SERVICE_UNAVAILABLE),
     (RuleConfigurationError, status.HTTP_500_INTERNAL_SERVER_ERROR),

@@ -1,0 +1,62 @@
+{
+  "benchmark": {
+    "name": "e1_synthetic",
+    "version": "1",
+    "manifest_sha256": "6bce917368818c297d81365a2a4873329f3495a82a86fde98f141587d0f3a870",
+    "reference_count": 60
+  },
+  "run_id": "111b163e-616c-4767-82b1-49c8495127a1",
+  "project_id": "50adf124-242d-4423-ac62-f635502a1263",
+  "analyst_actor_id": "56015caa-d611-415b-b1fd-d2b894cd635b",
+  "executed_at": "2026-09-21T18:03:58+00:00",
+  "facts": {
+    "run_id": "111b163e-616c-4767-82b1-49c8495127a1",
+    "providers": [
+      "openai"
+    ],
+    "models": [
+      "gpt-5.6-luna"
+    ],
+    "prompt_versions": [
+      "requirement_extraction@1.0.0"
+    ],
+    "all_real_models": true
+  },
+  "prompt_templates": [
+    {
+      "name": "requirement_classification",
+      "version": "1.0.0",
+      "sha256": "5fa3028a730f15e422959bc1ad9a7e3489878090f61757d983bd26b99c5ab37a"
+    },
+    {
+      "name": "requirement_extraction",
+      "version": "1.0.0",
+      "sha256": "6ed48601cc05add136aa5984128d95f4df449da99ce359e38f1b973ff492098e"
+    }
+  ],
+  "configuration": {
+    "provider": "openai",
+    "model": "gpt-5.6-luna",
+    "temperature": null,
+    "max_retries": 3,
+    "timeout_seconds": 180,
+    "fixture_mode": "live",
+    "domain": "LOAN",
+    "random_seed": null
+  },
+  "summary": {
+    "status": "completed",
+    "accepted": 60,
+    "merged": 0,
+    "rejected": 4,
+    "classified": 60,
+    "review_items": 4,
+    "provider_calls": 63,
+    "tokens_in": 51033,
+    "tokens_out": 24835,
+    "cost_estimate": null,
+    "errors": []
+  },
+  "predicted_count": 60,
+  "candidate_pairs": 58
+}

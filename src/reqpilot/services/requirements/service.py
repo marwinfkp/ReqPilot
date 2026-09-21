@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 
 from reqpilot.domain.enums import (
     Action,
+    ActorKind,
     ApprovalTaskStatus,
     AuditEventType,
     Gate,
@@ -31,7 +32,7 @@ from reqpilot.domain.enums import (
     RequirementPriority,
     ResourceType,
 )
-from reqpilot.domain.errors import ImmutableVersionError, ReqPilotError
+from reqpilot.domain.errors import AuthorizationError, ImmutableVersionError, ReqPilotError
 from reqpilot.domain.ids import ProjectId
 from reqpilot.domain.lifecycle import RequirementState, TransitionContext, validate_transition
 from reqpilot.domain.models.requirements import Requirement, RequirementVersion
@@ -43,6 +44,7 @@ from reqpilot.domain.requirement_ids import (
 )
 from reqpilot.domain.versioning import compute_version_hash
 from reqpilot.repositories.approval import ApprovalTaskRepository
+from reqpilot.repositories.extraction import ClassificationRepository
 from reqpilot.repositories.requirements import (
     RequirementRepository,
     RequirementVersionRepository,
@@ -58,9 +60,11 @@ class RequirementContent:
     requirement and creating a successor version take exactly the same shape and
     cannot drift apart.
 
-    Fields that later roadmap phases populate - acceptance criteria, applicable
-    regulations, risk level, review signal - are deliberately absent rather than
-    stubbed. The approved schema carries them; P1 does not invent values for them.
+    Fields that later roadmap phases populate - applicable regulations (P6) and
+    risk level (P7) - are deliberately absent rather than stubbed. The approved
+    schema carries them; nothing invents values for them. Acceptance criteria and
+    classification labels (P3) are separate rows bound to the version, so adding
+    them never rewrites it.
     """
 
     statement: str
@@ -71,12 +75,26 @@ class RequirementContent:
     dependencies: tuple[str, ...] = ()
     assumptions: tuple[str, ...] = ()
     source_refs: tuple[dict, ...] = ()
+    #: The extraction role's heuristic review signal (P3), **not** a calibrated
+    #: probability. Set once at creation and, as P1 decided, outside the content
+    #: hash: it describes how the proposal was made, not what it says.
+    review_signal: float | None = None
 
     def validated(self) -> RequirementContent:
         """Return self after checking what P1 can check about the content."""
         if not self.statement or not self.statement.strip():
             raise ReqPilotError("a requirement statement cannot be empty")
+        if self.review_signal is not None and not 0.0 <= self.review_signal <= 1.0:
+            raise ReqPilotError("a review signal lies in [0, 1]")
         return self
+
+
+#: The only targets a non-human actor may move a version to: the transitions the
+#: extraction and classification nodes own (architecture H.3, C.3). Everything
+#: from analysis to approval is a human's, or a later phase's, to trigger.
+AUTOMATED_TRANSITION_TARGETS: frozenset[RequirementState] = frozenset(
+    {RequirementState.EXTRACTED, RequirementState.CLASSIFIED, RequirementState.INVALID}
+)
 
 
 class RequirementService:
@@ -88,6 +106,7 @@ class RequirementService:
         self._requirements = RequirementRepository(session, actor)
         self._versions = RequirementVersionRepository(session, actor)
         self._tasks = ApprovalTaskRepository(session, actor)
+        self._classifications = ClassificationRepository(session, actor)
         self._audit = AuditService(session)
 
     # -- creation ---------------------------------------------------------
@@ -225,6 +244,13 @@ class RequirementService:
             Action.REQUIREMENT_TRANSITION,
             ResourceRef(resource_type=ResourceType.REQUIREMENT_VERSION, project_id=project_id),
         )
+        if self._actor.kind is not ActorKind.HUMAN and target not in AUTOMATED_TRANSITION_TARGETS:
+            # P3 defence in depth: a pipeline may move a version only along the
+            # transitions extraction and classification own (architecture H.3).
+            raise AuthorizationError(
+                f"a {self._actor.kind} actor may not move a version to {target}; "
+                f"only to {sorted(str(t) for t in AUTOMATED_TRANSITION_TARGETS)}"
+            )
         version = self._versions.get(project_id, version_id)
         if version is None:
             raise ReqPilotError("requirement version not found in this project")
@@ -265,9 +291,12 @@ class RequirementService:
             and task.blocking
             and task.gate is not Gate.G1_REQUIREMENT_BASELINE
         ]
+        # Labels: the current classification revision (P3, FR-CLS-001), or the
+        # single manually set category a P1 version may carry.
+        labels = len(self._classifications.current_categories(project_id, version.id))
         return TransitionContext(
             source_ref_count=len(version.source_refs or []),
-            label_count=1 if version.category is not None else 0,
+            label_count=labels or (1 if version.category is not None else 0),
             has_current_validation=version.state is RequirementState.VALIDATED,
             blocking_gate_task_count=len(blocking),
             is_baselined=version.state is RequirementState.BASELINED,
@@ -399,6 +428,7 @@ class RequirementService:
             assumptions=list(content.assumptions),
             source_refs=list(content.source_refs),
             content_hash=content_hash,
+            review_signal=content.review_signal,
             change_reason=change_reason,
             created_by=self._actor.actor_id,
         )

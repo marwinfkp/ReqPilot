@@ -132,3 +132,76 @@ class EvidenceIntegrityError(CitationError):
     Evidence is append-only; a mismatch means tampering or corruption, and the
     citation is refused rather than resolved to text nobody actually saw.
     """
+
+
+# ---------------------------------------------------------------------------
+# Extraction, classification and the LLM gateway (roadmap phase P3)
+# ---------------------------------------------------------------------------
+
+
+class SourceDocumentError(ReqPilotError):
+    """A project source document was refused (empty, unsupported, malformed)."""
+
+
+class ExtractionError(ReqPilotError):
+    """An extraction operation was refused by a deterministic rule."""
+
+
+class ClassificationError(ReqPilotError):
+    """A classification operation was refused by a deterministic rule.
+
+    For example: an override with no label, a label outside the approved
+    taxonomy, or an override of a version that is already under approval.
+    """
+
+
+class ReviewError(ReqPilotError):
+    """A review-queue action was refused (wrong resolution, already resolved)."""
+
+
+class LLMGatewayError(ReqPilotError):
+    """The LLM gateway could not produce a usable result (architecture ADR-006).
+
+    Every model call passes through one gateway; its failures are typed so that
+    a node can record *why* no proposal exists, rather than inventing one.
+    """
+
+
+class ProviderUnavailableError(LLMGatewayError):
+    """The configured provider cannot be used, or failed after bounded retries."""
+
+
+class TransientProviderError(ProviderUnavailableError):
+    """A provider failure that may succeed on retry (429, 5xx, timeout)."""
+
+
+class StructuredOutputError(LLMGatewayError):
+    """The model's output failed schema validation, including after one repair."""
+
+
+class PromptRegistryError(LLMGatewayError):
+    """A prompt template is missing, malformed, or changed without a version bump."""
+
+
+class FixtureMissingError(LLMGatewayError):
+    """Strict replay found no recorded response for a request (ADR-012)."""
+
+
+class EgressRefusedError(LLMGatewayError):
+    """Content was refused at the trust boundary before reaching a provider.
+
+    A security event, not a data-quality event: either an application secret
+    appeared in a prompt, or unmasked project content would have left the
+    machine without the data being declared synthetic (``FR-ING-003``).
+    """
+
+
+class EvaluationError(ReqPilotError):
+    """An evaluation could not be computed as the approved protocol requires."""
+
+
+class GoldSetIntegrityError(EvaluationError):
+    """A gold dataset does not match its frozen manifest (architecture R.3).
+
+    The evaluation refuses to run rather than score against a modified set.
+    """

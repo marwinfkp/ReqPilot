@@ -14,8 +14,8 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
@@ -94,5 +94,16 @@ class AgentRun(Base):
         SAEnum(AgentRunStatus, name="agent_run_status_enum"), nullable=False
     )
     started_at: Mapped[dt.datetime] = created_at_column()
+
+    # Added by the extraction phase, the first to call a model (G.7, ET-08).
+    #: Provider calls made, including the one schema repair and transient retries.
+    attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Why the invocation failed, as a stable code (never model text).
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    #: Heuristic review signal, **not** a calibrated probability (Phase 0 H.1).
+    review_signal: Mapped[float | None] = mapped_column(Float, nullable=True)
+    #: Estimated cost from configured prices; null when no price is configured.
+    cost_estimate: Mapped[float | None] = mapped_column(Float, nullable=True)
+    finished_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     graph_run: Mapped[GraphRun] = relationship(back_populates="agent_runs")

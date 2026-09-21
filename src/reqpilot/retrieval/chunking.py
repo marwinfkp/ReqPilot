@@ -307,3 +307,79 @@ def chunk_transcript(utterances: Sequence[tuple[uuid.UUID, str]]) -> list[Uttera
             )
         )
     return out
+
+
+# ---------------------------------------------------------------------------
+# Transcript documents (roadmap phase P3)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SpeakerTurn:
+    """One speaker turn of a transcript *document*, and who spoke it.
+
+    The chunk covers the spoken words only; the speaker label is kept apart,
+    exactly as the transcript writes it. It is never inferred or normalised.
+    """
+
+    chunk: TextChunk
+    speaker: str | None
+
+
+#: A line that opens a speaker turn: an optional bracketed timestamp, an
+#: optional bold marker, a label beginning with a letter, then a colon and a
+#: space. "https://..." has no space after its colon and so is never a label.
+_SPEAKER_LINE = re.compile(
+    r"^[ \t]*(?:\[[^\]\n]{1,24}\][ \t]*)?(?:\*\*)?"
+    r"(?P<speaker>[A-Za-z][^:\n*]*?)(?:\*\*)?[ \t]*:[ \t]+(?=\S)",
+    re.MULTILINE,
+)
+
+#: A label longer than this many words is a sentence with a colon, not a name.
+_MAX_SPEAKER_WORDS = 6
+
+
+def segment_transcript_document(text: str, *, max_speaker_chars: int = 60) -> list[SpeakerTurn]:
+    """Split a transcript document into speaker turns (architecture J.3).
+
+    One turn per ``Speaker: words`` line plus its continuation lines; a turn is
+    never split, however long. Text before the first speaker line becomes a
+    turn with no speaker. Returns an empty list when the text has no speaker
+    lines at all - the caller then segments it as an ordinary document.
+    """
+    marks: list[tuple[int, int, str]] = []
+    for match in _SPEAKER_LINE.finditer(text):
+        speaker = match.group("speaker").strip()
+        if not speaker or len(speaker) > max_speaker_chars:
+            continue
+        if len(speaker.split()) > _MAX_SPEAKER_WORDS:
+            continue
+        marks.append((match.start(), match.end(), speaker))
+    if not marks:
+        return []
+
+    spans: list[tuple[tuple[int, int], str | None]] = []
+    preamble = _trimmed(text, 0, marks[0][0])
+    if preamble is not None:
+        spans.append((preamble, None))
+    for index, (_line_start, words_start, speaker) in enumerate(marks):
+        end = marks[index + 1][0] if index + 1 < len(marks) else len(text)
+        span = _trimmed(text, words_start, end)
+        if span is not None:
+            spans.append((span, speaker))
+
+    return [
+        SpeakerTurn(
+            chunk=TextChunk(
+                ordinal=ordinal,
+                char_start=start,
+                char_end=end,
+                text=text[start:end],
+                strategy=ChunkStrategy.UTTERANCE,
+                structure_label=None,
+                token_count=count_tokens(text[start:end]),
+            ),
+            speaker=speaker,
+        )
+        for ordinal, ((start, end), speaker) in enumerate(spans)
+    ]

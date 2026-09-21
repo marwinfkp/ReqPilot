@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Literal, Protocol, TypeVar
 
-from reqpilot.graph.state import BaseGraphState
+from reqpilot.graph.state import AnalysisState, BaseGraphState
 
 StateT = TypeVar("StateT", bound=BaseGraphState)
 
@@ -76,3 +76,32 @@ def assert_is_deterministic_router(func: object) -> None:
                 f"{type(value).__name__} from {module}; routers must not have "
                 "access to model output or providers (architecture C.3)"
             )
+
+
+# ---------------------------------------------------------------------------
+# analysis_graph - the P3 subset (architecture C.3)
+# ---------------------------------------------------------------------------
+
+# Routers are annotated with the full state type: LangGraph reads the
+# annotation as the router's input schema, and a narrower type would hide the
+# fields the route depends on.
+AfterScope = Literal["extract_requirements", "classify", "error_handler"]
+AfterExtraction = Literal["validate_extraction", "error_handler"]
+AfterValidation = Literal["persist_candidates", "error_handler"]
+
+
+def route_after_scope(state: AnalysisState) -> AfterScope:
+    """Sources in scope -> extract; versions only -> classify; a bad scope -> fail."""
+    if state.get("errors"):
+        return "error_handler"
+    return "extract_requirements" if state.get("scope_source_ids") else "classify"
+
+
+def route_extraction(state: AnalysisState) -> AfterExtraction:
+    """C.3 ``route_extraction``. The gateway already made the one schema repair;
+    a failure that survived it goes to the error handler, never onward."""
+    return "error_handler" if state.get("errors") else "validate_extraction"
+
+
+def route_validation(state: AnalysisState) -> AfterValidation:
+    return "error_handler" if state.get("errors") else "persist_candidates"

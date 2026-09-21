@@ -57,9 +57,11 @@ P1_TABLES = {
 #: project corpus and the glossary are deliberately still absent after P2.
 FUTURE_PHASE_TABLES = {
     "glossary_term",
-    "source_document",
-    "source_chunk",
     "utterance",
+    "quality_finding",
+    "conflict",
+    "clarification",
+    "traceability_link",
     "compliance_mapping",
     "risk",
     "risk_mitigation",

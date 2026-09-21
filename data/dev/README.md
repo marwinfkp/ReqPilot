@@ -27,6 +27,12 @@ implementation they are meant to judge. A CI check enforces the direction.
   policies of a bank that does not exist, and a team-written practice note. Used
   by the tests and the demonstration. It contains no law, regulation or standard,
   real or invented, and it is never evidence of anything real.
+- [`transcripts/`](transcripts/) (P3) - a short, **fictional** requirements
+  workshop for a retail-loan portal, as `Speaker: words` lines. It drives the
+  extraction tests and the demonstration. It is deliberately awkward: a stated
+  priority, a duplicated need, a "should probably", and an injected instruction.
+  It is **not** gold transcript #1 and is never used to compute E1 - development
+  data is for building, not measuring.
 
 ## Roadmap note
 

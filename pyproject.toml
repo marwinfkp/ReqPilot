@@ -16,8 +16,11 @@ license = { text = "UNLICENSED" }
 # Dependency discipline (P0 instruction 9): each dependency arrives with the
 # roadmap phase that uses it. P2 (knowledge base & RAG) added the pgvector
 # adapter and the two parsers architecture J.2 names; the embedding model is an
-# optional extra (below). Still deliberately absent: document generation,
-# evaluation tooling, and any LLM provider SDK.
+# optional extra (below). P3 (extraction & classification) built the gateway,
+# validation and review queue on what exists; at P3 closure the team selected
+# OpenAI as the provider (architecture Y), whose SDK is an optional extra
+# (below), imported only when LLM_PROVIDER=openai. Still deliberately absent:
+# document generation and evaluation tooling.
 dependencies = [
     "pydantic>=2.7",              # ADR-002: one type system for API, contracts, graph state
     "pydantic-settings>=2.3",     # ADR-011: typed, fail-fast configuration
@@ -45,7 +48,15 @@ dependencies = [
 embeddings = [
     "sentence-transformers>=3.0",
 ]
+# ADR-006 / architecture Y: the OpenAI provider behind the gateway (selected at
+# P3 closure). An extra so a keyless, offline install carries no provider SDK;
+# selecting LLM_PROVIDER=openai without it fails at startup with this hint.
+openai = [
+    "openai>=3.16,<4",
+]
 dev = [
+    # The adapter's offline tests use the SDK's own error types (never the network).
+    "openai>=3.16,<4",
     "pytest>=8.2",
     "pytest-cov>=5.0",
     "ruff>=0.5",                  # formatting + linting
@@ -80,6 +91,8 @@ markers = [
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+# Frozen evaluation data is hashed (data/gold/README.md): no tool may reformat it.
+extend-exclude = ["data/gold"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "S", "C4", "SIM", "RUF"]
@@ -93,6 +106,7 @@ ignore = [
 # handling; there is no alternative spelling.
 "src/reqpilot/web/router.py" = ["B008"]
 "src/reqpilot/web/knowledge.py" = ["B008"]
+"src/reqpilot/web/extraction.py" = ["B008"]
 
 # ---------------------------------------------------------------------------
 # Types
@@ -164,3 +178,34 @@ name = "Domain does not depend on the web or API layer"
 type = "forbidden"
 source_modules = ["reqpilot.domain"]
 forbidden_modules = ["reqpilot.api", "reqpilot.web", "fastapi"]
+
+# P3: agent roles propose; they never write. A role reaches the model through
+# the gateway and returns a typed proposal - it cannot import a repository, a
+# service, the graph or the web/API layer, so it has no path to persistence or
+# to another role (architecture E.1: "Writes: propose").
+[[tool.importlinter.contracts]]
+name = "Agent roles propose only: no persistence, services or orchestration"
+type = "forbidden"
+source_modules = ["reqpilot.agents"]
+forbidden_modules = [
+    "reqpilot.repositories",
+    "reqpilot.services",
+    "reqpilot.graph",
+    "reqpilot.api",
+    "reqpilot.web",
+]
+
+# P3: the gateway is infrastructure below everything that decides. It may not
+# reach the repositories, services, agents, graph, or the web/API layer.
+[[tool.importlinter.contracts]]
+name = "The LLM gateway depends on no application layer"
+type = "forbidden"
+source_modules = ["reqpilot.llm"]
+forbidden_modules = [
+    "reqpilot.repositories",
+    "reqpilot.services",
+    "reqpilot.agents",
+    "reqpilot.graph",
+    "reqpilot.api",
+    "reqpilot.web",
+]

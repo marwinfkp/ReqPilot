@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Run {{ run.id }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project_id }}/sources">sources</a>
+  <a href="/ui/projects/{{ project_id }}/review">review queue</a>
+  <a href="/ui/projects/{{ project_id }}">project</a>
+{% endblock %}
+{% block content %}
+<h1>Run <span class="mono">{{ run.id }}</span></h1>
+<p class="muted">{{ run.graph_name }} &middot; <span class="state">{{ run.status.value }}</span>
+  &middot; started {{ run.started_at }}{% if run.finished_at %} &middot; finished {{ run.finished_at }}{% endif %}</p>
+
+<h2>Node executions</h2>
+<table>
+  <tr><th>Node</th><th>Role</th><th>Status</th><th>Prompt</th><th>Provider / model</th><th>Calls</th><th>Tokens in/out</th><th>Error</th></tr>
+  {% for a in agent_runs %}
+  <tr>
+    <td class="mono">{{ a.run.node }}</td>
+    <td class="mono">{{ a.run.role.value }}</td>
+    <td><span class="state">{{ a.run.status.value }}</span></td>
+    <td class="mono">{% if a.template %}{{ a.template.name }}@{{ a.template.version }}{% endif %}</td>
+    <td class="mono">{% if a.model %}{{ a.model.provider }} / {{ a.model.model_id }}{% if not a.model.is_model %} <b>(not a model)</b>{% endif %}{% endif %}</td>
+    <td>{{ a.run.attempts or "" }}</td>
+    <td>{{ a.run.tokens_in or "" }}{% if a.run.tokens_out %} / {{ a.run.tokens_out }}{% endif %}</td>
+    <td class="mono">{{ a.run.error_code or "" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2>What the model proposed, and what code decided</h2>
+{% if candidates %}
+<table>
+  <tr><th>Key</th><th>Proposed statement</th><th>Decision</th><th>Review signal*</th><th>Source spans (verbatim)</th><th>Findings</th></tr>
+  {% for c in candidates %}
+  <tr>
+    <td class="mono">{{ c.candidate_key }}</td>
+    <td>{{ c.statement }}</td>
+    <td><span class="state">{{ c.status.value }}</span></td>
+    <td>{{ "%.2f"|format(c.review_signal) }}</td>
+    <td>{% for s in c.spans %}<div><span class="mono">[{{ s.span[0] }}, {{ s.span[1] }})</span>
+      {% if s.speaker %}<b>{{ s.speaker }}</b>: {% endif %}&ldquo;{{ s.quote }}&rdquo;</div>{% endfor %}</td>
+    <td class="muted">{% for f in c.findings %}<div><span class="mono">{{ f.code }}</span> {{ f.message }}</div>{% endfor %}</td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="muted">* {{ signal_caveat }}.</p>
+{% else %}
+<p class="note">No proposals were recorded for this run.</p>
+{% endif %}
+{% endblock %}

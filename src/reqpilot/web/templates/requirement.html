@@ -18,6 +18,73 @@
   <tr><th>Change reason</th><td>{{ current.change_reason or "" }}</td></tr>
 </table>
 
+<h2>Requirement record (FR-EXT-002)</h2>
+<p class="muted">The thirteen fields of the approved schema. Fields whose producing phase
+does not exist yet say so; nothing is inferred to fill them.</p>
+<table>
+  <tr><th>ID</th><td class="mono">{{ requirement.human_id }}</td></tr>
+  <tr><th>Statement</th><td>{{ current.statement }}</td></tr>
+  <tr><th>Original wording</th><td>{{ current.original_text or "(not recorded)" }}</td></tr>
+  <tr><th>Category</th><td>{% if record.labels %}{% for l in record.labels %}<span class="state">{{ label(l.category) }}</span>
+      {% if l.review_signal is not none %}<span class="muted">{{ "%.2f"|format(l.review_signal) }}{% if l.needs_review %}, needs review{% endif %}</span>{% endif %}
+      <span class="muted">({{ l.source.value }})</span> {% endfor %}
+      {% elif current.category %}{{ current.category.value }} <span class="muted">(set manually)</span>{% else %}(not classified){% endif %}</td></tr>
+  <tr><th>Source stakeholder</th><td>{{ record.stakeholders|join(", ") or "(not stated in the source)" }}</td></tr>
+  <tr><th>Sources</th><td>{% for r in current.source_refs %}<div>
+      {% if r.quote is defined %}<span class="mono">[{{ r.span[0] }}, {{ r.span[1] }})</span>
+      {% if r.speaker %}<b>{{ r.speaker }}</b>: {% endif %}&ldquo;{{ r.quote }}&rdquo;
+      <a class="muted" href="/ui/sources/{{ r.document }}">source</a>
+      {% else %}<span class="mono">{{ r }}</span>{% endif %}</div>{% endfor %}</td></tr>
+  <tr><th>Business justification</th><td>{{ current.justification or "(not stated in the source)" }}</td></tr>
+  <tr><th>Priority</th><td>{{ current.priority.value if current.priority else "(not stated in the source)" }}</td></tr>
+  <tr><th>Dependencies</th><td class="mono">{{ current.dependencies|join(", ") or "(none)" }}</td></tr>
+  <tr><th>Assumptions</th><td>{{ current.assumptions|join("; ") or "(none stated)" }}</td></tr>
+  <tr><th>Acceptance criteria</th><td>{% for c in record.criteria %}<div><b>Given</b> {{ c.given_text }}
+      <b>When</b> {{ c.when_text }} <b>Then</b> {{ c.then_text }} <span class="muted">({{ c.source.value }} proposal)</span></div>
+      {% else %}(none){% endfor %}</td></tr>
+  <tr><th>Applicable regulations</th><td class="muted">{{ record.applicable_regulations }}</td></tr>
+  <tr><th>Risk level</th><td class="muted">{{ record.risk_level }}</td></tr>
+  <tr><th>Confidence score</th><td>{% if current.review_signal is not none %}{{ "%.2f"|format(current.review_signal) }}
+      <span class="muted">({{ signal_caveat }})</span>{% else %}(none){% endif %}</td></tr>
+  <tr><th>Approval status</th><td><span class="state">{{ current.state.value }}</span>
+      <span class="muted">approval happens only at gate G1</span></td></tr>
+</table>
+
+{% if label_history %}
+<h2>Classification history (FR-CLS-003)</h2>
+<table>
+  <tr><th>Revision</th><th>Labels</th><th>By</th><th>Reason</th><th>When</th></tr>
+  {% for rev in label_history %}
+  <tr><td>{{ rev[0].revision_no }}</td>
+      <td>{% for l in rev %}<span class="state">{{ label(l.category) }}</span> {% endfor %}</td>
+      <td class="mono">{{ rev[0].source.value }} {{ rev[0].created_by or "" }}</td>
+      <td>{{ rev[0].change_reason or "" }}</td><td class="muted">{{ rev[0].created_at }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% if may_override %}
+<fieldset>
+  <legend>Override labels (FR-CLS-003)</legend>
+  <p class="muted">Creates a new classification revision; the previous labels are kept. The
+  requirement version itself is not changed.</p>
+  <form method="post" action="/ui/requirement-versions/{{ current.id }}/classification">
+    <input type="hidden" name="requirement_id" value="{{ requirement.id }}">
+    <select name="categories" multiple size="6" required>{% for c in categories %}<option value="{{ c.value }}">{{ label(c) }}</option>{% endfor %}</select>
+    <label>Reason</label><input type="text" name="reason" required>
+    <button class="primary" type="submit">Override</button>
+  </form>
+</fieldset>
+{% endif %}
+{% if review_items %}
+<h2>AI-proposal review items</h2>
+<p class="muted">Not approval. <a href="/ui/projects/{{ project_id }}/review">Open the review queue</a>.</p>
+<table>
+  <tr><th>Reason</th><th>Label</th><th>Status</th></tr>
+  {% for i in review_items %}<tr><td class="mono">{{ i.reason.value }}</td><td>{{ label(i.category) if i.category else "" }}</td>
+    <td><span class="state">{{ i.status.value }}</span></td></tr>{% endfor %}
+</table>
+{% endif %}
+
 <fieldset>
   <legend>Advance lifecycle</legend>
   {% if targets %}

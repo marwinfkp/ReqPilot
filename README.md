@@ -15,7 +15,7 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 
 ---
 
-## Current status — roadmap phase P2 (Knowledge base & RAG)
+## Current status — roadmap phase P3 (Extraction & classification)
 
 | Stage | State |
 |---|---|
@@ -23,7 +23,8 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 | Architecture & design — `docs/02-architecture.md` | Approved |
 | P0 Foundations — `docs/03-p0-foundations.md` | Complete |
 | P1 Requirements repository — `docs/04-p1-requirements-repository.md` | Complete |
-| **P2 Knowledge base & RAG — `docs/05-p2-knowledge-base-rag.md`** | **P2 IMPLEMENTATION COMPLETE — ET-06 PENDING**: the implementation checklist is complete; the roadmap exit waits on ET-06, which needs the team-curated corpus and 20-question probe and has not been measured |
+| P2 Knowledge base & RAG — `docs/05-p2-knowledge-base-rag.md` | P2 IMPLEMENTATION COMPLETE — ET-06 PENDING: the implementation checklist is complete; the roadmap exit waits on ET-06, which needs the team-curated corpus and 20-question probe and has not been measured |
+| **P3 Extraction & classification — `docs/06-p3-extraction-classification.md`** | **P3 COMPLETE — ROADMAP EXIT PASSED**: E1 = 0.967 (P = R = F1) with OpenAI `gpt-5.6-luna` on **E1-SYNTHETIC-v1**, a synthetic reference benchmark reviewed by the sole project author. It is not an independently annotated gold standard and not evidence of real-world accuracy. The two author-approved deviations are recorded in docs/06 §20 |
 
 P0 built the foundation. P1 built the deterministic requirements repository:
 immutable requirement versions, a guarded lifecycle, G1 human approval, and
@@ -32,11 +33,30 @@ baselines. P2 built the grounding layer: a typed, versioned knowledge base
 PostgreSQL + pgvector hybrid retrieval with the source allowlist enforced
 **inside the query**, immutable evidence, and exact citation resolution.
 
-**There is still no LLM functionality** and no document generation. Retrieval is
-deterministic; the agents that will consume it belong to later roadmap phases,
-defined in `docs/01-analysis.md` §P.
+P3 added the first AI capability, in batch mode: one LLM gateway (versioned
+prompts, trust-class fencing, egress guards, one bounded repair, record/replay),
+the Requirement Extraction and Classification roles as **propose-only**
+contracts, deterministic validation that locates every quoted source span
+itself, P1-allocated `FR-/NFR-<DOMAIN>-nnn` identifiers, versioned
+classifications with human override, and a review queue that is **not**
+approval. Nothing an AI run produces moves past `CLASSIFIED`.
 
-**No external LLM API key is needed** to install, migrate, run or test.
+**The model provider is OpenAI**, selected at P3 closure (architecture Y). It is
+used only when configured: `LLM_PROVIDER=openai`, with `LLM_API_KEY` and
+`LLM_MODEL_DEFAULT` in your untracked `.env`, and the SDK installed
+(`pip install -e ".[openai]"`). The default is the offline `stub`. E1 was
+measured on a synthetic reference benchmark (docs/06 §20). It demonstrates the
+pipeline on controlled synthetic data, not production accuracy.
+Masking is not implemented (roadmap P11), so project content may leave the
+machine only when declared synthetic. There is no document generation.
+
+**No external LLM API key is needed** to install, migrate, run or test. The
+default test suite never reads `.env`. The live OpenAI checks are opt-in and
+billable:
+
+```bash
+pytest -m llm tests/llm/test_openai_live.py -s
+```
 
 ---
 
@@ -84,7 +104,9 @@ Full setup, including PostgreSQL and migrations, is in
 and how its governance is enforced is in
 [docs/04-p1-requirements-repository.md](docs/04-p1-requirements-repository.md);
 the knowledge base and retrieval are in
-[docs/05-p2-knowledge-base-rag.md](docs/05-p2-knowledge-base-rag.md).
+[docs/05-p2-knowledge-base-rag.md](docs/05-p2-knowledge-base-rag.md); extraction,
+classification and the review queue are in
+[docs/06-p3-extraction-classification.md](docs/06-p3-extraction-classification.md).
 
 ---
 
@@ -105,7 +127,9 @@ Three rules shape the whole system:
 
 The structural expression of all three is one import rule, enforced in CI:
 `domain/`, `repositories/`, `services/` and `retrieval/` may not import
-`graph/`, `agents/`, `llm/` or `langgraph`.
+`graph/`, `agents/`, `llm/` or `langgraph`. Two more follow from it: agent roles
+may not import repositories, services or the graph (they only propose), and the
+LLM gateway depends on no application layer.
 
 ---
 
@@ -118,6 +142,7 @@ The structural expression of all three is one import rule, enforced in CI:
 | [`docs/03-p0-foundations.md`](docs/03-p0-foundations.md) | What P0 built, how to run it, and what it deliberately does not do |
 | [`docs/04-p1-requirements-repository.md`](docs/04-p1-requirements-repository.md) | The requirements repository: versions, lifecycle, G1 approval, baselines |
 | [`docs/05-p2-knowledge-base-rag.md`](docs/05-p2-knowledge-base-rag.md) | The knowledge base and retrieval: taxonomy, versioning, chunking, hybrid search, allowlist, evidence, citations |
+| [`docs/06-p3-extraction-classification.md`](docs/06-p3-extraction-classification.md) | The LLM gateway, extraction and classification contracts, source spans, review queue, human override, and the E1 harness |
 | [`docs/problem-statement.md`](docs/problem-statement.md) | Reference copy of the original problem statement |
 
 `Problem Statement.docx` remains the authoritative specification.

@@ -91,3 +91,31 @@ def assert_state_shape(state_type: type) -> None:
             f"state field(s): {sorted(offending)}. Graph state carries ids and "
             "flags; content lives in the database (architecture D.1, D.3)."
         )
+
+
+class AnalysisState(BaseGraphState, total=False):
+    """State of the P3 subset of ``analysis_graph`` (architecture C.3, D.2).
+
+    Ids, counts and flags only. Proposals, statements and source text live in
+    the database and are re-read by id; the one working object that passes from
+    validation to persistence - the validation decision - is held in the run's
+    transient context, never here, so no content reaches a checkpoint (D.1, D.3).
+    """
+
+    #: The identifier domain token the analyst chose for this run, e.g. ``LOAN``.
+    domain: str
+    #: Scope: the sources to extract from, or - for a classification-only run -
+    #: the requirement versions to classify.
+    scope_source_ids: list[str]
+    scope_version_ids: list[str]
+    #: One agent run per extraction window; their ids, in window order.
+    extraction_agent_run_ids: list[str]
+    #: Versions this run created (extraction) or was asked to classify.
+    requirement_version_ids: list[str]
+    classified_version_ids: Annotated[list[str], operator.add]
+    #: Review signals are carried only as the ids of items needing review (D.3).
+    low_confidence_item_ids: Annotated[list[str], operator.add]
+    review_item_ids: Annotated[list[str], operator.add]
+    accepted: int
+    merged: int
+    rejected: int

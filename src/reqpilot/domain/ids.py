@@ -123,3 +123,34 @@ def chunk_id_for(
 def new_retrieval_id() -> RetrievalId:
     """One id per retrieval call; every evidence row it produces carries it."""
     return RetrievalId(uuid4())
+
+
+# ---------------------------------------------------------------------------
+# Project sources, extraction and classification
+# ---------------------------------------------------------------------------
+
+SourceDocumentId = NewType("SourceDocumentId", UUID)
+SourceChunkId = NewType("SourceChunkId", UUID)
+ExtractionCandidateId = NewType("ExtractionCandidateId", UUID)
+ReviewItemId = NewType("ReviewItemId", UUID)
+
+#: Fixed namespace for derived project-chunk identities; distinct from the
+#: knowledge-chunk namespace so the two corpora can never share an id.
+_SOURCE_CHUNK_NAMESPACE = UUID("0b9d4a61-7c2e-5f13-8a4d-2e6c9b1f7a30")
+
+
+def source_chunk_id_for(
+    document_id: UUID, ordinal: int, char_start: int, char_end: int, text_hash: str
+) -> SourceChunkId:
+    """Return the deterministic identity of a project-document segment.
+
+    Derived from what the segment is, like :func:`chunk_id_for`, so the same
+    immutable document always segments to the same ids and a requirement's
+    source reference names a stable thing.
+    """
+    return SourceChunkId(
+        uuid5(
+            _SOURCE_CHUNK_NAMESPACE,
+            f"{document_id}:{ordinal}:{char_start}:{char_end}:{text_hash}",
+        )
+    )
