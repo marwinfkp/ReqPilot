@@ -87,6 +87,17 @@ REQUIREMENTS_REPOSITORY_TABLES = {
 }
 
 
+#: Tables the knowledge-base phase adds (architecture G.5, plus G.6 ``evidence``).
+KNOWLEDGE_BASE_TABLES = {
+    "normative_source",
+    "control",
+    "knowledge_item",
+    "knowledge_chunk",
+    "source_allowlist",
+    "evidence",
+}
+
+
 def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None:
     """The schema must not run ahead of the roadmap.
 
@@ -94,7 +105,7 @@ def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None
     table set here, and anything outside the union is a table that arrived early.
     """
     present = set(inspect(migrated_db).get_table_names()) - {"alembic_version"}
-    permitted = FOUNDATION_TABLES | REQUIREMENTS_REPOSITORY_TABLES
+    permitted = FOUNDATION_TABLES | REQUIREMENTS_REPOSITORY_TABLES | KNOWLEDGE_BASE_TABLES
     unexpected = present - permitted
     assert not unexpected, f"migrations created out-of-scope tables: {sorted(unexpected)}"
 
@@ -134,3 +145,28 @@ def test_downgrade_removes_the_foundation(tmp_path: Path, monkeypatch: pytest.Mo
         assert not remaining, f"downgrade left tables behind: {sorted(remaining)}"
     finally:
         engine.dispose()
+
+
+def test_downgrading_p2_removes_exactly_the_knowledge_base(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rolling P2 back leaves P1 and the foundation intact, including ``project``."""
+    url = sqlite_url(tmp_path / "p2-down.db")
+    monkeypatch.setenv("DATABASE_URL", url)
+    get_settings.cache_clear()
+    config = alembic_config(url)
+    command.upgrade(config, "head")
+    command.downgrade(config, "0003_p1_postgres_enum_repair")
+
+    engine = create_engine(url, future=True)
+    try:
+        inspector = inspect(engine)
+        present = set(inspector.get_table_names()) - {"alembic_version"}
+        assert not present & KNOWLEDGE_BASE_TABLES, "downgrade left P2 tables behind"
+        assert present >= FOUNDATION_TABLES | REQUIREMENTS_REPOSITORY_TABLES
+        project_columns = {c["name"] for c in inspector.get_columns("project")}
+        assert not {"jurisdiction_scope", "kb_version_pin"} & project_columns
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
+    command.upgrade(config, "head")

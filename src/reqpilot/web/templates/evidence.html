@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Evidence {{ citation.evidence_id }}{% endblock %}
+{% block nav %}<a href="/ui/projects/{{ citation.project_id }}/kb">project knowledge</a>{% endblock %}
+{% block content %}
+<h1>Citation</h1>
+<p class="note">Candidate evidence from an educational reference corpus. It supports review by a
+qualified professional; it is not a determination that anything is compliant.</p>
+<blockquote style="border-left:3px solid var(--line); margin:12px 0; padding:6px 12px">{{ citation.quote }}</blockquote>
+<table>
+  <tr><th>Source</th><td>{{ citation.source_title }}</td></tr>
+  <tr><th>Type</th><td class="mono">{{ citation.source_type.value }}</td></tr>
+  <tr><th>Binding</th><td>{{ citation.binding }}</td></tr>
+  <tr><th>Issuing body</th><td>{{ citation.issuing_body }}</td></tr>
+  <tr><th>Jurisdiction</th><td class="mono">{{ citation.jurisdiction }}</td></tr>
+  <tr><th>Version</th><td>{{ citation.source_version }}</td></tr>
+  <tr><th>Effective date</th><td>{{ citation.effective_date or "" }}</td></tr>
+  <tr><th>Curated on</th><td>{{ citation.retrieved_at }}</td></tr>
+  <tr><th>Item</th><td class="mono">{{ citation.item_key }} v{{ citation.item_version_no }}
+      ({{ citation.item_status_now }} now){% if citation.clause_ref %} &middot; {{ citation.clause_ref }}{% endif %}</td></tr>
+  <tr><th>Span</th><td class="mono">[{{ citation.char_start }}, {{ citation.char_end }}) of the item text</td></tr>
+  <tr><th>Chunk</th><td class="mono">{{ citation.knowledge_chunk_id }}</td></tr>
+  <tr><th>Retrieval</th><td class="mono">{{ citation.retrieval_id }} &middot; rank {{ citation.rank }} &middot; KB version {{ citation.kb_version }}</td></tr>
+  <tr><th>Evidence</th><td class="mono">{{ citation.evidence_id }}</td></tr>
+</table>
+{% endblock %}

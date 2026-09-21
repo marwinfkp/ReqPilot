@@ -19,11 +19,17 @@ from reqpilot.domain.errors import (
     ApprovalError,
     AuthorizationError,
     BaselineInvariantError,
+    CitationError,
+    EmbeddingUnavailableError,
+    EvidenceIntegrityError,
     ImmutableRecordError,
+    LicenceViolationError,
     ProjectIsolationError,
     ReqPilotError,
     RequirementIdError,
+    RuleConfigurationError,
     StateTransitionError,
+    UngroundedRetrievalError,
 )
 
 #: Checked in order, so the most specific type wins.
@@ -38,6 +44,15 @@ ERROR_STATUS: tuple[tuple[type[Exception], int], ...] = (
     (StateTransitionError, status.HTTP_409_CONFLICT),
     (BaselineInvariantError, status.HTTP_409_CONFLICT),
     (ImmutableRecordError, status.HTTP_409_CONFLICT),
+    (LicenceViolationError, status.HTTP_409_CONFLICT),
+    (UngroundedRetrievalError, status.HTTP_409_CONFLICT),
+    # Tampered or corrupted evidence conflicts with what was recorded. Checked
+    # before the general citation case, of which it is a subclass.
+    (EvidenceIntegrityError, status.HTTP_409_CONFLICT),
+    (CitationError, status.HTTP_404_NOT_FOUND),
+    # The server cannot do the work here and now; the request is not at fault.
+    (EmbeddingUnavailableError, status.HTTP_503_SERVICE_UNAVAILABLE),
+    (RuleConfigurationError, status.HTTP_500_INTERNAL_SERVER_ERROR),
     # Input problems.
     (RequirementIdError, status.HTTP_400_BAD_REQUEST),
     (ReqPilotError, status.HTTP_400_BAD_REQUEST),

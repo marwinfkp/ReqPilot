@@ -305,6 +305,14 @@ Verifying that is the first task of whoever has Docker available:
 docker compose up -d db && alembic upgrade head && REQPILOT_TEST_DATABASE_URL=postgresql+psycopg://reqpilot:reqpilot_local_dev_only@localhost:5432/reqpilot pytest -m integration
 ```
 
+> **P2 addendum.** During P2 the PostgreSQL-only suite was run for the first
+> time, against a live PostgreSQL 16.2 + pgvector 0.6.2 (see
+> `docs/05-p2-knowledge-base-rag.md` §19). The append-only trigger was confirmed
+> to refuse `UPDATE` and `DELETE` on `audit_event` at runtime. The two P0 audit
+> immutability tests had never been able to pass: they ran against an *empty*
+> table, where a row-level trigger never fires. They now insert a row first and
+> attack that row. This section's "not yet executed" statement is superseded.
+
 ### Data-directory convention — resolved at closure
 
 P0 initially used `data/corpus` and `data/fixtures` (from the P0 brief) while

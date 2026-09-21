@@ -53,11 +53,10 @@ P1_TABLES = {
 }
 
 #: Tables belonging to later roadmap phases. None may appear yet.
+#: The knowledge-base tables arrived with P2 and are no longer "future". The
+#: project corpus and the glossary are deliberately still absent after P2.
 FUTURE_PHASE_TABLES = {
-    "knowledge_item",
-    "knowledge_chunk",
-    "normative_source",
-    "control",
+    "glossary_term",
     "source_document",
     "source_chunk",
     "utterance",

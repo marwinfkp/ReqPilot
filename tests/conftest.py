@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, event
@@ -128,3 +129,68 @@ requires_postgres = pytest.mark.skipif(
         "PostgreSQL-specific integration tests (see docs/03-p0-foundations.md)"
     ),
 )
+
+
+# ---------------------------------------------------------------------------
+# Knowledge base and retrieval (P2)
+# ---------------------------------------------------------------------------
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture
+def hashing_embedder():
+    """The deterministic offline embedding provider (ET-10). Not semantic."""
+    from reqpilot.retrieval.embeddings import HashingEmbeddingProvider
+
+    return HashingEmbeddingProvider()
+
+
+@pytest.fixture(scope="session")
+def retrieval_rules():
+    """The real, versioned retrieval ruleset - the one production loads."""
+    from reqpilot.retrieval.rules import load_retrieval_rules
+
+    return load_retrieval_rules(REPO_ROOT / "src" / "reqpilot" / "rules" / "data")
+
+
+@pytest.fixture(scope="session")
+def pg_engine_migrated() -> Iterator[Engine]:
+    """A live PostgreSQL, migrated to head once per session. Skips without one.
+
+    Honest by construction: no PostgreSQL means these tests are reported as
+    skipped, never quietly substituted by SQLite.
+    """
+    url = postgres_url()
+    if url is None:
+        pytest.skip("no PostgreSQL available: set REQPILOT_TEST_DATABASE_URL")
+    from alembic import command
+    from alembic.config import Config
+
+    config = Config(str(REPO_ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(REPO_ROOT / "alembic"))
+    config.set_main_option("sqlalchemy.url", url)
+    command.upgrade(config, "head")
+    engine = create_engine(url, future=True)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture
+def pg_session(pg_engine_migrated: Engine) -> Iterator[Session]:
+    """A session inside a transaction that is always rolled back.
+
+    Nothing a test writes survives it, so PostgreSQL tests are independent of
+    each other and of whatever else is in the database.
+    """
+    connection = pg_engine_migrated.connect()
+    transaction = connection.begin()
+    session = Session(
+        bind=connection, join_transaction_mode="create_savepoint", expire_on_commit=False
+    )
+    try:
+        yield session
+    finally:
+        session.close()
+        transaction.rollback()
+        connection.close()

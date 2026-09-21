@@ -15,12 +15,14 @@ from fastapi import FastAPI
 
 from reqpilot import __version__
 from reqpilot.api.errors import install_error_handlers
-from reqpilot.api.routes import governance, health, requirements
+from reqpilot.api.routes import governance, health, knowledge, requirements
 
 DESCRIPTION = (
     "Agentic requirements engineering and SDLC recommendation assistant. "
-    "Roadmap phase P1 (Requirements repository): deterministic system of record, "
-    "immutable versions, lifecycle, G1 approval and baselines. No AI."
+    "Roadmap phases P1 (requirements repository: deterministic system of record, "
+    "immutable versions, lifecycle, G1 approval, baselines) and P2 (knowledge base "
+    "and retrieval: typed curated corpus, allowlisted hybrid retrieval, evidence, "
+    "citations). No LLM calls."
 )
 
 
@@ -35,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(requirements.router)
     app.include_router(governance.router)
+    app.include_router(knowledge.router)
     return app
 
 

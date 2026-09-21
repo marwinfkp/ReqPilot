@@ -49,21 +49,49 @@ def test_health_check_reports_connected() -> None:
         reset_engine()
 
 
+#: An audit row for the immutability tests to attack. Inserted inside a
+#: transaction that is always rolled back, so it never persists.
+#:
+#: Corrected in P2: these tests originally ran against an *empty* table, where an
+#: UPDATE or DELETE touches no row, the row-level trigger never fires, and the
+#: statement succeeds - so the tests could not pass on a fresh database.
+_AUDIT_ROW = text(
+    "INSERT INTO audit_event (id, seq, occurred_at, actor_kind, actor_ref, event_type, "
+    " payload, row_hash) VALUES (gen_random_uuid(), 1, now(), 'SYSTEM', 'immutability-test', "
+    " 'RUN_STARTED', '{}'::jsonb, repeat('a', 64)) RETURNING id"
+)
+
+
 def test_audit_update_is_refused_by_the_database(pg_engine) -> None:
     """Layer 2 of immutability: the database itself refuses the mutation.
 
     This is the load-bearing control - it makes append-only a property of the
     database rather than of developer discipline.
     """
-    with pg_engine.connect() as conn, pytest.raises(Exception) as excinfo:
-        conn.execute(text("UPDATE audit_event SET actor_ref = 'tampered'"))
+    with pg_engine.connect() as conn:
+        transaction = conn.begin()
+        try:
+            row_id = conn.execute(_AUDIT_ROW).scalar()
+            with pytest.raises(Exception) as excinfo:
+                conn.execute(
+                    text("UPDATE audit_event SET actor_ref = 'tampered' WHERE id = :i"),
+                    {"i": row_id},
+                )
+        finally:
+            transaction.rollback()
     message = str(excinfo.value).lower()
     assert "append-only" in message or "permission denied" in message
 
 
 def test_audit_delete_is_refused_by_the_database(pg_engine) -> None:
-    with pg_engine.connect() as conn, pytest.raises(Exception) as excinfo:
-        conn.execute(text("DELETE FROM audit_event"))
+    with pg_engine.connect() as conn:
+        transaction = conn.begin()
+        try:
+            row_id = conn.execute(_AUDIT_ROW).scalar()
+            with pytest.raises(Exception) as excinfo:
+                conn.execute(text("DELETE FROM audit_event WHERE id = :i"), {"i": row_id})
+        finally:
+            transaction.rollback()
     message = str(excinfo.value).lower()
     assert "append-only" in message or "permission denied" in message
 
@@ -78,14 +106,30 @@ def test_migration_created_every_foundation_table(pg_engine) -> None:
     assert expected <= present
 
 
-def test_requirement_tables_are_absent(pg_engine) -> None:
-    """P0 must not have created the Requirements Repository schema."""
+def test_migrations_create_nothing_beyond_the_current_phase(pg_engine) -> None:
+    """The PostgreSQL schema must not run ahead of the roadmap.
+
+    Replaces a P0-era assertion that the requirement tables were *absent*, which
+    contradicted ``test_p1_tables_exist`` as soon as P1 was migrated. This is the
+    PostgreSQL form of the SQLite phase guard in ``test_migrations.py``.
+    """
+    permitted = {
+        "alembic_version",
+        # P0
+        "app_user", "project", "project_member", "audit_event", "graph_run", "agent_run",
+        # P1
+        "requirement", "requirement_version", "approval_task", "approval_decision",
+        "baseline", "baseline_member",
+        # P2
+        "normative_source", "control", "knowledge_item", "knowledge_chunk",
+        "source_allowlist", "evidence",
+    }  # fmt: skip
     with pg_engine.connect() as conn:
         rows = conn.execute(
             text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
         ).scalars()
         present = set(rows)
-    assert not {"requirement", "requirement_version", "approval_task"} & present
+    assert not present - permitted, f"out-of-phase tables: {sorted(present - permitted)}"
 
 
 # ---------------------------------------------------------------------------
@@ -155,8 +199,9 @@ def test_database_refuses_an_unapproved_baseline_member(pg_engine) -> None:
             text(
                 "INSERT INTO approval_task (id, project_id, gate, subject_type, subject_id, "
                 " subject_version_hash, required_role, status, blocking, created_at) "
-                "VALUES (gen_random_uuid(), :p, 'G1', 'requirement_version', :v, "
-                " repeat('a', 64), 'analyst', 'OPEN', true, now()) RETURNING id"
+                "VALUES (gen_random_uuid(), :p, 'G1_REQUIREMENT_BASELINE', "
+                " 'requirement_version', :v, repeat('a', 64), 'ANALYST', 'OPEN', true, now()) "
+                "RETURNING id"
             ),
             {"p": project, "v": version},
         ).scalar()

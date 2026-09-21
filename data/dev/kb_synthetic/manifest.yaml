@@ -1,0 +1,136 @@
+# SYNTHETIC development knowledge base - FICTIONAL CONTENT ONLY.
+#
+# Every source below is invented for ReqPilot development and demonstration.
+# "Acme Bank" does not exist; these are not any real institution's policies,
+# and nothing here is a law, a regulation, a regulator's guidance or a standard.
+#
+# Approved Phase 0 D.2 permits exactly this: synthetic organisational policies,
+# clearly labelled fictional, to demonstrate policy mapping without using any
+# real institution's documents. Real normative material (statutes, regulator
+# directions, public frameworks) belongs in data/kb_seed/, curated and verified
+# by a person against the issuing body's published text.
+#
+# Load with:  python scripts/seed_kb.py --manifest data/dev/kb_synthetic/manifest.yaml --actor <user id of a Knowledge-Base Administrator>
+
+manifest_version: 1
+synthetic: true
+description: >
+  Fictional Acme Bank policies and a team-written requirements practice note,
+  for developing and demonstrating curation, allowlisting, hybrid retrieval,
+  evidence and citation resolution.
+
+sources:
+  - source_type: org_policy
+    issuing_body: Acme Bank (fictional)
+    title: Acme Bank Access Control Policy (fictional)
+    jurisdiction: IN
+    version: "2026.1"
+    effective_date: 2026-01-01
+    retrieved_at: 2026-09-21
+    licence_class: synthetic
+    licence_note: Fictional policy written for ReqPilot development. Not a real institution's document.
+    items:
+      - item_key: SYN-ACME-AC-2
+        title: Least privilege and access review
+        clause_ref: "2"
+        text_origin: synthetic
+        applicability: [access_control, loan_origination]
+        text: |
+          2. Least privilege
+          2.1 Access to customer personal data is granted only on a least-privilege basis, for a documented business purpose.
+          2.2 Every access right to the loan origination system is reviewed by the data owner at least quarterly.
+          2.3 Access that is no longer needed is revoked within five working days of the review.
+      - item_key: SYN-ACME-AC-3
+        title: Privileged access
+        clause_ref: "3"
+        text_origin: synthetic
+        applicability: [access_control, security]
+        text: |
+          3. Privileged access
+          3.1 Administrator accounts require multi-factor authentication and are separate from everyday accounts.
+          3.2 Every privileged session is logged with the operator identity, start time and end time.
+
+  - source_type: org_policy
+    issuing_body: Acme Bank (fictional)
+    title: Acme Bank Data Retention Policy (fictional)
+    jurisdiction: IN
+    version: "2026.1"
+    effective_date: 2026-01-01
+    retrieved_at: 2026-09-21
+    licence_class: synthetic
+    licence_note: Fictional policy written for ReqPilot development. Not a real institution's document.
+    items:
+      - item_key: SYN-ACME-RET-1
+        title: Retention of loan application records
+        clause_ref: "1"
+        text_origin: synthetic
+        applicability: [data_management, loan_origination, privacy]
+        text_file: acme_retention_policy.md
+
+  - source_type: org_policy
+    issuing_body: Acme Bank (fictional)
+    title: Acme Bank Borrower Communication Policy (fictional)
+    jurisdiction: IN
+    version: "2026.1"
+    effective_date: 2026-01-01
+    retrieved_at: 2026-09-21
+    licence_class: synthetic
+    licence_note: Fictional policy written for ReqPilot development. Not a real institution's document.
+    items:
+      - item_key: SYN-ACME-COM-1
+        title: Fee disclosure before sanction
+        clause_ref: "1"
+        text_origin: synthetic
+        applicability: [loan_origination, disclosure]
+        text: |
+          1. Fee disclosure
+          1.1 Before a loan is sanctioned, the applicant receives a one-page summary of every fee, charge and the annual percentage rate.
+          1.2 The summary is provided in the language the applicant chose at onboarding.
+          1.3 The applicant's acknowledgement of the summary is recorded with a timestamp.
+      - item_key: SYN-ACME-COM-2
+        title: Grievance handling
+        clause_ref: "2"
+        text_origin: synthetic
+        applicability: [loan_origination, grievance]
+        text: |
+          2. Grievances
+          2.1 A borrower complaint is acknowledged within two working days and resolved or escalated within thirty days.
+          2.2 Each complaint receives a reference number that the borrower can use to track it.
+
+  - source_type: org_policy
+    issuing_body: Acme Bank Singapore Branch (fictional)
+    title: Acme Bank Singapore Branch Incident Logging Standard (fictional)
+    jurisdiction: SG
+    version: "2026.1"
+    effective_date: 2026-01-01
+    retrieved_at: 2026-09-21
+    licence_class: synthetic
+    licence_note: Fictional policy written for ReqPilot development. Not a real institution's document.
+    items:
+      - item_key: SYN-ACME-SG-INC-1
+        title: Security incident logging
+        clause_ref: "1"
+        text_origin: synthetic
+        applicability: [security, audit]
+        text: |
+          1. Incident logging
+          1.1 Every suspected security incident is logged within one hour of detection with its time, affected system and reporter.
+          1.2 Incident logs are retained for at least five years and protected against modification.
+
+  - source_type: best_practice
+    issuing_body: ReqPilot project team
+    title: Team note on writing testable requirements (synthetic)
+    jurisdiction: INTL
+    version: "1.0"
+    retrieved_at: 2026-09-21
+    licence_class: synthetic
+    licence_note: Team-written summary of general requirements-engineering practice for ReqPilot development.
+    items:
+      - item_key: SYN-TEAM-RE-1
+        title: Testable requirement statements
+        text_origin: synthetic
+        applicability: [quality]
+        text: |
+          A requirement is testable when an observer can decide, without interpretation, whether a delivered system satisfies it.
+          Vague qualifiers such as fast, secure or user-friendly should be replaced by measurable criteria, for example a response time under two seconds for ninety-five percent of requests.
+          Each requirement should state one obligation, name its source, and carry acceptance criteria.

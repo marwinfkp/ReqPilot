@@ -504,6 +504,34 @@ docker compose up -d db && alembic upgrade head && REQPILOT_TEST_DATABASE_URL=po
 
 Python remains 3.13.7 locally against a `>=3.12` floor; CI pins 3.12.
 
+> **P2 addendum - two P1 defects found by the first live PostgreSQL run.**
+> When PostgreSQL verification became possible in P2 (see
+> `docs/05-p2-knowledge-base-rag.md` §19), it showed that **P1 could not run on
+> PostgreSQL**. Both defects were invisible on SQLite, which stores enum columns
+> as unconstrained strings:
+>
+> 1. `audit_event_type_enum` still had only the twelve P0 event types. P1's
+>    twelve new types were never added, so every P1 audit write failed, and with
+>    it every P1 service action.
+> 2. `gate_enum` was created with labels `'G1'`...`'G8'`, but the ORM writes enum
+>    member names (`'G1_REQUIREMENT_BASELINE'`...). No approval task could be
+>    inserted.
+>
+> Both are repaired by migration `0003_p1_postgres_enum_repair`, which touches those
+> two enum types and nothing else; `0002` is untouched. Regression guards: every
+> Python enum value must be accepted by its PostgreSQL type; 40 of the 41 P1 exit
+> and governance tests run unchanged on PostgreSQL (the 41st needs no database),
+> including G1 co-approval, segregation of duties, exact-version binding, the
+> lifecycle guards and isolation; and on a fresh database `0003` is shown to
+> reproduce both defects at `0002`, repair them, leave every trigger, function,
+> constraint, index, grant and column identical, and reverse, after which a
+> database migrated from empty runs the P1 exit scenario
+> (`test_p1_workflow_on_postgres.py`; audited in `docs/05-p2-knowledge-base-rag.md`
+> §24). No P1 rule changed. The
+> baseline-membership trigger was confirmed to refuse an unapproved member at
+> runtime; its test's raw SQL used labels the schema does not have (`'analyst'`,
+> `'G1'`) and was corrected. The "BLOCKED" status above is superseded.
+
 ---
 
 ## 15. Deferred to P2 and later

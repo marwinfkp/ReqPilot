@@ -23,18 +23,22 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterator
+from functools import lru_cache
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from reqpilot.config import AppEnv, Settings, get_settings
+from reqpilot.config import AppEnv, EmbeddingProviderKind, Settings, get_settings
 from reqpilot.domain.enums import ActorKind, Role
 from reqpilot.domain.ids import ActorId, ProjectId
 from reqpilot.domain.models.identity import ProjectMember, User
 from reqpilot.domain.policy import Actor
 from reqpilot.repositories.database import get_session_factory
+from reqpilot.retrieval.embeddings import EmbeddingProvider, provider_for
+from reqpilot.retrieval.rules import RetrievalRules, load_retrieval_rules
 
 
 def get_db() -> Iterator[Session]:
@@ -105,5 +109,38 @@ def get_actor(
     return load_actor(session, user_id)
 
 
+@lru_cache(maxsize=4)
+def _embedding_provider(
+    kind: EmbeddingProviderKind, model: str, allow_download: bool
+) -> EmbeddingProvider:
+    return provider_for(kind, model, allow_download=allow_download)
+
+
+def get_embedding_provider(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> EmbeddingProvider:
+    """The configured embedding provider, loaded once per process (ADR-005).
+
+    Cached because the local model takes seconds to load; the cache key is the
+    configuration, so a different configuration gets a different provider.
+    """
+    return _embedding_provider(
+        settings.embedding_provider, settings.embedding_model, settings.embedding_allow_download
+    )
+
+
+@lru_cache(maxsize=4)
+def _retrieval_rules(rules_dir: str) -> RetrievalRules:
+    return load_retrieval_rules(Path(rules_dir))
+
+
+def get_retrieval_rules(settings: Annotated[Settings, Depends(get_settings)]) -> RetrievalRules:
+    """The versioned retrieval ruleset (J.3, J.4), validated once per process."""
+    return _retrieval_rules(str(settings.rules_dir))
+
+
 DbSession = Annotated[Session, Depends(get_db)]
 CurrentActor = Annotated[Actor, Depends(get_actor)]
+Embedder = Annotated[EmbeddingProvider, Depends(get_embedding_provider)]
+Rules = Annotated[RetrievalRules, Depends(get_retrieval_rules)]
+AppSettings = Annotated[Settings, Depends(get_settings)]

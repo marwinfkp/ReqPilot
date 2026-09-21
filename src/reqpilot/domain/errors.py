@@ -84,3 +84,51 @@ class BaselineInvariantError(ReqPilotError):
     The invariant that matters most: no unapproved requirement version may
     enter a baseline (architecture H.4).
     """
+
+
+class KnowledgeBaseError(ReqPilotError):
+    """A knowledge-base operation was refused (architecture G.5, J.6).
+
+    Covers malformed metadata, a supersession the item's status does not allow,
+    and a duplicate of an active item.
+    """
+
+
+class LicenceViolationError(KnowledgeBaseError):
+    """Text was offered that the source's licence does not permit storing.
+
+    The ingestion path refuses full text where the licence forbids it
+    (architecture G.5; approved Phase 0 D.2 copyright constraint).
+    """
+
+
+class EmbeddingUnavailableError(ReqPilotError):
+    """The configured embedding provider cannot run here.
+
+    Raised instead of silently falling back to another model, because vectors
+    from different models are not comparable (architecture ADR-004, ADR-005).
+    """
+
+
+class UngroundedRetrievalError(ReqPilotError):
+    """An operation needed retrieved evidence and retrieval found none.
+
+    The deterministic form of ``FR-RAG-005``: an empty retrieval is escalated for
+    human review, never answered from a model's parametric memory.
+    """
+
+
+class CitationError(ReqPilotError):
+    """A citation does not resolve to evidence this run was given (``FR-RAG-003``).
+
+    Deliberately says nothing about whether the evidence exists elsewhere, so a
+    forged or cross-project id is indistinguishable from a missing one.
+    """
+
+
+class EvidenceIntegrityError(CitationError):
+    """Stored evidence no longer matches the chunk and span it records.
+
+    Evidence is append-only; a mismatch means tampering or corruption, and the
+    citation is refused rather than resolved to text nobody actually saw.
+    """

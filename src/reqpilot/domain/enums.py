@@ -211,6 +211,121 @@ class ProjectLifecycleState(StrEnum):
     BASELINED = "baselined"
 
 
+class NormativeSourceType(StrEnum):
+    """The normative-source taxonomy (approved Phase 0 C.1; architecture G.5).
+
+    Exactly eight types, and every knowledge item carries exactly one of them
+    (``FR-RAG-001``). They are deliberately **not** collapsed into a generic
+    "regulation": a card-scheme requirement binds by contract, not by law, and a
+    control framework is a voluntary reference taxonomy. Presenting either as law
+    is the imprecision C.1 exists to prevent. The spellings are the ones G.5 uses.
+    """
+
+    STATUTE = "statute"
+    REGULATORY_DIRECTION = "regulatory_direction"
+    REGULATORY_GUIDANCE = "regulatory_guidance"
+    ORG_POLICY = "org_policy"
+    CONTRACTUAL_SCHEME = "contractual_scheme"
+    INDUSTRY_STANDARD = "industry_standard"
+    CONTROL_FRAMEWORK = "control_framework"
+    BEST_PRACTICE = "best_practice"
+
+
+#: How binding each source type is, verbatim from the approved C.1 table. Shown
+#: beside every citation so that a standard is never presented as a law.
+SOURCE_TYPE_BINDING: dict[NormativeSourceType, str] = {
+    NormativeSourceType.STATUTE: "Legally binding",
+    NormativeSourceType.REGULATORY_DIRECTION: "Binding on regulated entities",
+    NormativeSourceType.REGULATORY_GUIDANCE: "Persuasive, not strictly binding",
+    NormativeSourceType.ORG_POLICY: "Binding inside one organisation",
+    NormativeSourceType.CONTRACTUAL_SCHEME: "Binding by contract, not law",
+    NormativeSourceType.INDUSTRY_STANDARD: "Voluntary unless mandated by law or contract",
+    NormativeSourceType.CONTROL_FRAMEWORK: "Voluntary reference taxonomy",
+    NormativeSourceType.BEST_PRACTICE: "Non-binding professional convention",
+}
+
+
+class LicenceClass(StrEnum):
+    """What a source's licence permits the knowledge base to store (G.5, D.2).
+
+    The machine-checkable form of ``licence_note``. Architecture G.5 requires the
+    ingestion path to refuse full text where the licence forbids it, which a
+    free-text note cannot enforce on its own.
+    """
+
+    #: Official statutes, regulator texts and public-domain frameworks may be
+    #: extracted with citation (approved Phase 0 D.2).
+    EXTRACT_PERMITTED = "extract_permitted"
+    #: Copyrighted standards (ISO/IEC): clause identifiers and team-written
+    #: paraphrases only, never copied normative text (approved Phase 0 D.2).
+    PARAPHRASE_ONLY = "paraphrase_only"
+    #: Fictional material written for the project - the synthetic organisational
+    #: policies D.2 approves. Never a stand-in for a real law or regulation.
+    SYNTHETIC = "synthetic"
+
+
+class TextOrigin(StrEnum):
+    """Where a knowledge item's text came from, as declared by its curator."""
+
+    VERBATIM_EXTRACT = "verbatim_extract"
+    TEAM_PARAPHRASE = "team_paraphrase"
+    SYNTHETIC = "synthetic"
+
+
+#: Which text origins each licence admits. Checked deterministically at
+#: ingestion; anything outside this table is refused.
+LICENCE_PERMITTED_ORIGINS: dict[LicenceClass, frozenset[TextOrigin]] = {
+    LicenceClass.EXTRACT_PERMITTED: frozenset(
+        {TextOrigin.VERBATIM_EXTRACT, TextOrigin.TEAM_PARAPHRASE}
+    ),
+    LicenceClass.PARAPHRASE_ONLY: frozenset({TextOrigin.TEAM_PARAPHRASE}),
+    LicenceClass.SYNTHETIC: frozenset({TextOrigin.SYNTHETIC}),
+}
+
+#: Source types that may be synthetic. D.2 approves synthetic *organisational
+#: policies*; team-written practice notes are the other honest case. A synthetic
+#: statute or regulatory direction would be a fake law, so it is refused.
+SYNTHETIC_PERMITTED_TYPES: frozenset[NormativeSourceType] = frozenset(
+    {NormativeSourceType.ORG_POLICY, NormativeSourceType.BEST_PRACTICE}
+)
+
+
+class KnowledgeItemStatus(StrEnum):
+    """A knowledge item's status (architecture G.5, J.6): ``active → superseded``."""
+
+    ACTIVE = "active"
+    SUPERSEDED = "superseded"
+
+
+class SupersessionKind(StrEnum):
+    """Why an item left ``active``. The status stays two-valued, as G.5 specifies.
+
+    ``FR-RAG-006`` names *add, version, retire*; architecture S names *supersede*.
+    All three removals are the same G.5 transition, distinguished here.
+    """
+
+    #: Replaced by the next version of the same item (``FR-RAG-006`` *version*).
+    VERSIONED = "versioned"
+    #: Replaced by a different item, e.g. one from an amended instrument (S).
+    REPLACED = "replaced"
+    #: Withdrawn with no successor (``FR-RAG-006`` *retire*).
+    RETIRED = "retired"
+
+
+class ChunkStrategy(StrEnum):
+    """How a chunk was cut (architecture J.3)."""
+
+    #: Knowledge item: one chunk per clause or control.
+    CLAUSE = "clause"
+    #: Token window with overlap, where no clause structure exists or a clause
+    #: is too long to embed whole.
+    WINDOW = "window"
+    #: Project document: headings and paragraphs first.
+    SECTION = "section"
+    #: Transcript: one chunk per utterance, never splitting a speaker turn.
+    UTTERANCE = "utterance"
+
+
 class ActorKind(StrEnum):
     """Who or what performed an audited action (architecture O.1)."""
 
@@ -278,6 +393,16 @@ class AuditEventType(StrEnum):
     BASELINE_COMMITTED = "BASELINE_COMMITTED"
     BASELINE_MEMBER_ADDED = "BASELINE_MEMBER_ADDED"
 
+    # Knowledge base (added by the knowledge-base phase). The first three are
+    # named in architecture O.2; the last three follow the P1 precedent of a
+    # phase adding the events it raises.
+    KB_ITEM_ADDED = "KB_ITEM_ADDED"
+    KB_ITEM_SUPERSEDED = "KB_ITEM_SUPERSEDED"
+    SOURCE_INGESTED = "SOURCE_INGESTED"
+    KB_SOURCE_ADDED = "KB_SOURCE_ADDED"
+    KB_CONTROL_ADDED = "KB_CONTROL_ADDED"
+    KB_SCOPE_CHANGED = "KB_SCOPE_CHANGED"
+
 
 class Action(StrEnum):
     """Actions the policy can authorise (architecture ADR-009).
@@ -308,6 +433,15 @@ class Action(StrEnum):
     BASELINE_CREATE = "baseline.create"
     BASELINE_READ = "baseline.read"
 
+    # Knowledge base and retrieval
+    KB_READ = "kb.read"
+    KB_ADMINISTER = "kb.administer"
+    KB_SCOPE_READ = "kb.scope.read"
+    KB_SCOPE_MANAGE = "kb.scope.manage"
+    KB_RETRIEVE = "kb.retrieve"
+    EVIDENCE_CREATE = "evidence.create"
+    EVIDENCE_READ = "evidence.read"
+
 
 class ResourceType(StrEnum):
     """Resource types the policy can authorise against."""
@@ -320,3 +454,9 @@ class ResourceType(StrEnum):
     REQUIREMENT = "requirement"
     REQUIREMENT_VERSION = "requirement_version"
     BASELINE = "baseline"
+    NORMATIVE_SOURCE = "normative_source"
+    CONTROL = "control"
+    KNOWLEDGE_ITEM = "knowledge_item"
+    KNOWLEDGE_CHUNK = "knowledge_chunk"
+    SOURCE_ALLOWLIST = "source_allowlist"
+    EVIDENCE = "evidence"

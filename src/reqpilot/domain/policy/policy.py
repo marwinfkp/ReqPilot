@@ -19,6 +19,10 @@ Three design rules are enforced here rather than trusted to callers:
    the gate requires (``GATE_REQUIRED_ROLES``) and that the actor holds in the
    resource's project. The bare action is refused, and ``is_superuser`` does not
    substitute for holding the gate's role.
+5. **Knowledge curation and grounding scope are human decisions.** No non-human
+   actor may administer the knowledge base or change a project's allowlist,
+   jurisdictions or KB pin, whatever roles it holds (architecture E.1: agent
+   roles write proposals only).
 """
 
 from __future__ import annotations
@@ -173,10 +177,49 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
             Role.AUDITOR,
         }
     ),
+    # --- knowledge base and retrieval ----------------------------------
+    # The curated corpus is shared, so reading and curating it is not scoped to
+    # a project: it belongs to the Knowledge-Base Administrator (Phase 0 F.1:
+    # "add, version, retire knowledge items"). Everyone else reaches knowledge
+    # only through a project, and only through that project's allowlist.
+    Action.KB_READ: frozenset({Role.KB_ADMIN}),
+    Action.KB_ADMINISTER: frozenset({Role.KB_ADMIN}),
+    # A project's grounding scope - allowlist, jurisdictions, KB pin - is set by
+    # the KB administrator *of that project*. The analyst who runs an analysis
+    # cannot widen the sources that ground it.
+    Action.KB_SCOPE_MANAGE: frozenset({Role.KB_ADMIN}),
+    Action.KB_SCOPE_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+            Role.KB_ADMIN,
+        }
+    ),
+    # The roles whose work is grounded in normative evidence (architecture E.1:
+    # compliance and security retrieve; the analyst drives the analysis).
+    Action.KB_RETRIEVE: frozenset({Role.ANALYST, Role.COMPLIANCE_OFFICER, Role.SECURITY_REVIEWER}),
+    Action.EVIDENCE_CREATE: frozenset(
+        {Role.ANALYST, Role.COMPLIANCE_OFFICER, Role.SECURITY_REVIEWER}
+    ),
+    Action.EVIDENCE_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
 }
 
-#: Actions an actor may perform without belonging to a project.
-_UNSCOPED_ACTIONS: frozenset[Action] = frozenset({Action.PROJECT_CREATE})
+#: Actions an actor may perform without belonging to a project. For these the
+#: actor's roles across all projects are considered together.
+_UNSCOPED_ACTIONS: frozenset[Action] = frozenset(
+    {Action.PROJECT_CREATE, Action.KB_READ, Action.KB_ADMINISTER}
+)
 
 #: The Auditor is read-only by construction (approved Phase 0 F.1). Listing the
 #: permitted actions positively means a new mutating action is refused for
@@ -190,8 +233,15 @@ _AUDITOR_READ_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.REQUIREMENT_READ,
         Action.APPROVAL_TASK_READ,
         Action.BASELINE_READ,
+        Action.KB_SCOPE_READ,
+        Action.EVIDENCE_READ,
     }
 )
+
+
+#: Actions no non-human actor may perform, whatever roles it holds: curating the
+#: shared corpus and changing a project's grounding scope (architecture E.1).
+_HUMAN_ONLY_ACTIONS: frozenset[Action] = frozenset({Action.KB_ADMINISTER, Action.KB_SCOPE_MANAGE})
 
 
 def can(actor: Actor, action: Action, resource: ResourceRef) -> Decision:
@@ -206,6 +256,14 @@ def can(actor: Actor, action: Action, resource: ResourceRef) -> Decision:
     # can grant it (architecture J.1, M.2).
     if action is Action.APPROVAL_DECIDE and actor.kind is not ActorKind.HUMAN:
         return Decision(False, f"{actor.kind} actors can never decide an approval gate")
+
+    # Curating the knowledge base and setting what a project may be grounded in
+    # are human decisions: no agent role writes anything but proposals
+    # (architecture E.1). Checked before any grant, like the gate rule above.
+    if action in _HUMAN_ONLY_ACTIONS and actor.kind is not ActorKind.HUMAN:
+        return Decision(
+            False, f"{actor.kind} actors cannot perform {action}; it is a human decision"
+        )
 
     if not isinstance(action, Action):  # pragma: no cover - defensive
         return Decision(False, "unknown action")

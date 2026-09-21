@@ -31,6 +31,7 @@ checked is not evidence.
 
 ## Roadmap note
 
-P0 creates the structure and the rules. The directories are otherwise empty:
-knowledge-base content and gold datasets are produced by the roadmap phases that
-need them, defined in `docs/01-analysis.md` §P.
+P0 created the structure and the rules. P2 added a synthetic, fictional
+development knowledge base under `dev/kb_synthetic/`. Curated knowledge-base
+content (`kb_seed/`) and gold datasets (`gold/`) are human work still to come,
+defined in `docs/01-analysis.md` §P.

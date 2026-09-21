@@ -9,8 +9,9 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
+from sqlalchemy import JSON, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, String, UniqueConstraint
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
@@ -53,6 +54,19 @@ class Project(Base):
     # later roadmap phase; constraining it now would be speculative.
     lifecycle_state: Mapped[str] = mapped_column(String(50), nullable=False, default="elicitation")
     created_at: Mapped[dt.datetime] = created_at_column()
+
+    # --- knowledge scope (architecture G.3, J.4, J.6) --------------------
+    #: Jurisdiction codes this project's retrieval may draw on. Empty means none:
+    #: retrieval fails closed rather than searching every jurisdiction.
+    jurisdiction_scope: Mapped[list[str]] = mapped_column(
+        JSON().with_variant(postgresql.ARRAY(String(100)), "postgresql"),
+        nullable=False,
+        default=list,
+    )
+    #: The KB version this project's analysis is pinned to, so a later KB update
+    #: does not silently change past analyses (J.6). ``None`` follows the current
+    #: KB version.
+    kb_version_pin: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     members: Mapped[list[ProjectMember]] = relationship(
         back_populates="project", cascade="all, delete-orphan"

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Knowledge base{% endblock %}
+{% block content %}
+<h1>Knowledge base</h1>
+<p class="note">An <b>educational, evidence-based reference corpus</b> &mdash; not complete, not
+continuously updated, and not a substitute for professional or legal advice. Every item records
+its source, type, jurisdiction, effective date, version, applicability and curation date.</p>
+<p class="muted">Current KB version: <span class="state">{{ kb_version }}</span></p>
+
+<h2>Normative sources</h2>
+{% if sources %}
+<table>
+  <tr><th>Title</th><th>Type</th><th>Binding</th><th>Issuing body</th><th>Jurisdiction</th>
+      <th>Version</th><th>Effective</th><th>Curated</th><th>Licence</th></tr>
+  {% for s in sources %}
+  <tr>
+    <td>{{ s.title }}<br><span class="mono muted">{{ s.id }}</span></td>
+    <td class="mono">{{ s.source_type.value }}</td>
+    <td>{{ binding[s.source_type] }}</td>
+    <td>{{ s.issuing_body }}</td>
+    <td class="mono">{{ s.jurisdiction }}</td>
+    <td>{{ s.version }}</td>
+    <td>{{ s.effective_date or "" }}</td>
+    <td>{{ s.retrieved_at }}</td>
+    <td class="mono">{{ s.licence_class.value }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="note">No sources yet.</p>
+{% endif %}
+
+<h2>Knowledge items</h2>
+{% if items %}
+<table>
+  <tr><th>Key</th><th>v</th><th>Source</th><th>Clause</th><th>Origin</th><th>KB v</th><th>Status</th></tr>
+  {% for i in items %}
+  <tr>
+    <td class="mono"><a href="/ui/kb/items/{{ i.id }}">{{ i.item_key }}</a></td>
+    <td>{{ i.version_no }}</td>
+    <td>{{ source_titles.get(i.normative_source_id, "") }}</td>
+    <td>{{ i.clause_ref or "" }}</td>
+    <td class="mono">{{ i.text_origin.value }}</td>
+    <td>{{ i.kb_version }}</td>
+    <td><span class="state">{{ i.status.value }}</span>
+      {% if i.supersession_kind %}<span class="muted">({{ i.supersession_kind.value }})</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="note">No items yet.</p>
+{% endif %}
+
+<fieldset>
+  <legend>Add a normative source</legend>
+  <form method="post" action="/ui/kb/sources">
+    <label>Type (approved Phase 0 C.1)</label>
+    <select name="source_type">{% for t in source_types %}<option value="{{ t.value }}">{{ t.value }} &mdash; {{ binding[t] }}</option>{% endfor %}</select>
+    <label>Issuing body</label><input type="text" name="issuing_body" required>
+    <label>Title</label><input type="text" name="title" required>
+    <label>Jurisdiction (ISO alpha-2, or INTL)</label><input type="text" name="jurisdiction" value="IN" required>
+    <label>Version of the instrument</label><input type="text" name="version" required>
+    <label>Effective date</label><input type="text" name="effective_date" placeholder="YYYY-MM-DD">
+    <label>Curated on (when a person consulted the source)</label><input type="text" name="retrieved_at" value="{{ today }}" required>
+    <label>Source URL</label><input type="text" name="source_url">
+    <label>Licence</label>
+    <select name="licence_class">{% for l in licences %}<option value="{{ l.value }}">{{ l.value }}</option>{% endfor %}</select>
+    <label>Licence note</label><input type="text" name="licence_note" required>
+    <p class="muted">Synthetic sources may only be organisational policies or best-practice notes.
+    Copyrighted standards take team-written paraphrases only.</p>
+    <button class="primary" type="submit">Add source</button>
+  </form>
+</fieldset>
+
+<fieldset>
+  <legend>Add a knowledge item (version 1)</legend>
+  <form method="post" action="/ui/kb/items">
+    <label>Source</label>
+    <select name="normative_source_id">{% for s in sources %}<option value="{{ s.id }}">{{ s.title }} ({{ s.version }})</option>{% endfor %}</select>
+    <label>Item key (stable across versions, e.g. SYN-ACME-AC-4)</label><input type="text" name="item_key" required>
+    <label>Text origin</label>
+    <select name="text_origin">{% for o in origins %}<option value="{{ o.value }}">{{ o.value }}</option>{% endfor %}</select>
+    <label>Title</label><input type="text" name="title">
+    <label>Clause reference</label><input type="text" name="clause_ref">
+    <label>Applicability tags (comma-separated)</label><input type="text" name="applicability">
+    <label>Text</label><textarea name="text" rows="8" required></textarea>
+    <button class="primary" type="submit">Add and ingest</button>
+  </form>
+</fieldset>
+{% endblock %}

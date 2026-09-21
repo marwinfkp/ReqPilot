@@ -28,8 +28,9 @@ SRC = REPO_ROOT / "src" / "reqpilot"
 #: Packages the domain-side layers may never import.
 FORBIDDEN_FOR_DOMAIN = ("langgraph", "reqpilot.graph", "reqpilot.agents", "reqpilot.llm")
 
-#: The layers that must stay independent of orchestration.
-DOMAIN_SIDE = ("domain", "repositories", "services")
+#: The layers that must stay independent of orchestration. ``retrieval`` (M5)
+#: joined in P2: retrieval is deterministic and must not reach a model.
+DOMAIN_SIDE = ("domain", "repositories", "services", "retrieval")
 
 
 def imported_modules(path: Path) -> set[str]:

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ item.item_key }} v{{ item.version_no }}{% endblock %}
+{% block nav %}<a href="/ui/kb">knowledge base</a>{% endblock %}
+{% block content %}
+<h1 class="mono">{{ item.item_key }} &middot; v{{ item.version_no }}</h1>
+<p><span class="state">{{ item.status.value }}</span>
+  {% if item.supersession_kind %}<span class="muted">{{ item.supersession_kind.value }}
+  in KB version {{ item.superseded_in_kb_version }}{% if item.superseded_by_id %},
+  successor <a class="mono" href="/ui/kb/items/{{ item.superseded_by_id }}">{{ item.superseded_by_id }}</a>{% endif %}
+  &mdash; {{ item.supersession_reason }}</span>{% endif %}</p>
+
+<table>
+  <tr><th>Source</th><td>{{ source.title }} &middot; {{ source.version }}</td></tr>
+  <tr><th>Type</th><td class="mono">{{ source.source_type.value }}</td></tr>
+  <tr><th>Binding</th><td>{{ binding[source.source_type] }}</td></tr>
+  <tr><th>Issuing body</th><td>{{ source.issuing_body }}</td></tr>
+  <tr><th>Jurisdiction</th><td class="mono">{{ source.jurisdiction }}</td></tr>
+  <tr><th>Effective date</th><td>{{ source.effective_date or "" }}</td></tr>
+  <tr><th>Curated on</th><td>{{ source.retrieved_at }}</td></tr>
+  <tr><th>Licence</th><td class="mono">{{ source.licence_class.value }}</td></tr>
+  <tr><th>Clause</th><td>{{ item.clause_ref or "" }}</td></tr>
+  <tr><th>Text origin</th><td class="mono">{{ item.text_origin.value }}</td></tr>
+  <tr><th>Applicability</th><td class="mono">{{ item.applicability|join(", ") }}</td></tr>
+  <tr><th>Added in KB version</th><td>{{ item.kb_version }}</td></tr>
+  <tr><th>Content hash</th><td class="mono">{{ item.content_hash }}</td></tr>
+</table>
+
+<h2>Text</h2>
+<pre style="white-space:pre-wrap">{{ item.text }}</pre>
+
+<h2>Chunks</h2>
+<p class="muted">Each chunk is exactly <span class="mono">text[char_start:char_end]</span> of the item.</p>
+<table>
+  <tr><th>#</th><th>Span</th><th>Strategy</th><th>Structure</th><th>Tokens</th><th>Model</th><th>Chunk</th></tr>
+  {% for c in chunks %}
+  <tr>
+    <td>{{ c.ordinal }}</td>
+    <td class="mono">[{{ c.char_start }}, {{ c.char_end }})</td>
+    <td class="mono">{{ c.strategy.value }}</td>
+    <td>{{ c.structure_label or "" }}</td>
+    <td>{{ c.token_count }}</td>
+    <td class="mono">{{ c.embedding_model }}</td>
+    <td>{{ c.text }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2>Versions</h2>
+<table>
+  <tr><th>v</th><th>Status</th><th>KB version</th><th>Superseded in</th></tr>
+  {% for v in versions %}
+  <tr>
+    <td><a href="/ui/kb/items/{{ v.id }}">{{ v.version_no }}</a></td>
+    <td><span class="state">{{ v.status.value }}</span></td>
+    <td>{{ v.kb_version }}</td>
+    <td>{{ v.superseded_in_kb_version or "" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% if active %}
+<fieldset>
+  <legend>New version (supersedes this one)</legend>
+  <form method="post" action="/ui/kb/items/{{ item.id }}/versions">
+    <label>Text origin</label>
+    <select name="text_origin">{% for o in origins %}<option value="{{ o.value }}" {% if o == item.text_origin %}selected{% endif %}>{{ o.value }}</option>{% endfor %}</select>
+    <label>Title</label><input type="text" name="title" value="{{ item.title or '' }}">
+    <label>Clause reference</label><input type="text" name="clause_ref" value="{{ item.clause_ref or '' }}">
+    <label>Applicability tags</label><input type="text" name="applicability" value="{{ item.applicability|join(', ') }}">
+    <label>Text</label><textarea name="text" rows="8" required>{{ item.text }}</textarea>
+    <label>Reason</label><input type="text" name="reason" required>
+    <button class="primary" type="submit">Create version {{ item.version_no + 1 }}</button>
+  </form>
+</fieldset>
+<fieldset>
+  <legend>Retire (no successor)</legend>
+  <form method="post" action="/ui/kb/items/{{ item.id }}/retire">
+    <label>Reason</label><input type="text" name="reason" required>
+    <button type="submit">Retire</button>
+  </form>
+</fieldset>
+{% endif %}
+{% endblock %}

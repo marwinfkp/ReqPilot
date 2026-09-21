@@ -1,0 +1,58 @@
+# Retrieval ruleset (architecture J.3, J.4, ADR-004).
+#
+# Every value here changes what retrieval returns, so it is versioned data
+# rather than code or environment: a retrieval result and every evidence row it
+# produces record the version of this file that governed them.
+#
+# Values marked PROVISIONAL are starting points, to be re-baselined when the
+# curated corpus and the ET-06 probe exist (approved Phase 0 H.2: ET-06 is
+# "re-baseline after P2").
+
+name: retrieval
+version: "1.0.0"
+description: >
+  Chunking sizes, hybrid fusion and the relevance threshold that decides the
+  FR-RAG-005 empty-retrieval outcome.
+
+rules:
+  # Architecture J.3, verbatim. "Tokens" are counted deterministically as words
+  # and punctuation marks (reqpilot.retrieval.chunking.count_tokens), so a chunk
+  # boundary never depends on which embedding model is installed.
+  chunking:
+    knowledge_item:
+      # One chunk per clause/control where the source has that structure...
+      min_clause_boundaries: 2
+      # ...otherwise ~500 tokens with 80-token overlap. A clause longer than
+      # max_tokens is windowed the same way, so no chunk outgrows the embedding
+      # model's input.
+      max_tokens: 500
+      overlap_tokens: 80
+    project_document:
+      max_tokens: 700
+      overlap_tokens: 100
+
+  # Architecture J.4 / ADR-004: vector ranking and PostgreSQL full-text ranking,
+  # fused by reciprocal rank fusion. "Fusion weights live in the ruleset."
+  fusion:
+    method: reciprocal_rank_fusion
+    rrf_k: 60
+    weights:
+      vector: 1.0
+      keyword: 1.0
+    # Candidates drawn from each ranking before fusion. Both candidate queries
+    # carry the full allowlist/jurisdiction/date/status predicates.
+    candidate_pool: 40
+
+  # FR-RAG-005: when nothing relevant is retrieved the outcome is
+  # RETRIEVAL_EMPTY and the caller must escalate for human review.
+  relevance:
+    # A vector candidate counts only at or above this cosine similarity.
+    # Model-specific because similarity ranges differ between models: bge-small
+    # compresses scores into roughly 0.3 (unrelated) to 0.7 (on-topic).
+    min_vector_similarity:
+      "BAAI/bge-small-en-v1.5": 0.55 # PROVISIONAL
+      "reqpilot/hashing-384-v1": 0.15 # offline test provider only
+    # A keyword candidate counts only if it matches every query term
+    # (websearch_to_tsquery semantics): exact-term evidence, which is what
+    # hybrid search adds over embeddings (ADR-004).
+    keyword_match: all_terms

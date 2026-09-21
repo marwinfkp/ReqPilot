@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} &middot; knowledge{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}">project</a>
+{% endblock %}
+{% block content %}
+<h1>{{ project.name }} &middot; knowledge scope</h1>
+<p class="note">Retrieval for this project can only ever return chunks from the sources below,
+in the jurisdictions below, as of the KB version below. These restrictions are part of the
+database query itself, not a filter applied afterwards.</p>
+
+<table>
+  <tr><th>Jurisdictions</th><td class="mono">{{ scope.jurisdiction_scope|join(", ") or "none - retrieval returns nothing" }}</td></tr>
+  <tr><th>KB version</th><td>{% if scope.kb_version_pin %}pinned to {{ scope.kb_version_pin }}
+      (current is {{ scope.current_kb_version }}){% else %}follows current ({{ scope.current_kb_version }}){% endif %}</td></tr>
+</table>
+
+<h2>Allowlisted sources</h2>
+{% if scope.allowlisted_sources %}
+<table>
+  <tr><th>Title</th><th>Type</th><th>Binding</th><th>Jurisdiction</th><th>Version</th><th></th></tr>
+  {% for s in scope.allowlisted_sources %}
+  <tr>
+    <td>{{ s.title }}</td><td class="mono">{{ s.source_type.value }}</td><td>{{ binding[s.source_type] }}</td>
+    <td class="mono">{{ s.jurisdiction }}</td><td>{{ s.version }}</td>
+    <td>{% if may_manage %}<form class="inline" method="post" action="/ui/projects/{{ project.id }}/kb/allowlist/{{ s.id }}/remove"><button type="submit">remove</button></form>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="note warn">No sources are allowlisted. Retrieval will return <b>RETRIEVAL_EMPTY</b>.</p>
+{% endif %}
+
+{% if may_manage %}
+<fieldset>
+  <legend>Scope (Knowledge-Base Administrator)</legend>
+  <form method="post" action="/ui/projects/{{ project.id }}/kb/scope">
+    <label>Jurisdictions (comma-separated, e.g. IN, INTL)</label>
+    <input type="text" name="jurisdiction_scope" value="{{ scope.jurisdiction_scope|join(', ') }}">
+    <label>Pin KB version (blank = follow current)</label>
+    <input type="text" name="kb_version_pin" value="{{ scope.kb_version_pin or '' }}">
+    <button class="primary" type="submit">Save scope</button>
+  </form>
+  {% if addable_sources %}
+  <form method="post" action="/ui/projects/{{ project.id }}/kb/allowlist">
+    <label>Allowlist a source</label>
+    <select name="normative_source_id">{% for s in addable_sources %}<option value="{{ s.id }}">{{ s.title }} ({{ s.version }}, {{ s.jurisdiction }})</option>{% endfor %}</select>
+    <button type="submit">Allowlist</button>
+  </form>
+  {% endif %}
+</fieldset>
+{% endif %}
+
+{% if may_retrieve %}
+<fieldset>
+  <legend>Retrieve</legend>
+  <form method="post" action="/ui/projects/{{ project.id }}/kb/retrieve">
+    <label>Query</label><input type="text" name="query" value="{{ query }}" required>
+    <label>Applicability tags (optional, narrows only)</label><input type="text" name="applicability">
+    <label><input type="checkbox" name="record_evidence" value="1"> record the result as evidence</label>
+    <button class="primary" type="submit">Retrieve</button>
+  </form>
+</fieldset>
+{% endif %}
+
+{% if result %}
+<h2>Result: <span class="state">{{ result.outcome.value }}</span></h2>
+<p class="muted">retrieval <span class="mono">{{ result.retrieval_id }}</span> &middot; KB version {{ result.kb_version }}
+  {% if result.kb_version_pinned %}(pinned){% endif %} &middot; model <span class="mono">{{ result.embedding_model }}</span>
+  &middot; ruleset v{{ result.ruleset_version }}</p>
+{% if result.requires_human_review %}
+<p class="note warn">Nothing relevant was retrieved ({{ result.empty_reason.value }}). This must be escalated
+for human review; it is never answered from a model's own knowledge (FR-RAG-005).</p>
+{% else %}
+<table>
+  <tr><th>#</th><th>Source</th><th>Type</th><th>Item</th><th>Span</th><th>Chunk</th><th>Scores</th></tr>
+  {% for c in result.chunks %}
+  <tr>
+    <td>{{ c.rank }}</td>
+    <td>{{ c.source_title }}<br><span class="muted">{{ c.issuing_body }} &middot; {{ c.jurisdiction }} &middot; {{ c.source_version }}</span></td>
+    <td class="mono">{{ c.source_type.value }}<br><span class="muted">{{ c.binding }}</span></td>
+    <td class="mono">{{ c.item_key }} v{{ c.item_version_no }}</td>
+    <td class="mono">[{{ c.char_start }}, {{ c.char_end }})</td>
+    <td>{{ c.text }}</td>
+    <td class="mono">rrf {{ "%.4f"|format(c.fused_score) }}<br>cos {{ "%.3f"|format(c.vector_similarity) }}<br>
+      v#{{ c.vector_rank or "-" }} k#{{ c.keyword_rank or "-" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% if recorded %}<p class="note">Recorded {{ recorded|length }} evidence row(s).</p>{% endif %}
+{% endif %}
+{% endif %}
+
+<h2>Evidence</h2>
+{% if evidence %}
+<table>
+  <tr><th>Evidence</th><th>Retrieval</th><th>Rank</th><th>Span</th><th>KB v</th><th>Recorded</th></tr>
+  {% for e in evidence %}
+  <tr>
+    <td class="mono"><a href="/ui/evidence/{{ e.id }}">{{ e.id }}</a></td>
+    <td class="mono">{{ e.retrieval_id }}</td>
+    <td>{{ e.rank }}</td>
+    <td class="mono">[{{ e.char_start }}, {{ e.char_end }})</td>
+    <td>{{ e.kb_version }}</td>
+    <td>{{ e.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="muted">No evidence recorded.</p>
+{% endif %}
+{% endblock %}

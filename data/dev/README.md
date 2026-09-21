@@ -21,10 +21,17 @@ Development data is for building; gold data is for measuring. Development code m
 never read from `data/gold/`, so that evaluation datasets cannot influence the
 implementation they are meant to judge. A CI check enforces the direction.
 
+## Contents
+
+- [`kb_synthetic/`](kb_synthetic/) (P2) - a small, **fictional** knowledge base:
+  policies of a bank that does not exist, and a team-written practice note. Used
+  by the tests and the demonstration. It contains no law, regulation or standard,
+  real or invented, and it is never evidence of anything real.
+
 ## Roadmap note
 
-Empty in P0. Fixtures arrive with the roadmap phases that need something to
-process (`docs/01-analysis.md` §P).
+Fixtures arrive with the roadmap phases that need something to process
+(`docs/01-analysis.md` §P).
 
 Recorded LLM response fixtures are a different thing and live under
 `tests/fixtures/llm/` — see ADR-012.

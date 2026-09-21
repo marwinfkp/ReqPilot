@@ -73,7 +73,8 @@ def test_health_endpoints_are_registered() -> None:
 def test_only_current_phase_endpoints_are_exposed() -> None:
     """The API must not run ahead of the roadmap.
 
-    Requirement, approval and baseline endpoints belong to the current phase.
+    Requirement, approval and baseline endpoints (P1) and knowledge-base,
+    retrieval and evidence endpoints (P2) belong to the current phases.
     Everything listed below belongs to a later one and must be absent.
     """
     paths = collect_paths(create_app())
@@ -89,7 +90,6 @@ def test_only_current_phase_endpoints_are_exposed() -> None:
         "/api/v1/sdlc-runs",
         "/api/v1/artifacts",
         "/api/v1/evaluations",
-        "/api/v1/kb",
     )
     premature = [p for p in paths if p.startswith(future_prefixes)]
     assert not premature, f"endpoints from a later roadmap phase appeared: {premature}"
@@ -101,3 +101,6 @@ def test_current_phase_endpoints_are_present() -> None:
     assert any(p.endswith("/requirements") for p in paths)
     assert any("approval-tasks" in p for p in paths)
     assert any(p.endswith("/baselines") for p in paths)
+    assert any(p.startswith("/api/v1/kb/") for p in paths)
+    assert any(p.endswith("/retrievals") for p in paths)
+    assert any(p.endswith("/kb-allowlist") for p in paths)

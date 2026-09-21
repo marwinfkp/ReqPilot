@@ -48,6 +48,18 @@ class LLMProvider(StrEnum):
     OLLAMA = "ollama"
 
 
+class EmbeddingProviderKind(StrEnum):
+    """Embedding provider selector (ADR-005).
+
+    ``SENTENCE_TRANSFORMERS`` is the approved local model. ``HASHING`` is a
+    deterministic, non-semantic stand-in for the offline test suite (ET-10); it
+    is refused in production.
+    """
+
+    SENTENCE_TRANSFORMERS = "sentence_transformers"
+    HASHING = "hashing"
+
+
 class Settings(BaseSettings):
     """Application settings, loaded from the environment and an untracked ``.env``."""
 
@@ -91,9 +103,20 @@ class Settings(BaseSettings):
     llm_fixture_mode: str = Field(default="replay", alias="LLM_FIXTURE_MODE")
     llm_fixture_dir: Path = Field(default=Path("tests/fixtures/llm"), alias="LLM_FIXTURE_DIR")
 
-    # --- Retrieval (placeholders; subsystem belongs to a later phase) -----
+    # --- Retrieval (architecture J.4) ---------------------------------------
+    # How many fused chunks a retrieval returns by default (J.4 / K.1 use k=8).
+    # The relevance threshold is *not* here: it decides the FR-RAG-005 outcome,
+    # so it is versioned rule data (rules/data/retrieval.yaml), model by model.
     retrieval_top_k: int = Field(default=8, ge=1, le=50, alias="RETRIEVAL_TOP_K")
-    retrieval_min_score: float = Field(default=0.25, ge=0.0, le=1.0, alias="RETRIEVAL_MIN_SCORE")
+
+    # --- Embeddings (architecture ADR-005) --------------------------------
+    embedding_provider: EmbeddingProviderKind = Field(
+        default=EmbeddingProviderKind.SENTENCE_TRANSFORMERS, alias="EMBEDDING_PROVIDER"
+    )
+    embedding_model: str = Field(default="BAAI/bge-small-en-v1.5", alias="EMBEDDING_MODEL")
+    # Off by default: an uncached model fails with instructions rather than
+    # reaching the network mid-request. Enable once at setup to fetch ~120 MB.
+    embedding_allow_download: bool = Field(default=False, alias="EMBEDDING_ALLOW_DOWNLOAD")
 
     # --- Rules / deterministic configuration (DQ-03) ----------------------
     rules_dir: Path = Field(default=Path("src/reqpilot/rules/data"), alias="RULES_DIR")
@@ -140,6 +163,18 @@ class Settings(BaseSettings):
     def _production_needs_a_real_secret(cls, value: str, info: ValidationInfo) -> str:
         if info.data.get("app_env") is AppEnv.PRODUCTION and value.startswith("dev-only"):
             raise ValueError("REQPILOT_SECRET_KEY must be set to a real value outside development")
+        return value
+
+    @field_validator("embedding_provider")
+    @classmethod
+    def _hashing_is_not_for_production(
+        cls, value: EmbeddingProviderKind, info: ValidationInfo
+    ) -> EmbeddingProviderKind:
+        if info.data.get("app_env") is AppEnv.PRODUCTION and value is EmbeddingProviderKind.HASHING:
+            raise ValueError(
+                "EMBEDDING_PROVIDER=hashing is a non-semantic test provider and is refused "
+                "in production; use sentence_transformers (architecture ADR-005)"
+            )
         return value
 
     @field_validator("llm_fixture_mode")

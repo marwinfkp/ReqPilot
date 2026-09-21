@@ -11,7 +11,7 @@ a project id where a run id is expected is a type error rather than a silent bug
 from __future__ import annotations
 
 from typing import NewType
-from uuid import UUID, uuid4
+from uuid import UUID, uuid4, uuid5
 
 UserId = NewType("UserId", UUID)
 ProjectId = NewType("ProjectId", UUID)
@@ -87,3 +87,39 @@ def new_task_group_id() -> TaskGroupId:
     Architecture M.3 uses the same mechanism for G6's multi-role grouping.
     """
     return TaskGroupId(uuid4())
+
+
+# ---------------------------------------------------------------------------
+# Knowledge base and retrieval
+# ---------------------------------------------------------------------------
+
+NormativeSourceId = NewType("NormativeSourceId", UUID)
+ControlId = NewType("ControlId", UUID)
+KnowledgeItemId = NewType("KnowledgeItemId", UUID)
+KnowledgeChunkId = NewType("KnowledgeChunkId", UUID)
+EvidenceId = NewType("EvidenceId", UUID)
+RetrievalId = NewType("RetrievalId", UUID)
+
+#: Fixed namespace for derived chunk identities. Changing it would change every
+#: chunk id, so it is a constant, not configuration.
+_CHUNK_NAMESPACE = UUID("6f1c2d7e-3b4a-5c8d-9e0f-a1b2c3d4e5f6")
+
+
+def chunk_id_for(
+    item_id: UUID, ordinal: int, char_start: int, char_end: int, text_hash: str
+) -> KnowledgeChunkId:
+    """Return the deterministic identity of a knowledge chunk.
+
+    Derived from what the chunk *is* - its item, position, span and content -
+    rather than drawn at random. Chunking the same immutable item twice yields
+    the same ids, so a chunk can be named stably and a repeated ingestion
+    collides instead of silently duplicating.
+    """
+    return KnowledgeChunkId(
+        uuid5(_CHUNK_NAMESPACE, f"{item_id}:{ordinal}:{char_start}:{char_end}:{text_hash}")
+    )
+
+
+def new_retrieval_id() -> RetrievalId:
+    """One id per retrieval call; every evidence row it produces carries it."""
+    return RetrievalId(uuid4())

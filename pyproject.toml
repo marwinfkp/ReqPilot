@@ -13,10 +13,11 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "UNLICENSED" }
 
-# Dependency discipline (P0 instruction 9): only what P0 needs, plus what the
-# immediately following Requirements Repository phase will need on day one.
-# Deliberately absent: embeddings, vector search, document generation, parsing,
-# evaluation, and any provider SDK. Each is added by the roadmap phase that uses it.
+# Dependency discipline (P0 instruction 9): each dependency arrives with the
+# roadmap phase that uses it. P2 (knowledge base & RAG) added the pgvector
+# adapter and the two parsers architecture J.2 names; the embedding model is an
+# optional extra (below). Still deliberately absent: document generation,
+# evaluation tooling, and any LLM provider SDK.
 dependencies = [
     "pydantic>=2.7",              # ADR-002: one type system for API, contracts, graph state
     "pydantic-settings>=2.3",     # ADR-011: typed, fail-fast configuration
@@ -30,9 +31,20 @@ dependencies = [
     "pyyaml>=6.0",                # architecture DQ-03: versioned rule/config data files
     "jinja2>=3.1",                # ADR-008: server-rendered UI templates
     "python-multipart>=0.0.9",    # ADR-008: HTML form submissions
+    "pgvector>=0.3",              # ADR-004: vector column type and distance operators
+    "pypdf>=4.0",                 # J.2: PDF text extraction for curated sources
+    "python-docx>=1.1",           # J.2: DOCX text extraction for curated sources
 ]
 
 [project.optional-dependencies]
+# ADR-005: the approved local embedding model (BAAI/bge-small-en-v1.5 on CPU).
+# An extra rather than a core dependency because it brings a deep-learning
+# runtime: the offline test suite (ET-10) and CI do not need it, and use a
+# deterministic stand-in instead. The application needs it to ingest or retrieve
+# for real, and refuses clearly if it is missing.
+embeddings = [
+    "sentence-transformers>=3.0",
+]
 dev = [
     "pytest>=8.2",
     "pytest-cov>=5.0",
@@ -80,6 +92,7 @@ ignore = [
 # `Form(...)` in a parameter default is FastAPI's required idiom for HTML form
 # handling; there is no alternative spelling.
 "src/reqpilot/web/router.py" = ["B008"]
+"src/reqpilot/web/knowledge.py" = ["B008"]
 
 # ---------------------------------------------------------------------------
 # Types
@@ -120,6 +133,9 @@ source_modules = [
     "reqpilot.domain",
     "reqpilot.repositories",
     "reqpilot.services",
+    # M5 (P2): retrieval is deterministic and must not become a route by which
+    # governance comes to depend on a model.
+    "reqpilot.retrieval",
 ]
 forbidden_modules = [
     "reqpilot.graph",
@@ -129,14 +145,17 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "Layered dependency direction: main -> web -> api -> services -> repositories -> domain"
+name = "Layered dependency direction: main -> web -> api -> services -> repositories -> retrieval -> domain"
 type = "layers"
+# M5's pure components (retrieval) sit below the repositories and above the
+# domain: services and repositories may use them; they may use only the domain.
 layers = [
     "reqpilot.main",
     "reqpilot.web",
     "reqpilot.api",
     "reqpilot.services",
     "reqpilot.repositories",
+    "reqpilot.retrieval",
     "reqpilot.domain",
 ]
 
