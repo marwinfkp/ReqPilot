@@ -81,9 +81,7 @@ def test_only_current_phase_endpoints_are_exposed() -> None:
 
     future_prefixes = (
         "/api/v1/analysis-runs",
-        "/api/v1/sessions",
         "/api/v1/interviews",
-        "/api/v1/clarifications",
         "/api/v1/conflicts",
         "/api/v1/compliance",
         "/api/v1/risks",
@@ -108,4 +106,12 @@ def test_current_phase_endpoints_are_present() -> None:
     assert any(p.endswith("/sources") for p in paths)
     assert any(p.endswith("/analysis-runs") for p in paths)
     assert any(p.endswith("/review-items") for p in paths)
+    # P4: stakeholders, interview sessions, coverage, the clarification loop.
+    assert "/api/v1/projects/{project_id}/stakeholders" in paths
+    assert "/api/v1/projects/{project_id}/sessions" in paths
+    assert "/api/v1/sessions/{session_id}/answer" in paths
+    assert "/api/v1/sessions/{session_id}/coverage" in paths
+    assert "/api/v1/projects/{project_id}/clarifications" in paths
+    assert "/api/v1/clarifications/{clarification_id}/answer" in paths
+    assert "/api/v1/clarifications/{clarification_id}/dismiss" in paths
     assert any(p.endswith("/classification") for p in paths)

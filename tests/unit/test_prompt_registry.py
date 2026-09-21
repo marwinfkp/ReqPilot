@@ -23,7 +23,17 @@ def prompt_copy(tmp_path: Path) -> Path:
 
 def test_the_active_templates_load_with_their_roles() -> None:
     registry = PromptRegistry()
-    assert registry.names() == ("requirement_classification", "requirement_extraction")
+    assert registry.names() == (
+        "clarification_question",
+        "requirement_classification",
+        "requirement_extraction",
+        "stakeholder_answer_assessment",
+        "stakeholder_interview_question",
+    )
+    # P4: role #2's two templates and role #4's, each bound to its role.
+    assert registry.get("stakeholder_interview_question").role is AgentRole.STAKEHOLDER_INTERACTION
+    assert registry.get("stakeholder_answer_assessment").role is AgentRole.STAKEHOLDER_INTERACTION
+    assert registry.get("clarification_question").role is AgentRole.CLARIFICATION
     extraction = registry.get("requirement_extraction")
     assert extraction.role is AgentRole.REQUIREMENT_EXTRACTION
     assert extraction.ref == "requirement_extraction@1.0.0"

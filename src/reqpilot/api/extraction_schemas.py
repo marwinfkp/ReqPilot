@@ -86,18 +86,24 @@ class SourceDetailOut(SourceDocumentOut):
 
 
 class AnalysisRunIn(BaseModel):
-    """Batch extraction from sources, or classification of extracted versions."""
+    """Batch extraction from sources and/or interview sessions, or classification."""
 
     source_ids: list[uuid.UUID] = Field(default_factory=list, max_length=50)
+    #: P4: interview sessions whose stakeholder answers are extracted from
+    #: (architecture API ``scope.utterance_ids``, taken a session at a time).
+    session_ids: list[uuid.UUID] = Field(default_factory=list, max_length=50)
     #: The identifier domain token, e.g. ``LOAN`` (``FR-EXT-004``).
     domain: str | None = Field(default=None, max_length=16)
     version_ids: list[uuid.UUID] = Field(default_factory=list, max_length=50)
 
     @model_validator(mode="after")
     def _one_scope(self) -> AnalysisRunIn:
-        if bool(self.source_ids) == bool(self.version_ids):
-            raise ValueError("give either source_ids (extraction) or version_ids (classification)")
-        if self.source_ids and not self.domain:
+        extracting = bool(self.source_ids or self.session_ids)
+        if extracting == bool(self.version_ids):
+            raise ValueError(
+                "give source_ids and/or session_ids (extraction), or version_ids (classification)"
+            )
+        if extracting and not self.domain:
             raise ValueError("an extraction run needs the identifier domain, e.g. LOAN")
         return self
 

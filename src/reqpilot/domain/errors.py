@@ -205,3 +205,18 @@ class GoldSetIntegrityError(EvaluationError):
 
     The evaluation refuses to run rather than score against a modified set.
     """
+
+
+# --- elicitation and clarification (P4) ------------------------------------------
+
+
+class ElicitationError(ReqPilotError):
+    """An interview operation refused in the session's current state."""
+
+
+class InterviewStalledError(ElicitationError):
+    """A session step failed safely; the session is STALLED until an analyst retries."""
+
+
+class ClarificationError(ReqPilotError):
+    """A clarification operation refused in its current state (FR-CLR-001..004)."""

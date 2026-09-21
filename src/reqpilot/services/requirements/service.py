@@ -27,6 +27,7 @@ from reqpilot.domain.enums import (
     ActorKind,
     ApprovalTaskStatus,
     AuditEventType,
+    ClarificationStatus,
     Gate,
     RequirementCategory,
     RequirementPriority,
@@ -44,6 +45,7 @@ from reqpilot.domain.requirement_ids import (
 )
 from reqpilot.domain.versioning import compute_version_hash
 from reqpilot.repositories.approval import ApprovalTaskRepository
+from reqpilot.repositories.elicitation import ClarificationRepository, QualityFindingRepository
 from reqpilot.repositories.extraction import ClassificationRepository
 from reqpilot.repositories.requirements import (
     RequirementRepository,
@@ -90,10 +92,17 @@ class RequirementContent:
 
 
 #: The only targets a non-human actor may move a version to: the transitions the
-#: extraction and classification nodes own (architecture H.3, C.3). Everything
-#: from analysis to approval is a human's, or a later phase's, to trigger.
+#: extraction and classification nodes own (architecture H.3, C.3), and - from P4
+#: - ``CLARIFICATION_REQUIRED -> CLARIFIED``, whose guard requires a recorded human
+#: answer to a clarification (H.3). Everything else from analysis to approval is
+#: a human's, or a later phase's, to trigger.
 AUTOMATED_TRANSITION_TARGETS: frozenset[RequirementState] = frozenset(
-    {RequirementState.EXTRACTED, RequirementState.CLASSIFIED, RequirementState.INVALID}
+    {
+        RequirementState.EXTRACTED,
+        RequirementState.CLASSIFIED,
+        RequirementState.CLARIFIED,
+        RequirementState.INVALID,
+    }
 )
 
 
@@ -107,6 +116,8 @@ class RequirementService:
         self._versions = RequirementVersionRepository(session, actor)
         self._tasks = ApprovalTaskRepository(session, actor)
         self._classifications = ClassificationRepository(session, actor)
+        self._findings = QualityFindingRepository(session, actor)
+        self._clarifications = ClarificationRepository(session, actor)
         self._audit = AuditService(session)
 
     # -- creation ---------------------------------------------------------
@@ -294,12 +305,21 @@ class RequirementService:
         # Labels: the current classification revision (P3, FR-CLS-001), or the
         # single manually set category a P1 version may carry.
         labels = len(self._classifications.current_categories(project_id, version.id))
+        # P4: open quality findings block VALIDATED (H.3), and a clarification of
+        # this version must have a recorded answer before it can be CLARIFIED.
+        open_findings = self._findings.open_count(project_id, version.id)
+        answered = any(
+            c.status is ClarificationStatus.ANSWERED and c.answer_utterance_id is not None
+            for c in self._clarifications.for_version(project_id, version.id)
+        )
         return TransitionContext(
             source_ref_count=len(version.source_refs or []),
             label_count=labels or (1 if version.category is not None else 0),
             has_current_validation=version.state is RequirementState.VALIDATED,
             blocking_gate_task_count=len(blocking),
             is_baselined=version.state is RequirementState.BASELINED,
+            open_defect_count=open_findings,
+            clarification_answer_present=answered,
         )
 
     def withdraw(

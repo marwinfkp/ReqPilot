@@ -7,18 +7,25 @@ approval and baseline tables. The knowledge-base phase adds the knowledge corpus
 per-project ``source_allowlist`` and ``evidence``. The extraction phase adds the
 project corpus (``source_document``, ``source_chunk``), extraction proposals,
 classification, acceptance criteria, the review queue, and prompt and model
-provenance.
+provenance. The elicitation phase adds stakeholders, interview sessions,
+utterances, quality findings and clarifications.
 
-Tables belonging to later roadmap phases - utterances, glossary, quality
-findings, conflicts, compliance, risk, SDLC, artefacts, evaluation - are still
-deliberately absent. A test asserts that the migrations create nothing beyond
-the tables named here.
+Tables belonging to later roadmap phases - glossary, conflicts, compliance,
+risk, SDLC, artefacts, evaluation - are still deliberately absent. A test
+asserts that the migrations create nothing beyond the tables named here.
 """
 
 from reqpilot.domain.models.approval import ApprovalDecision, ApprovalTask
 from reqpilot.domain.models.audit import AuditEvent
 from reqpilot.domain.models.base import Base
 from reqpilot.domain.models.baseline import Baseline, BaselineMember
+from reqpilot.domain.models.elicitation import (
+    Clarification,
+    InterviewSession,
+    QualityFinding,
+    Stakeholder,
+    Utterance,
+)
 from reqpilot.domain.models.extraction import (
     AcceptanceCriterion,
     ExtractionCandidate,
@@ -50,10 +57,12 @@ __all__ = [
     "Base",
     "Baseline",
     "BaselineMember",
+    "Clarification",
     "Control",
     "Evidence",
     "ExtractionCandidate",
     "GraphRun",
+    "InterviewSession",
     "KnowledgeChunk",
     "KnowledgeItem",
     "ModelVersion",
@@ -61,6 +70,7 @@ __all__ = [
     "Project",
     "ProjectMember",
     "PromptTemplate",
+    "QualityFinding",
     "Requirement",
     "RequirementClassification",
     "RequirementVersion",
@@ -68,5 +78,7 @@ __all__ = [
     "SourceAllowlist",
     "SourceChunk",
     "SourceDocument",
+    "Stakeholder",
     "User",
+    "Utterance",
 ]

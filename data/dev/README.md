@@ -33,6 +33,11 @@ implementation they are meant to judge. A CI check enforces the direction.
   priority, a duplicated need, a "should probably", and an injected instruction.
   It is **not** gold transcript #1 and is never used to compute E1 - development
   data is for building, not measuring.
+- [`personas/`](personas/) (P4) - a scripted, **fictional** stakeholder
+  (*Dana Reyes*, product owner at the fictional *Harbourside Lending*) with
+  clear, vague and incomplete answers per interview topic, an injected
+  instruction, and a clarification. It stands in for the human answering in
+  the P4 tests and demonstration; it is not a model and not a benchmark.
 
 ## Roadmap note
 

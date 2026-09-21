@@ -112,6 +112,16 @@ EXTRACTION_TABLES = {
     "model_version",
 }
 
+#: Tables the elicitation-and-clarification phase adds (architecture G.3, G.4):
+#: stakeholders, interview sessions, utterances, quality findings, clarifications.
+ELICITATION_TABLES = {
+    "stakeholder",
+    "interview_session",
+    "utterance",
+    "quality_finding",
+    "clarification",
+}
+
 
 def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None:
     """The schema must not run ahead of the roadmap.
@@ -125,6 +135,7 @@ def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None
         | REQUIREMENTS_REPOSITORY_TABLES
         | KNOWLEDGE_BASE_TABLES
         | EXTRACTION_TABLES
+        | ELICITATION_TABLES
     )
     unexpected = present - permitted
     assert not unexpected, f"migrations created out-of-scope tables: {sorted(unexpected)}"
@@ -212,6 +223,32 @@ def test_downgrading_p3_removes_exactly_the_extraction_tables(
         agent_run_columns = {c["name"] for c in inspector.get_columns("agent_run")}
         assert not {"attempts", "error_code", "review_signal", "cost_estimate", "finished_at"} & (
             agent_run_columns
+        )
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
+    command.upgrade(config, "head")
+
+
+def test_downgrading_p4_removes_exactly_the_elicitation_tables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rolling P4 back leaves P0-P3 intact."""
+    url = sqlite_url(tmp_path / "p4-down.db")
+    monkeypatch.setenv("DATABASE_URL", url)
+    get_settings.cache_clear()
+    config = alembic_config(url)
+    command.upgrade(config, "head")
+    command.downgrade(config, "0005_p3_extraction")
+    engine = create_engine(url, future=True)
+    try:
+        present = set(inspect(engine).get_table_names())
+        assert not present & ELICITATION_TABLES, "downgrade left P4 tables behind"
+        assert present >= (
+            FOUNDATION_TABLES
+            | REQUIREMENTS_REPOSITORY_TABLES
+            | KNOWLEDGE_BASE_TABLES
+            | EXTRACTION_TABLES
         )
     finally:
         engine.dispose()

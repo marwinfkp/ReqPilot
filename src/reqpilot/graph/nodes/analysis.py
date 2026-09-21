@@ -24,6 +24,7 @@ whose output a later guarantee needs).
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import uuid
 from collections.abc import Sequence
@@ -39,14 +40,18 @@ from reqpilot.domain.enums import (
     AgentRole,
     AgentRunStatus,
     AuditEventType,
+    ClarificationStatus,
     DataSensitivity,
+    InterviewSessionKind,
     MaskingStatus,
     ReviewReason,
+    SpeakerKind,
 )
 from reqpilot.domain.errors import AuthorizationError, EgressRefusedError, ReqPilotError
 from reqpilot.domain.ids import ProjectId
 from reqpilot.domain.lifecycle import RequirementState
 from reqpilot.domain.models.base import utc_now
+from reqpilot.domain.models.elicitation import Clarification
 from reqpilot.domain.models.extraction import SourceChunk
 from reqpilot.domain.models.requirements import RequirementVersion
 from reqpilot.domain.policy import Actor
@@ -55,11 +60,18 @@ from reqpilot.domain.requirement_ids import RequirementKind
 from reqpilot.graph.state import AnalysisState, NodeError
 from reqpilot.llm.gateway import LLMGateway
 from reqpilot.llm.types import StructuredResult
+from reqpilot.repositories.elicitation import (
+    ClarificationRepository,
+    InterviewSessionRepository,
+    StakeholderRepository,
+    UtteranceRepository,
+)
 from reqpilot.repositories.extraction import CandidateRepository, SourceDocumentRepository
 from reqpilot.repositories.requirements import RequirementVersionRepository
 from reqpilot.rules.extraction import ExtractionRules
 from reqpilot.services.audit import AuditService
 from reqpilot.services.classification import ClassificationService
+from reqpilot.services.elicitation import source_facts
 from reqpilot.services.extraction import ExtractionService, RunLog
 from reqpilot.services.requirements import RequirementService
 from reqpilot.services.review import ReviewQueue
@@ -106,12 +118,27 @@ class AnalysisNodes:
         ctx.log.node_started(node)
         started = utc_now()
         try:
-            if state.get("scope_source_ids"):
+            if state.get("clarification_id"):
+                clarification = self._clarification(state)
+                if clarification.status is not ClarificationStatus.ANSWERED:
+                    raise ReqPilotError("only an answered clarification is re-analysed")
+                count = {"clarification": 1}
+            elif state.get("scope_source_ids") or state.get("scope_session_ids"):
                 sources = SourceDocumentRepository(ctx.session, ctx.actor)
-                for raw in state["scope_source_ids"]:
+                for raw in state.get("scope_source_ids", []):
                     if sources.get(ctx.project_id, uuid.UUID(raw)) is None:
                         raise ReqPilotError("a source in the scope is not in this project")
-                count = {"sources": len(state["scope_source_ids"])}
+                sessions = InterviewSessionRepository(ctx.session, ctx.actor)
+                for raw in state.get("scope_session_ids", []):
+                    row = sessions.get(ctx.project_id, uuid.UUID(raw))
+                    if row is None or row.kind is not InterviewSessionKind.INTERVIEW:
+                        raise ReqPilotError(
+                            "an interview session in the scope is not in this project"
+                        )
+                count = {
+                    "sources": len(state.get("scope_source_ids", [])),
+                    "sessions": len(state.get("scope_session_ids", [])),
+                }
             else:
                 versions = RequirementVersionRepository(ctx.session, ctx.actor)
                 for raw in state.get("scope_version_ids", []):
@@ -136,14 +163,25 @@ class AnalysisNodes:
     def extract_requirements(self, state: AnalysisState) -> dict[str, Any]:
         node, ctx = "extract_requirements", self.ctx
         ctx.log.node_started(node)
-        segments = self._segments(state["scope_source_ids"])
+        segments = self._scope_segments(state)
+        if not segments:
+            return self._fail(
+                node,
+                AgentRole.REQUIREMENT_EXTRACTION,
+                utc_now(),
+                "empty_scope",
+                ReqPilotError("the scope contains no segment to extract from"),
+            )
         role = RequirementExtractionRole(ctx.gateway, ctx.rules)
         extraction = ExtractionService(ctx.session, ctx.actor, ctx.rules)
         size = ctx.rules.max_segments_per_call
         agent_run_ids: list[str] = []
         ordinal = 0
         for window, start in enumerate(range(0, len(segments), size), start=1):
-            views = self._views(segments[start : start + size])
+            views = {
+                f"S{index}": dataclasses.replace(segment, segment_id=f"S{index}")
+                for index, segment in enumerate(segments[start : start + size], start=1)
+            }
             started = utc_now()
             try:
                 result = role.propose(list(views.values()), domain=state["domain"])
@@ -265,6 +303,91 @@ class AnalysisNodes:
             "accepted": outcome.accepted,
             "merged": outcome.merged,
             "rejected": outcome.rejected,
+        }
+
+    # ------------------------------------------------------------------
+    # 4b. persist_revision (deterministic, P4: clarification re-analysis)
+    # ------------------------------------------------------------------
+    def persist_revision(self, state: AnalysisState) -> dict[str, Any]:
+        """Revise the clarified requirement - a new immutable version, or none (FR-CLR-003).
+
+        The clarified version moves ``CLARIFICATION_REQUIRED -> CLARIFIED`` (its
+        guard: a recorded answer, H.3) once no open clarification is left on it.
+        Re-extraction then either confirms the statement (no version is created)
+        or yields a new version of the *same* requirement, which starts its own
+        lifecycle and inherits no approval (P1 ``create_version``).
+        """
+        node, ctx = "persist_revision", self.ctx
+        ctx.log.node_started(node)
+        started = utc_now()
+        if ctx.decision is None:  # pragma: no cover - the graph's edges prevent it
+            raise RuntimeError("persist_revision reached without a validation decision")
+        clarification = self._clarification(state)
+        predecessor = RequirementVersionRepository(ctx.session, ctx.actor).get(
+            ctx.project_id, clarification.requirement_version_id
+        )
+        if predecessor is None:  # pragma: no cover - a foreign key
+            raise RuntimeError("the clarified version is missing")
+        requirements = RequirementService(ctx.session, ctx.actor)
+        still_open = [
+            c
+            for c in ClarificationRepository(ctx.session, ctx.actor).for_version(
+                ctx.project_id, predecessor.id
+            )
+            if c.status is ClarificationStatus.OPEN
+        ]
+        if predecessor.state is RequirementState.CLARIFICATION_REQUIRED and not still_open:
+            requirements.transition(
+                project_id=ctx.project_id,
+                version_id=predecessor.id,
+                target=RequirementState.CLARIFIED,
+            )
+        answer = UtteranceRepository(ctx.session, ctx.actor).get(
+            ctx.project_id,
+            clarification.answer_utterance_id,  # type: ignore[arg-type]
+        )
+        provenance = []
+        if answer is not None:
+            provenance.append(
+                {
+                    "kind": "utterance",
+                    "ref": str(answer.id),
+                    "span": [0, len(answer.text)],
+                    "session": str(answer.session_id),
+                    "quote": answer.text,
+                    "speaker": self._speaker_label(answer),
+                    "clarification": str(clarification.id),
+                }
+            )
+        outcome = ExtractionService(ctx.session, ctx.actor, ctx.rules).apply_revision(
+            project_id=ctx.project_id,
+            graph_run_id=ctx.log.run.id,
+            decision=ctx.decision,
+            requirement_id=predecessor.requirement_id,
+            predecessor=predecessor,
+            provenance_refs=provenance,
+            change_reason=(
+                f"clarification {clarification.id} answered "
+                f"(finding {clarification.quality_finding_id})"
+            ),
+        )
+        ctx.decision = None
+        counts = {"outcome": outcome.status, "review_items": len(outcome.review_item_ids)}
+        self._deterministic_run(
+            node,
+            AgentRole.COORDINATOR,
+            started,
+            counts,
+            output_refs={"version_id": str(outcome.version_id) if outcome.version_id else None},
+        )
+        ctx.log.node_completed(node, **counts)
+        created = outcome.status == "new_version" and outcome.version_id is not None
+        return {
+            "current_node": node,
+            "revision_status": outcome.status,
+            "requirement_version_ids": [str(outcome.version_id)] if created else [],
+            "review_item_ids": [str(i) for i in outcome.review_item_ids],
+            "accepted": 1 if created else 0,
         }
 
     # ------------------------------------------------------------------
@@ -424,23 +547,123 @@ class AnalysisNodes:
         return views
 
     def _source_facts(self, version: RequirementVersion) -> tuple[bool, bool]:
-        """Whether every source of a version was masked, and whether all are synthetic."""
-        document_ids = sorted(
-            {
-                uuid.UUID(str(ref["document"]))
-                for ref in version.source_refs or []
-                if isinstance(ref, dict) and ref.get("document")
-            }
+        """Whether every source of a version was masked, and whether all are synthetic.
+
+        Sources are document chunks and, from P4, interview utterances.
+        """
+        return source_facts(
+            self.ctx.session, self.ctx.actor, self.ctx.project_id, version.source_refs or []
         )
-        documents = SourceDocumentRepository(self.ctx.session, self.ctx.actor).documents_by_id(
-            self.ctx.project_id, document_ids
+
+    # -- scope segments (P3 documents; P4 interviews and clarifications) --------
+    def _scope_segments(self, state: AnalysisState) -> list[SegmentView]:
+        if state.get("clarification_id"):
+            return self._clarification_segments(self._clarification(state))
+        segments = self._views_without_ids(self._segments(state.get("scope_source_ids", [])))
+        for raw in state.get("scope_session_ids", []):
+            segments.extend(self._session_segments(uuid.UUID(raw)))
+        return segments
+
+    def _views_without_ids(self, chunks: Sequence[SourceChunk]) -> list[SegmentView]:
+        return list(self._views(chunks).values())
+
+    def _session_segments(self, session_id: uuid.UUID) -> list[SegmentView]:
+        """One segment per stakeholder answer; the question it replies to is context."""
+        ctx = self.ctx
+        row = InterviewSessionRepository(ctx.session, ctx.actor).get(ctx.project_id, session_id)
+        if row is None:  # pragma: no cover - load_scope checked it
+            return []
+        utterances = UtteranceRepository(ctx.session, ctx.actor).for_session(ctx.project_id, row.id)
+        by_id = {u.id: u for u in utterances}
+        synthetic = row.sensitivity is DataSensitivity.SYNTHETIC
+        return [
+            self._utterance_view(
+                u, by_id.get(u.replies_to_id) if u.replies_to_id else None, synthetic
+            )
+            for u in utterances
+            if u.speaker_kind is SpeakerKind.STAKEHOLDER
+        ]
+
+    def _clarification_segments(self, clarification: Clarification) -> list[SegmentView]:
+        """The clarified requirement's own sources, plus the clarification answer."""
+        ctx = self.ctx
+        version = RequirementVersionRepository(ctx.session, ctx.actor).get(
+            ctx.project_id, clarification.requirement_version_id
         )
-        if not documents or len(documents) != len(document_ids):
-            return False, False
-        return (
-            all(d.masking_status is MaskingStatus.MASKED for d in documents.values()),
-            all(d.sensitivity is DataSensitivity.SYNTHETIC for d in documents.values()),
+        if version is None:  # pragma: no cover - a foreign key
+            return []
+        segments: list[SegmentView] = []
+        seen: set[uuid.UUID] = set()
+        chunk_ids = [
+            uuid.UUID(str(r["ref"]))
+            for r in version.source_refs or []
+            if isinstance(r, dict) and r.get("kind") == "source_chunk"
+        ]
+        for chunk_id in chunk_ids:
+            chunk = ctx.session.get(SourceChunk, chunk_id)
+            if chunk is not None and chunk.project_id == ctx.project_id and chunk.id not in seen:
+                seen.add(chunk.id)
+                segments.extend(self._views_without_ids([chunk]))
+        utterances = UtteranceRepository(ctx.session, ctx.actor)
+        sessions = InterviewSessionRepository(ctx.session, ctx.actor)
+        cited = [
+            uuid.UUID(str(r["ref"]))
+            for r in version.source_refs or []
+            if isinstance(r, dict) and r.get("kind") == "utterance"
+        ]
+        for utterance_id in [*cited, clarification.answer_utterance_id]:
+            if utterance_id is None or utterance_id in seen:
+                continue
+            utterance = utterances.get(ctx.project_id, utterance_id)
+            if utterance is None:
+                continue
+            seen.add(utterance.id)
+            row = sessions.get(ctx.project_id, utterance.session_id)
+            question = (
+                utterances.get(ctx.project_id, utterance.replies_to_id)
+                if utterance.replies_to_id
+                else None
+            )
+            segments.append(
+                self._utterance_view(
+                    utterance,
+                    question,
+                    row is not None and row.sensitivity is DataSensitivity.SYNTHETIC,
+                )
+            )
+        return segments
+
+    def _utterance_view(self, utterance: Any, question: Any, synthetic: bool) -> SegmentView:
+        return SegmentView(
+            segment_id="",
+            chunk_id=utterance.id,
+            document_id=utterance.session_id,
+            char_start=0,
+            text=utterance.text,
+            speaker=self._speaker_label(utterance),
+            masked=False,
+            synthetic=synthetic,
+            source_kind="utterance",
+            context=" ".join(question.text.split()) if question is not None else None,
         )
+
+    def _speaker_label(self, utterance: Any) -> str | None:
+        if utterance.speaker_ref is None:
+            return None
+        stakeholder = StakeholderRepository(self.ctx.session, self.ctx.actor).get(
+            self.ctx.project_id, utterance.speaker_ref
+        )
+        if stakeholder is None:  # pragma: no cover - a foreign key
+            return None
+        return f"{stakeholder.name} ({stakeholder.stakeholder_role})"
+
+    def _clarification(self, state: AnalysisState) -> Clarification:
+        clarification = ClarificationRepository(self.ctx.session, self.ctx.actor).get(
+            self.ctx.project_id, uuid.UUID(state["clarification_id"])
+        )
+        if clarification is None:
+            raise ReqPilotError("the clarification is not in this project")
+        return clarification
 
     def _llm_run(
         self,

@@ -72,6 +72,17 @@ _INACTIVE = frozenset(
 _ID_LOCK_NAMESPACE = 5_210_403
 
 
+@dataclass(frozen=True)
+class RevisionOutcome:
+    """What re-analysing one requirement after a clarification produced (FR-CLR-003)."""
+
+    #: ``new_version``, ``no_change`` or ``failed`` (see ``ReanalysisStatus``).
+    status: str
+    version_id: uuid.UUID | None = None
+    reason: str | None = None
+    review_item_ids: tuple[uuid.UUID, ...] = ()
+
+
 @dataclass
 class PersistOutcome:
     """What one extraction run persisted."""
@@ -293,6 +304,140 @@ class ExtractionService:
         return outcome
 
     # -- internals ---------------------------------------------------------
+    # -- clarification re-analysis (P4) ---------------------------------------
+    def apply_revision(
+        self,
+        *,
+        project_id: ProjectId,
+        graph_run_id: uuid.UUID,
+        decision: ExtractionDecision,
+        requirement_id: uuid.UUID,
+        predecessor: RequirementVersion,
+        provenance_refs: Sequence[dict],
+        change_reason: str,
+    ) -> RevisionOutcome:
+        """Turn a re-extraction of one clarified requirement into its next version.
+
+        The scope was that requirement's own sources plus the clarification
+        answer, so the proposal that revises it is the one closest to its current
+        statement (token-set Jaccard; ties to the earlier proposal). Any other
+        valid proposal is recorded and not persisted: re-analysis revises the
+        requirement it was asked about and creates no new requirement.
+
+        * Same statement (up to case and punctuation) -> ``no_change``: no
+          version is created and the predecessor is untouched.
+        * Otherwise -> a **new immutable version** of the same requirement, with
+          the predecessor's sources, the new spans and the clarification answer
+          as provenance (``FR-CLR-003``). The predecessor keeps its content and
+          state; approval is never inherited (P1 ``create_version``).
+        * Nothing valid -> ``failed``; nothing is created.
+        """
+        candidates = {c.id: c for c in self._candidates.list_for_run(project_id, graph_run_id)}
+        for rejected in decision.rejected:
+            self._decide(
+                candidates[rejected.candidate_id],
+                CandidateStatus.REJECTED,
+                list(rejected.findings),
+                spans=[s.as_source_ref() for s in rejected.spans],
+            )
+        accepted = sorted(decision.accepted, key=lambda c: c.ordinal)
+        if not accepted:
+            return RevisionOutcome("failed", reason="no re-extracted proposal survived validation")
+
+        chosen = max(
+            accepted, key=lambda c: (token_jaccard(c.statement, predecessor.statement), -c.ordinal)
+        )
+        for other in accepted:
+            if other.candidate_id == chosen.candidate_id:
+                continue
+            self._decide(
+                candidates[other.candidate_id],
+                CandidateStatus.REJECTED,
+                [
+                    *other.findings,
+                    Finding(
+                        FindingCode.REVISION_NOT_SELECTED,
+                        "clarification re-analysis revises one requirement; this proposal was "
+                        "not the closest to it and was not persisted",
+                    ),
+                ],
+                spans=[s.as_source_ref() for s in other.spans],
+            )
+            for merged_id in other.merged_candidate_ids:
+                self._decide(
+                    candidates[merged_id],
+                    CandidateStatus.MERGED,
+                    [Finding(FindingCode.EXACT_DUPLICATE_MERGED, "merged before selection")],
+                    merged_into_id=other.candidate_id,
+                )
+        for merged_id in chosen.merged_candidate_ids:
+            self._decide(
+                candidates[merged_id],
+                CandidateStatus.MERGED,
+                [Finding(FindingCode.EXACT_DUPLICATE_MERGED, "merged into the revision")],
+                merged_into_id=chosen.candidate_id,
+            )
+
+        row = candidates[chosen.candidate_id]
+        spans = [s.as_source_ref() for s in chosen.spans]
+        if is_exact_duplicate(chosen.statement, predecessor.statement):
+            self._decide(
+                row,
+                CandidateStatus.ACCEPTED,
+                [
+                    *chosen.findings,
+                    Finding(
+                        FindingCode.CONFIRMS_CURRENT_VERSION,
+                        "the clarified statement is the current statement; no version created",
+                    ),
+                ],
+                spans=spans,
+                original_text=chosen.original_text,
+                requirement_version_id=predecessor.id,
+            )
+            return RevisionOutcome("no_change", version_id=predecessor.id)
+
+        refs: list[dict] = []
+        seen: set[tuple[str, str, tuple[int, ...]]] = set()
+        for ref in [*(predecessor.source_refs or []), *spans, *provenance_refs]:
+            key = (str(ref.get("kind")), str(ref.get("ref")), tuple(ref.get("span") or ()))
+            if key not in seen:
+                seen.add(key)
+                refs.append(dict(ref))
+        service = RequirementService(self._session, self._actor)
+        version = service.create_version(
+            project_id=project_id,
+            requirement_id=requirement_id,
+            content=RequirementContent(
+                statement=chosen.statement,
+                original_text=chosen.original_text,
+                priority=chosen.priority,
+                justification=chosen.justification,
+                dependencies=tuple(predecessor.dependencies or ()),
+                assumptions=chosen.assumptions,
+                source_refs=tuple(refs),
+                review_signal=chosen.review_signal,
+            ),
+            change_reason=change_reason,
+        )
+        self._store_criteria(project_id, version, chosen, row.agent_run_id)
+        service.transition(
+            project_id=project_id, version_id=version.id, target=RequirementState.EXTRACTED
+        )
+        self._decide(
+            row,
+            CandidateStatus.ACCEPTED,
+            list(chosen.findings),
+            spans=spans,
+            original_text=chosen.original_text,
+            requirement_version_id=version.id,
+        )
+        outcome = PersistOutcome()
+        self._raise_for_accepted(project_id, graph_run_id, chosen, version, row, outcome)
+        return RevisionOutcome(
+            "new_version", version_id=version.id, review_item_ids=tuple(outcome.review_item_ids)
+        )
+
     def _decide(
         self,
         row: ExtractionCandidate,

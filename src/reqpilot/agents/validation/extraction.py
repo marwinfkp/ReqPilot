@@ -104,6 +104,7 @@ def _resolve(
         document_id=segment.document_id,
         quote=quote,
         speaker=segment.speaker,
+        source_kind=segment.source_kind,
     )
     if span is None:
         return None, Finding(

@@ -15,7 +15,7 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 
 ---
 
-## Current status — roadmap phase P3 (Extraction & classification)
+## Current status — roadmap phase P4 (Elicitation & clarification)
 
 | Stage | State |
 |---|---|
@@ -24,7 +24,8 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 | P0 Foundations — `docs/03-p0-foundations.md` | Complete |
 | P1 Requirements repository — `docs/04-p1-requirements-repository.md` | Complete |
 | P2 Knowledge base & RAG — `docs/05-p2-knowledge-base-rag.md` | P2 IMPLEMENTATION COMPLETE — ET-06 PENDING: the implementation checklist is complete; the roadmap exit waits on ET-06, which needs the team-curated corpus and 20-question probe and has not been measured |
-| **P3 Extraction & classification — `docs/06-p3-extraction-classification.md`** | **P3 COMPLETE — ROADMAP EXIT PASSED**: E1 = 0.967 (P = R = F1) with OpenAI `gpt-5.6-luna` on **E1-SYNTHETIC-v1**, a synthetic reference benchmark reviewed by the sole project author. It is not an independently annotated gold standard and not evidence of real-world accuracy. The two author-approved deviations are recorded in docs/06 §20 |
+| P3 Extraction & classification — `docs/06-p3-extraction-classification.md` | P3 COMPLETE — ROADMAP EXIT PASSED: E1 = 0.967 (P = R = F1) with OpenAI `gpt-5.6-luna` on **E1-SYNTHETIC-v1**, a synthetic reference benchmark reviewed by the sole project author. It is not an independently annotated gold standard and not evidence of real-world accuracy. The two author-approved deviations are recorded in docs/06 §20 |
+| **P4 Elicitation & clarification — `docs/07-p4-elicitation-clarification.md`** | **P4 COMPLETE — ROADMAP EXIT PASSED**: a scripted synthetic persona interview (LangGraph `elicitation_graph` with a real interrupt and PostgreSQL checkpointing) yields a usable requirement set through the P3 path; follow-ups trigger on seeded vague answers within a deterministic bound; answering a clarification creates a new immutable requirement version, never auto-approved. P5 (quality engine) is not started |
 
 P0 built the foundation. P1 built the deterministic requirements repository:
 immutable requirement versions, a guarded lifecycle, G1 human approval, and
@@ -32,6 +33,13 @@ baselines. P2 built the grounding layer: a typed, versioned knowledge base
 (C.1 taxonomy), structure-aware chunking with exact offsets, local embeddings,
 PostgreSQL + pgvector hybrid retrieval with the source allowlist enforced
 **inside the query**, immutable evidence, and exact citation resolution.
+
+P4 added interactive elicitation: role-specific interview templates over the
+21 §7 topics, a deterministic coverage tracker and follow-up bound, append-only
+utterances, pause/resume on a durable checkpoint, and the clarification loop -
+a targeted question bound to a requirement and a finding, whose answer
+re-runs P3 extraction and creates a new immutable version for human review.
+The model only proposes questions and assessments; code decides everything else.
 
 P3 added the first AI capability, in batch mode: one LLM gateway (versioned
 prompts, trust-class fencing, egress guards, one bounded repair, record/replay),

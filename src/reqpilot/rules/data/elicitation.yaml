@@ -1,0 +1,158 @@
+# Elicitation and clarification ruleset (roadmap phase P4; architecture C.4,
+# E #2, E #4; FR-ELI-001..007, FR-CLR-001..004).
+#
+# Every value here bounds or judges what a model proposes during an interview
+# or a clarification, so it is versioned data rather than code or prompt text.
+# The follow-up bound in particular is enforced by the deterministic coverage
+# tracker and router (C.4: "followups_this_topic < max_followups"), never by an
+# instruction to the model. These are implementation parameters, not research
+# targets.
+
+name: elicitation
+version: "1.0.0"
+description: >
+  Interview bounds, question and clarification validation limits, and the
+  approved topic taxonomy (problem statement section 7) that the role-specific
+  interview templates select from.
+
+rules:
+  interview:
+    # FR-ELI-003: follow-ups per topic before the topic is recorded as
+    # unresolved and the interview moves on. Deterministic state, not a prompt.
+    max_followups_per_topic: 2
+    # Recent turns (questions and answers) the interviewer role sees.
+    recent_turns_in_prompt: 6
+    max_question_chars: 600
+    min_question_words: 4
+    max_answer_chars: 4000
+    # Proposals that fail deterministic validation are regenerated at most this
+    # many times in total per step; then the session stalls for an analyst.
+    max_question_attempts: 2
+
+  clarification:
+    max_question_chars: 600
+    # FR-CLR-001: targeted, not generic. A shorter question cannot name what is
+    # missing; the listed phrasings are refused outright.
+    min_question_words: 6
+    max_answer_shape_chars: 300
+    max_question_attempts: 2
+    max_answer_chars: 4000
+    generic_questions:
+      - "can you clarify this"
+      - "can you clarify"
+      - "could you clarify this"
+      - "could you clarify"
+      - "please clarify"
+      - "please clarify this"
+      - "can you explain this"
+      - "could you provide more detail"
+      - "could you provide more details"
+
+  # Phrases no proposed question may contain: an interviewer or clarification
+  # question asks; it never claims an approval, a baseline or a compliance
+  # determination (architecture E.1: agents write proposals only).
+  authority_phrases:
+    - "has been approved"
+    - "have been approved"
+    - "is approved"
+    - "are approved"
+    - "i approve"
+    - "we approve"
+    - "has been baselined"
+    - "is baselined"
+    - "is compliant"
+    - "are compliant"
+    - "is non-compliant"
+    - "is not compliant"
+    - "complies with"
+    - "risk is low"
+    - "risk is high"
+
+  # The approved topic checklist (problem statement section 7; FR-ELI-002).
+  # `keywords` are what the deterministic relevance check looks for in a
+  # proposed question about the topic (lower-case substrings).
+  topics:
+    - id: business_objectives
+      title: Business objectives
+      description: What the organisation wants to achieve and how success is measured.
+      keywords: [objective, goal, business, outcome, value, success, benefit, aim, purpose, achieve, measure]
+    - id: users_and_roles
+      title: Users and roles
+      description: Who uses the system, in which roles, and what each role does.
+      keywords: [user, role, who, customer, staff, applicant, persona, team, officer, people]
+    - id: current_workflow
+      title: Existing workflow
+      description: How the work is done today, step by step, and where it breaks down.
+      keywords: [workflow, process, today, currently, current, step, manual, handle, now]
+    - id: inputs
+      title: Inputs
+      description: The information, documents and data the system receives.
+      keywords: [input, information, data, document, provide, enter, capture, submit, form, field, upload]
+    - id: outputs
+      title: Outputs
+      description: What the system produces - results, documents, notifications, decisions.
+      keywords: [output, result, report, produce, receive, generate, letter, notif, decision, offer, send]
+    - id: business_rules
+      title: Business rules
+      description: Rules, policies and conditions the system must apply.
+      keywords: [rule, policy, criteria, condition, eligib, calculat, threshold, requirement, must]
+    - id: exceptional_conditions
+      title: Exceptional conditions
+      description: Errors, unusual cases and what must happen when things go wrong.
+      keywords: [exception, error, fail, unusual, edge, wrong, missing, reject, problem, happen, incomplete]
+    - id: data_collection
+      title: Data collection
+      description: Which personal and business data is collected, from whom, and why.
+      keywords: [data, collect, personal, information, capture, consent, gather, field]
+    - id: data_retention
+      title: Data retention
+      description: How long data is kept, where, and how it is deleted or archived.
+      keywords: [retain, retention, keep, delet, archive, how long, period, purge, store]
+    - id: authentication
+      title: Authentication
+      description: How users prove who they are.
+      keywords: [log in, login, sign in, sign-in, authenticat, identity, password, credential, verif, factor, passcode]
+    - id: authorization
+      title: Authorisation
+      description: Who may see or do what, and how access is restricted.
+      keywords: [permission, access, authoriz, authoris, allowed, role, who can, restrict, see]
+    - id: transaction_limits
+      title: Financial transaction limits
+      description: Monetary limits, thresholds and the rules around them.
+      keywords: [limit, amount, maximum, minimum, cap, threshold, value, transaction, size, money]
+    - id: audit_reporting
+      title: Audit and reporting
+      description: What must be recorded, reported, monitored or evidenced, and to whom.
+      keywords: [audit, report, record, log, trail, history, monitor, track, evidence]
+    - id: performance
+      title: Performance
+      description: Speed, capacity and volume expectations.
+      keywords: [fast, speed, response, time, second, performance, load, volume, concurrent, slow, quick, capacity]
+    - id: availability
+      title: Availability
+      description: When the system must be available and how it recovers from failure.
+      keywords: [availab, uptime, downtime, outage, maintenance, recover, reliab, backup, offline, hours]
+    - id: integrations
+      title: Integrations
+      description: The other systems this one exchanges data with.
+      keywords: [integrat, system, interface, api, connect, bureau, banking, external, third]
+    - id: legacy_systems
+      title: Legacy systems
+      description: Existing systems that are replaced, retained or migrated from.
+      keywords: [legacy, existing system, old system, current system, migrat, replace, retire, system]
+    - id: regulatory_constraints
+      title: Regulatory constraints
+      description: Laws, regulations and obligations the system must respect (identified, not interpreted).
+      keywords: [regulat, law, legal, compliance, comply, obligation, disclos, kyc, rule]
+    - id: security_constraints
+      title: Security constraints
+      description: Protection of data and the system against misuse, fraud and attack.
+      keywords: [secur, protect, encrypt, threat, attack, fraud, breach, confidential, misuse]
+    - id: project_schedule
+      title: Project schedule
+      description: Deadlines, milestones and phasing.
+      keywords: [schedule, deadline, date, when, timeline, launch, go-live, milestone, phase]
+    - id: project_budget
+      title: Project budget
+      description: Budget, cost constraints and funding.
+      keywords: [budget, cost, fund, spend, money, afford, price, invest]

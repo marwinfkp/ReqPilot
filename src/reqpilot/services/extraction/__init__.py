@@ -13,6 +13,7 @@ from reqpilot.services.extraction.runs import (
     RunLog,
     RunRecorder,
     pipeline_actor,
+    run_actor,
 )
 from reqpilot.services.extraction.sources import MAX_SOURCE_CHARS, SourceDocumentService
 
@@ -29,4 +30,5 @@ __all__ = [
     "RunRecorder",
     "SourceDocumentService",
     "pipeline_actor",
+    "run_actor",
 ]

@@ -105,6 +105,9 @@ class ResolvedSpan:
     char_end: int
     quote: str
     speaker: str | None = None
+    #: ``"source_chunk"`` (a document chunk) or ``"utterance"`` (P4: an interview
+    #: answer; ``chunk_id`` is the utterance and ``document_id`` its session).
+    source_kind: str = "source_chunk"
 
     def __post_init__(self) -> None:
         if self.char_start < 0 or self.char_end <= self.char_start:
@@ -116,8 +119,19 @@ class ResolvedSpan:
         """The requirement-version ``source_refs`` entry for this span.
 
         ``kind``/``ref``/``span`` is the shape P1 established; ``document``,
-        ``quote`` and ``speaker`` add what extraction knows.
+        ``quote`` and ``speaker`` add what extraction knows. An utterance span
+        names its ``session`` instead of a document, and its offsets are within
+        the utterance (architecture F.3 ``EvidenceRef`` kind ``utterance``).
         """
+        if self.source_kind == "utterance":
+            return {
+                "kind": "utterance",
+                "ref": str(self.chunk_id),
+                "span": [self.char_start, self.char_end],
+                "session": str(self.document_id),
+                "quote": self.quote,
+                "speaker": self.speaker,
+            }
         return {
             "kind": "source_chunk",
             "ref": str(self.chunk_id),
@@ -130,9 +144,11 @@ class ResolvedSpan:
     @classmethod
     def from_source_ref(cls, ref: dict[str, Any]) -> ResolvedSpan:
         start, end = ref["span"]
+        utterance = ref.get("kind") == "utterance"
         return cls(
+            source_kind="utterance" if utterance else "source_chunk",
             chunk_id=uuid.UUID(str(ref["ref"])),
-            document_id=uuid.UUID(str(ref["document"])),
+            document_id=uuid.UUID(str(ref["session"] if utterance else ref["document"])),
             char_start=int(start),
             char_end=int(end),
             quote=str(ref["quote"]),
@@ -152,6 +168,7 @@ def resolve_in_segment(
     document_id: uuid.UUID,
     quote: str,
     speaker: str | None,
+    source_kind: str = "source_chunk",
 ) -> ResolvedSpan | None:
     """Resolve ``quote`` within one stored segment, returning document offsets."""
     located = locate_quote(segment_text, quote)
@@ -165,6 +182,7 @@ def resolve_in_segment(
         char_end=segment_start + end,
         quote=segment_text[start:end],
         speaker=speaker,
+        source_kind=source_kind,
     )
 
 

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Literal, Protocol, TypeVar
 
-from reqpilot.graph.state import AnalysisState, BaseGraphState
+from reqpilot.graph.state import AnalysisState, BaseGraphState, ElicitationState
 
 StateT = TypeVar("StateT", bound=BaseGraphState)
 
@@ -87,14 +87,21 @@ def assert_is_deterministic_router(func: object) -> None:
 # fields the route depends on.
 AfterScope = Literal["extract_requirements", "classify", "error_handler"]
 AfterExtraction = Literal["validate_extraction", "error_handler"]
-AfterValidation = Literal["persist_candidates", "error_handler"]
+AfterValidation = Literal["persist_candidates", "persist_revision", "error_handler"]
 
 
 def route_after_scope(state: AnalysisState) -> AfterScope:
-    """Sources in scope -> extract; versions only -> classify; a bad scope -> fail."""
+    """Sources, interview sessions (P4) or an answered clarification (P4) in scope ->
+    extract; versions only -> classify; a bad scope -> fail."""
     if state.get("errors"):
         return "error_handler"
-    return "extract_requirements" if state.get("scope_source_ids") else "classify"
+    if (
+        state.get("scope_source_ids")
+        or state.get("scope_session_ids")
+        or state.get("clarification_id")
+    ):
+        return "extract_requirements"
+    return "classify"
 
 
 def route_extraction(state: AnalysisState) -> AfterExtraction:
@@ -104,4 +111,70 @@ def route_extraction(state: AnalysisState) -> AfterExtraction:
 
 
 def route_validation(state: AnalysisState) -> AfterValidation:
-    return "error_handler" if state.get("errors") else "persist_candidates"
+    """A clarification re-analysis revises its one requirement (P4); a batch creates."""
+    if state.get("errors"):
+        return "error_handler"
+    return "persist_revision" if state.get("clarification_id") else "persist_candidates"
+
+
+# ---------------------------------------------------------------------------
+# elicitation_graph (architecture C.4, P4)
+# ---------------------------------------------------------------------------
+
+AfterLoad = Literal[
+    "select_next_topic",
+    "generate_question",
+    "await_answer",
+    "assess_answer",
+    "end_interview",
+    "stall",
+]
+AfterTopic = Literal["generate_question", "end_interview", "stall"]
+AfterQuestion = Literal["await_answer", "stall"]
+AfterAwait = Literal["record_utterance", "stall"]
+AfterRecord = Literal["assess_answer", "stall"]
+AfterAssessment = Literal["generate_question", "select_next_topic", "stall"]
+
+_RESUME_POINTS: frozenset[str] = frozenset(
+    {"select_next_topic", "generate_question", "await_answer", "assess_answer", "end_interview"}
+)
+
+
+def route_after_load(state: ElicitationState) -> AfterLoad:
+    """Continue from where the durable session is, never from where a client says."""
+    if state.get("failure"):
+        return "stall"
+    point = state.get("resume_point", "")
+    if point not in _RESUME_POINTS:
+        return "stall"
+    return point  # type: ignore[return-value]
+
+
+def route_after_topic(state: ElicitationState) -> AfterTopic:
+    """C.4: coverage complete -> end; otherwise ask about the selected topic."""
+    if state.get("failure"):
+        return "stall"
+    return "end_interview" if state.get("complete") else "generate_question"
+
+
+def route_after_question(state: ElicitationState) -> AfterQuestion:
+    return "stall" if state.get("failure") else "await_answer"
+
+
+def route_after_await(state: ElicitationState) -> AfterAwait:
+    return "stall" if state.get("failure") else "record_utterance"
+
+
+def route_after_record(state: ElicitationState) -> AfterRecord:
+    return "stall" if state.get("failure") else "assess_answer"
+
+
+def route_after_assessment(state: ElicitationState) -> AfterAssessment:
+    """C.4's router. Reads the flag the deterministic tracker set - never model text.
+
+    ``awaiting_followup`` is true only when the tracker found the answer vague,
+    incomplete or inconsistent *and* ``followups_this_topic < max_followups``.
+    """
+    if state.get("failure"):
+        return "stall"
+    return "generate_question" if state.get("awaiting_followup") else "select_next_topic"

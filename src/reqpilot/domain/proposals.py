@@ -51,6 +51,9 @@ class FindingCode(StrEnum):
     EXACT_DUPLICATE_MERGED = "exact_duplicate_merged"
     SIMILAR_TO_OTHER = "similar_to_other"
     MODEL_PROPOSED_DUPLICATE = "model_proposed_duplicate"
+    # Clarification re-analysis (P4): one requirement is being revised.
+    REVISION_NOT_SELECTED = "revision_not_selected"
+    CONFIRMS_CURRENT_VERSION = "confirms_current_version"
 
 
 @dataclass(frozen=True)

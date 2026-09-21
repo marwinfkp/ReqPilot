@@ -40,6 +40,7 @@ from reqpilot.llm.gateway import LLMGateway, build_gateway
 from reqpilot.repositories.database import get_session_factory
 from reqpilot.retrieval.embeddings import EmbeddingProvider, provider_for
 from reqpilot.retrieval.rules import RetrievalRules, load_retrieval_rules
+from reqpilot.rules.elicitation import ElicitationRules, load_elicitation_rules
 from reqpilot.rules.extraction import ExtractionRules, load_extraction_rules
 
 
@@ -153,6 +154,18 @@ def get_extraction_rules(
     return _extraction_rules(str(settings.rules_dir))
 
 
+@lru_cache(maxsize=4)
+def _elicitation_rules(rules_dir: str) -> ElicitationRules:
+    return load_elicitation_rules(Path(rules_dir))
+
+
+def get_elicitation_rules(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ElicitationRules:
+    """The versioned elicitation ruleset and interview templates (P4), loaded once."""
+    return _elicitation_rules(str(settings.rules_dir))
+
+
 def get_llm_gateway(settings: Annotated[Settings, Depends(get_settings)]) -> LLMGateway:
     """The one model access boundary (ADR-006), built from configuration.
 
@@ -169,3 +182,4 @@ Rules = Annotated[RetrievalRules, Depends(get_retrieval_rules)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
 Gateway = Annotated[LLMGateway, Depends(get_llm_gateway)]
 ExtractionRulesDep = Annotated[ExtractionRules, Depends(get_extraction_rules)]
+ElicitationRulesDep = Annotated[ElicitationRules, Depends(get_elicitation_rules)]

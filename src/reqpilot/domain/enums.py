@@ -414,6 +414,24 @@ class AuditEventType(StrEnum):
     REVIEW_ITEM_RESOLVED = "REVIEW_ITEM_RESOLVED"
     REQUIREMENTS_MERGED = "REQUIREMENTS_MERGED"
 
+    # Elicitation and clarification (added by the elicitation phase, P4). The
+    # content events are named in architecture O.2 and E #2 / E #4; the session
+    # events follow the P1-P3 precedent of a phase adding the events it raises.
+    STAKEHOLDER_CREATED = "STAKEHOLDER_CREATED"
+    INTERVIEW_SESSION_CREATED = "INTERVIEW_SESSION_CREATED"
+    INTERVIEW_SESSION_PAUSED = "INTERVIEW_SESSION_PAUSED"
+    INTERVIEW_SESSION_RESUMED = "INTERVIEW_SESSION_RESUMED"
+    INTERVIEW_SESSION_COMPLETED = "INTERVIEW_SESSION_COMPLETED"
+    INTERVIEW_SESSION_STALLED = "INTERVIEW_SESSION_STALLED"
+    QUESTION_GENERATED = "QUESTION_GENERATED"
+    UTTERANCE_RECORDED = "UTTERANCE_RECORDED"
+    ANSWER_ASSESSED = "ANSWER_ASSESSED"
+    QUALITY_FINDING_RAISED = "QUALITY_FINDING_RAISED"
+    CLARIFICATION_RAISED = "CLARIFICATION_RAISED"
+    CLARIFICATION_ANSWERED = "CLARIFICATION_ANSWERED"
+    CLARIFICATION_DISMISSED = "CLARIFICATION_DISMISSED"
+    CLARIFICATION_REANALYSED = "CLARIFICATION_REANALYSED"
+
 
 class Action(StrEnum):
     """Actions the policy can authorise (architecture ADR-009).
@@ -469,6 +487,33 @@ class Action(StrEnum):
     #: Merging a duplicate into another requirement, keeping both source links.
     REQUIREMENT_MERGE = "requirement.merge"
 
+    # Elicitation and clarification (P4)
+    STAKEHOLDER_CREATE = "stakeholder.create"
+    STAKEHOLDER_READ = "stakeholder.read"
+    #: Starting an interview session (and its elicitation graph run).
+    SESSION_CREATE = "session.create"
+    #: Reading a session, its coverage and its utterances. A user holding only the
+    #: Stakeholder role reads only the sessions they are the stakeholder of.
+    SESSION_READ = "session.read"
+    #: Answering the pending interview question: the stakeholder themself, or an
+    #: analyst recording the answer on their behalf (``FR-ELI-005``).
+    SESSION_ANSWER = "session.answer"
+    #: Pausing, resuming or retrying a session (``FR-ELI-005``).
+    SESSION_MANAGE = "session.manage"
+    #: Recording a question the interviewer role generated. The elicitation
+    #: pipeline does this on the analyst's behalf; it decides nothing.
+    UTTERANCE_RECORD = "utterance.record"
+    #: Recording a quality finding against a requirement version. In P4 only an
+    #: analyst records findings (the quality-analysis role is P5).
+    QUALITY_FINDING_CREATE = "quality_finding.create"
+    QUALITY_FINDING_READ = "quality_finding.read"
+    #: Raising a clarification for a finding: role #4 proposes the question.
+    CLARIFICATION_RAISE = "clarification.raise"
+    CLARIFICATION_READ = "clarification.read"
+    CLARIFICATION_ANSWER = "clarification.answer"
+    #: Dismissing a clarification with a recorded reason (``FR-CLR-004``).
+    CLARIFICATION_DISMISS = "clarification.dismiss"
+
 
 class ResourceType(StrEnum):
     """Resource types the policy can authorise against."""
@@ -491,6 +536,11 @@ class ResourceType(StrEnum):
     EXTRACTION_CANDIDATE = "extraction_candidate"
     CLASSIFICATION = "requirement_classification"
     REVIEW_ITEM = "review_item"
+    STAKEHOLDER = "stakeholder"
+    INTERVIEW_SESSION = "interview_session"
+    UTTERANCE = "utterance"
+    QUALITY_FINDING = "quality_finding"
+    CLARIFICATION = "clarification"
 
 
 # ---------------------------------------------------------------------------
@@ -606,3 +656,112 @@ class ReviewResolution(StrEnum):
     KEPT_DISTINCT = "kept_distinct"
     #: Seen and recorded; nothing to change (e.g. a rejected proposal).
     ACKNOWLEDGED = "acknowledged"
+
+
+# ---------------------------------------------------------------------------
+# Elicitation and clarification (P4; architecture C.4, E #2, E #4, G.3, G.4)
+# ---------------------------------------------------------------------------
+
+
+class StakeholderAuthority(StrEnum):
+    """How much weight a stakeholder's statements carry (architecture G.3)."""
+
+    DECISION_MAKER = "decision_maker"
+    CONTRIBUTOR = "contributor"
+    INFORMANT = "informant"
+
+
+class InterviewSessionKind(StrEnum):
+    """What a session holds. Every utterance belongs to exactly one session."""
+
+    #: An adaptive interview driven by ``elicitation_graph``.
+    INTERVIEW = "interview"
+    #: One clarification round trip: the question and the answer to it.
+    CLARIFICATION = "clarification"
+
+
+class InterviewSessionStatus(StrEnum):
+    """Deterministic session states. Only code moves between them."""
+
+    ACTIVE = "active"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    #: A step failed safely (model output invalid after its bounded retries, or
+    #: durable and checkpoint state disagreed). An analyst can retry it.
+    STALLED = "stalled"
+
+
+class SpeakerKind(StrEnum):
+    #: The interviewer: a question the Stakeholder Interaction role proposed.
+    SYSTEM = "system"
+    #: A stakeholder's own words, typed by them or recorded on their behalf.
+    STAKEHOLDER = "stakeholder"
+
+
+class TopicStatus(StrEnum):
+    """Coverage of one template topic. Written only by the coverage tracker."""
+
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    COVERED = "covered"
+    #: Addressed, but still vague, incomplete or inconsistent when the follow-up
+    #: bound was reached. Visible to the analyst; never silently "covered".
+    UNRESOLVED = "unresolved"
+
+
+class AnswerStatus(StrEnum):
+    """What the answer-assessment step may propose (architecture C.4)."""
+
+    COMPLETE = "complete"
+    VAGUE = "vague"
+    INCOMPLETE = "incomplete"
+    INCONSISTENT = "inconsistent"
+
+
+class QualityFindingType(StrEnum):
+    """Defect types a quality finding may carry (architecture G.4; P5 detects them)."""
+
+    AMBIGUITY = "ambiguity"
+    INCOMPLETENESS = "incompleteness"
+    UNTESTABILITY = "untestability"
+    DUPLICATION = "duplication"
+    UNDEFINED_TERM = "undefined_term"
+    MISSING_SOURCE = "missing_source"
+    INCONSISTENCY = "inconsistency"
+
+
+class FindingSeverity(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class QualityFindingStatus(StrEnum):
+    OPEN = "open"
+    RESOLVED = "resolved"
+    DISMISSED = "dismissed"
+
+
+class FindingDetector(StrEnum):
+    """Who recorded a finding. P4 has only human-recorded findings."""
+
+    HUMAN = "human"
+    AGENT = "agent"
+
+
+class ClarificationStatus(StrEnum):
+    OPEN = "open"
+    ANSWERED = "answered"
+    DISMISSED = "dismissed"
+
+
+class ReanalysisStatus(StrEnum):
+    """The outcome of re-analysing a requirement after its clarification (FR-CLR-003)."""
+
+    PENDING = "pending"
+    #: A new requirement version was created.
+    NEW_VERSION = "new_version"
+    #: Re-extraction produced the same statement; no version was created.
+    NO_CHANGE = "no_change"
+    #: Re-analysis failed; the answered clarification stands and can be retried.
+    FAILED = "failed"

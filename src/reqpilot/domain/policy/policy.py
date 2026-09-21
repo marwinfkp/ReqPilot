@@ -28,6 +28,13 @@ The design rules enforced here rather than trusted to callers:
    requirement for approval, withdraw one, commit a baseline, override a label,
    resolve a review item, merge requirements, add a source or start a run -
    whatever roles it carries (architecture A.1, E.1; ``FR-CLS-003``).
+7. **What a stakeholder says is a human's to say.** From P4 the elicitation
+   pipeline records the questions the interviewer role proposes. It can never
+   answer an interview or a clarification, create a stakeholder or a session,
+   record a quality finding, raise or dismiss a clarification, or pause a
+   session - whatever roles it carries (architecture E #2, E #4; ``FR-ELI-005``,
+   ``FR-CLR-004``). Which *session* a Stakeholder-role user may read or answer -
+   only their own - is checked by the elicitation services on top of this.
 """
 
 from __future__ import annotations
@@ -246,6 +253,59 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
     ),
     Action.REVIEW_RESOLVE: frozenset({Role.ANALYST}),
     Action.REQUIREMENT_MERGE: frozenset({Role.ANALYST}),
+    # --- elicitation and clarification (P4) --------------------------------
+    # The analyst runs interviews and owns the open-issues list. A stakeholder
+    # answers questions - their own, which the services check - and reads what
+    # concerns them. Reviewing roles read.
+    Action.STAKEHOLDER_CREATE: frozenset({Role.ANALYST}),
+    Action.STAKEHOLDER_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.STAKEHOLDER,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.SESSION_CREATE: frozenset({Role.ANALYST}),
+    Action.SESSION_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.STAKEHOLDER,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.SESSION_ANSWER: frozenset({Role.ANALYST, Role.STAKEHOLDER}),
+    Action.SESSION_MANAGE: frozenset({Role.ANALYST}),
+    Action.UTTERANCE_RECORD: frozenset({Role.ANALYST, Role.STAKEHOLDER}),
+    Action.QUALITY_FINDING_CREATE: frozenset({Role.ANALYST}),
+    Action.QUALITY_FINDING_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.STAKEHOLDER,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.CLARIFICATION_RAISE: frozenset({Role.ANALYST}),
+    Action.CLARIFICATION_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.STAKEHOLDER,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.CLARIFICATION_ANSWER: frozenset({Role.ANALYST, Role.STAKEHOLDER}),
+    Action.CLARIFICATION_DISMISS: frozenset({Role.ANALYST}),
 }
 
 #: Actions an actor may perform without belonging to a project. For these the
@@ -270,6 +330,10 @@ _AUDITOR_READ_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.EVIDENCE_READ,
         Action.SOURCE_READ,
         Action.REVIEW_READ,
+        Action.STAKEHOLDER_READ,
+        Action.SESSION_READ,
+        Action.QUALITY_FINDING_READ,
+        Action.CLARIFICATION_READ,
     }
 )
 
@@ -289,6 +353,15 @@ _HUMAN_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.REQUIREMENT_MERGE,
         Action.SOURCE_CREATE,
         Action.RUN_START,
+        # Rule 7 (P4): elicitation decisions and answers are human.
+        Action.STAKEHOLDER_CREATE,
+        Action.SESSION_CREATE,
+        Action.SESSION_ANSWER,
+        Action.SESSION_MANAGE,
+        Action.QUALITY_FINDING_CREATE,
+        Action.CLARIFICATION_RAISE,
+        Action.CLARIFICATION_ANSWER,
+        Action.CLARIFICATION_DISMISS,
     }
 )
 

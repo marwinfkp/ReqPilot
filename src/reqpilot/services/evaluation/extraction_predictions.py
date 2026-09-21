@@ -83,6 +83,8 @@ def predictions_for_run(
         transcript = ""
         spans: list[tuple[int, int]] = []
         for ref in version.source_refs or []:
+            if not ref.get("document"):
+                continue  # an interview utterance (P4) is never a benchmark transcript
             document = documents.get(project_id, uuid.UUID(str(ref["document"])))
             name = by_hash.get(document.content_hash) if document else None
             if name is not None:

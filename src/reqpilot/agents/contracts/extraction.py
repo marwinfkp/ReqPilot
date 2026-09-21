@@ -86,6 +86,14 @@ class SegmentView:
 
     ``segment_id`` ("S1", "S2", ...) is only meaningful within one call; the
     chunk id and offsets are what a resolved span records.
+
+    From P4 a segment is either a chunk of a source document (``source_kind``
+    ``"source_chunk"``: ``chunk_id`` is the chunk, ``document_id`` its document)
+    or a stakeholder's answer in an interview (``"utterance"``: ``chunk_id`` is
+    the utterance, ``document_id`` its session, offsets are within the
+    utterance). ``context`` - the question an answer replies to - is shown to
+    the model but is not part of the segment: nothing can be quoted from it, so
+    a requirement always cites the stakeholder's own words.
     """
 
     segment_id: str
@@ -96,3 +104,5 @@ class SegmentView:
     speaker: str | None
     masked: bool
     synthetic: bool
+    source_kind: str = "source_chunk"
+    context: str | None = None

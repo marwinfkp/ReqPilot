@@ -28,7 +28,10 @@ def render_segments(segments: Sequence[SegmentView]) -> str:
     lines: list[str] = []
     for segment in segments:
         speaker = f" {segment.speaker}:" if segment.speaker else ""
-        lines.append(f"[{segment.segment_id}]{speaker}\n{segment.text}")
+        # The question an interview answer replies to is context, not segment
+        # text: it cannot be quoted as evidence (FR-EXT-007 cites stakeholders).
+        context = f" (answering the question: {segment.context})" if segment.context else ""
+        lines.append(f"[{segment.segment_id}]{speaker}{context}\n{segment.text}")
     return "\n\n".join(lines)
 
 

@@ -43,6 +43,13 @@ from reqpilot.services.audit import AuditService
 
 ANALYSIS_GRAPH = "analysis_graph"
 
+#: Human actions whose success *triggers* a run, which the person may then start
+#: without ``RUN_START`` (P4). Answering a clarification triggers its
+#: re-analysis (``FR-CLR-003``; architecture C.3 ``route_after_clarification``):
+#: the stakeholder who answers cannot start runs, but the answer must be
+#: re-analysed. The run still acts as its restricted system actor.
+TRIGGERING_ACTIONS: frozenset[Action] = frozenset({Action.CLARIFICATION_ANSWER})
+
 
 def pipeline_actor(initiator: Actor, project_id: ProjectId, run_id: uuid.UUID) -> Actor:
     """The system actor a run acts as, derived from the analyst who started it.
@@ -61,6 +68,23 @@ def pipeline_actor(initiator: Actor, project_id: ProjectId, run_id: uuid.UUID) -
     )
 
 
+def run_actor(run: GraphRun) -> Actor:
+    """The system actor of an already-started run, to continue it (P4).
+
+    An interview is one run that lasts many requests, and the person answering a
+    question - a stakeholder - may not start runs. Continuing the run as the
+    identity it was started with is what :func:`pipeline_actor` would return;
+    callers use this only after authorising the human's own action (answering,
+    resuming) under the policy.
+    """
+    project_id = ProjectId(run.project_id)
+    return Actor(
+        actor_id=ActorId(run.id),
+        kind=ActorKind.SYSTEM,
+        roles_by_project={project_id: frozenset({Role.ANALYST})},
+    )
+
+
 class RunRecorder:
     """Writes one graph run's records. Created per run."""
 
@@ -69,18 +93,33 @@ class RunRecorder:
         self._initiator = initiator
         self._audit = AuditService(session)
 
-    def start(self, project_id: ProjectId, *, scope: dict[str, Any]) -> tuple[GraphRun, Actor]:
-        """Open a run as the initiating human, and return it with its pipeline actor."""
+    def start(
+        self,
+        project_id: ProjectId,
+        *,
+        scope: dict[str, Any],
+        graph_name: str = ANALYSIS_GRAPH,
+        trigger: Action | None = None,
+    ) -> tuple[GraphRun, Actor]:
+        """Open a run as the initiating human, and return it with its pipeline actor.
+
+        ``trigger`` names the human action that caused a triggered run (one of
+        :data:`TRIGGERING_ACTIONS`); the initiator must hold it in the project.
+        """
+        if trigger is not None and trigger not in TRIGGERING_ACTIONS:
+            raise ValueError(f"{trigger} does not trigger runs")
         run_id = uuid.uuid4()
         run = GraphRun(
             id=run_id,
             project_id=project_id,
-            graph_name=ANALYSIS_GRAPH,
+            graph_name=graph_name,
             thread_id=str(run_id),
             status=GraphRunStatus.RUNNING,
             started_by=self._initiator.actor_id,
         )
-        RunRepository(self._session, self._initiator).add_run(run)
+        RunRepository(self._session, self._initiator).add_run(
+            run, action=trigger or Action.RUN_START
+        )
         self._audit.append(
             event_type=AuditEventType.RUN_STARTED,
             actor_kind=self._initiator.kind,
@@ -89,8 +128,14 @@ class RunRecorder:
             subject_type="graph_run",
             subject_id=str(run.id),
             graph_run_id=run.id,
-            payload={"graph": ANALYSIS_GRAPH, **scope},
+            payload={
+                "graph": graph_name,
+                **scope,
+                **({"triggered_by": str(trigger)} if trigger else {}),
+            },
         )
+        if trigger is not None:
+            return run, run_actor(run)
         return run, pipeline_actor(self._initiator, project_id, run.id)
 
 
@@ -255,6 +300,43 @@ class RunLog:
         )
 
     # -- the end -------------------------------------------------------------
+    # -- interrupt and resume (P4: elicitation_graph) -----------------------
+    def suspend(self, **payload: Any) -> None:
+        """The graph is waiting for a person (architecture C.7 interrupt)."""
+        if self._run.status is GraphRunStatus.SUSPENDED:
+            return
+        self._run.status = GraphRunStatus.SUSPENDED
+        self._repo.update_run(self._run)
+        self._event(
+            AuditEventType.RUN_SUSPENDED,
+            subject_type="graph_run",
+            subject_id=str(self._run.id),
+            payload={"status": str(GraphRunStatus.SUSPENDED), **payload},
+        )
+
+    def resume(self, **payload: Any) -> None:
+        if self._run.status is GraphRunStatus.RUNNING:
+            return
+        self._run.status = GraphRunStatus.RUNNING
+        self._repo.update_run(self._run)
+        self._event(
+            AuditEventType.RUN_RESUMED,
+            subject_type="graph_run",
+            subject_id=str(self._run.id),
+            payload=payload,
+        )
+
+    def stall(self, reason_code: str) -> None:
+        """A step failed safely; the run waits for an analyst to retry it."""
+        self._run.status = GraphRunStatus.STALLED
+        self._repo.update_run(self._run)
+        self._event(
+            AuditEventType.RUN_SUSPENDED,
+            subject_type="graph_run",
+            subject_id=str(self._run.id),
+            payload={"status": str(GraphRunStatus.STALLED), "reason_code": reason_code[:100]},
+        )
+
     def finish(self, status: GraphRunStatus, **summary: Any) -> GraphRun:
         if status not in (GraphRunStatus.COMPLETED, GraphRunStatus.FAILED):
             raise ValueError("a run finishes as completed or failed")

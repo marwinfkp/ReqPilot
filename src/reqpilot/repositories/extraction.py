@@ -96,8 +96,9 @@ class RunRepository(ProjectScopedRepository[GraphRun]):
 
     resource_type = ResourceType.GRAPH_RUN
 
-    def add_run(self, run: GraphRun) -> GraphRun:
-        self.authorize(Action.RUN_START, ProjectId(run.project_id))
+    def add_run(self, run: GraphRun, *, action: Action = Action.RUN_START) -> GraphRun:
+        """Open a run: normally ``RUN_START``; a triggered run (P4) its trigger's action."""
+        self.authorize(action, ProjectId(run.project_id))
         self._session.add(run)
         self._session.flush()
         return run

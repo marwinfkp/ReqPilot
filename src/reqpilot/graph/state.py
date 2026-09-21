@@ -119,3 +119,41 @@ class AnalysisState(BaseGraphState, total=False):
     accepted: int
     merged: int
     rejected: int
+    #: P4: interview sessions whose stakeholder answers are extraction segments.
+    scope_session_ids: list[str]
+    #: P4: an answered clarification whose requirement is re-analysed
+    #: (architecture C.3 ``route_after_clarification`` -> ``extract_requirements``).
+    clarification_id: str
+    #: P4: the outcome of a clarification re-analysis (a ``ReanalysisStatus`` value).
+    revision_status: str
+
+
+class ElicitationState(BaseGraphState, total=False):
+    """State of ``elicitation_graph`` (architecture C.4, F.6), ids and counters only.
+
+    Mirrors the durable ``interview_session`` row: every value here is also in
+    the database, and ``load_session`` re-derives them from it. No question,
+    answer, issue or prompt text is ever placed here (D.1, D.3).
+    """
+
+    session_id: str
+    stakeholder_id: str
+    #: ``{topic_id: TopicStatus value}`` - written only by the coverage tracker.
+    topic_coverage: dict[str, str]
+    current_topic: str | None
+    #: The C.4 bound's counter: ``followups_this_topic < max_followups``.
+    followups_this_topic: int
+    #: F.6 ``last_question_id``: the question utterance awaiting an answer.
+    pending_question_id: str | None
+    #: F.6 ``pending_answer``: the answer utterance to record and assess.
+    answer_utterance_id: str | None
+    #: The router's flag: the last assessment earned a bounded follow-up.
+    awaiting_followup: bool
+    #: The last assessment's status (an ``AnswerStatus`` value).
+    last_assessment: str | None
+    #: Where ``load_session`` found the durable session to be.
+    resume_point: str
+    complete: bool
+    #: A node failed safely; the session stalls. Last-write-wins, reset by
+    #: ``load_session`` - unlike ``errors``, which accumulates across a thread.
+    failure: str | None

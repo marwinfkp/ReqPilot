@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Open issues - {{ project.name }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/interviews">interviews</a>
+  <a href="/ui/projects/{{ project.id }}/review">review queue</a>
+{% endblock %}
+{% block content %}
+<h1>Open issues &mdash; clarifications</h1>
+<p class="note warn">{{ not_approval }}</p>
+<p class="muted">Each clarification is bound to one requirement version and one recorded defect
+(FR-CLR-001). Open first, then oldest first (FR-CLR-002). Dismissing needs a reason and changes
+neither the requirement nor its finding (FR-CLR-004).</p>
+
+{% if issues %}
+<table>
+  <tr><th>Requirement</th><th>Defect</th><th>Question</th><th>Asked of / assignee</th><th>Status &amp; age</th><th>Answer &amp; outcome</th></tr>
+  {% for v in issues %}
+  {% set c = v.clarification %}
+  <tr>
+    <td><span class="mono">{{ v.requirement_human_id }} v{{ v.version_no }}</span><br>{{ v.statement }}</td>
+    <td class="mono">{{ v.finding.finding_type.value }} ({{ v.finding.severity.value }})</td>
+    <td>{{ c.question }}<div class="muted">expected: {{ c.expected_answer_shape }}</div></td>
+    <td>{{ v.stakeholder_name }}<div class="muted mono">{{ c.assignee_user_id }}</div></td>
+    <td><span class="state">{{ c.status.value }}</span><div class="muted">{{ (v.age.total_seconds() // 3600)|int }} h old</div></td>
+    <td>
+      {% if c.status.value == "open" %}
+        {% if may_answer %}
+        <form method="post" action="/ui/clarifications/{{ c.id }}/answer">
+          <textarea name="answer" rows="2" required placeholder="answer"></textarea>
+          <button type="submit" class="primary">Answer</button>
+        </form>
+        {% endif %}
+        {% if may_dismiss %}
+        <form method="post" action="/ui/clarifications/{{ c.id }}/dismiss">
+          <input type="text" name="reason" required placeholder="reason for dismissing">
+          <button type="submit">Dismiss</button>
+        </form>
+        {% endif %}
+      {% elif c.status.value == "answered" %}
+        <div>{{ v.answer }}</div>
+        <div class="muted">re-analysis: <span class="mono">{{ c.reanalysis_status.value if c.reanalysis_status else "" }}</span>
+        {% if v.resulting_version_no %} &rarr; new version v{{ v.resulting_version_no }} (not approved){% endif %}</div>
+        {% if c.reanalysis_status and c.reanalysis_status.value == "failed" and may_dismiss %}
+        <form method="post" action="/ui/clarifications/{{ c.id }}/reanalyse"><button type="submit">Retry re-analysis</button></form>
+        {% endif %}
+      {% else %}
+        <div class="muted">dismissed: {{ c.dismissed_reason }}</div>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">No clarifications yet.</p>{% endif %}
+
+{% if may_raise %}
+<fieldset>
+  <legend>Record a defect and raise a clarification</legend>
+  <p class="muted">Quality analysis is roadmap P5; in P4 an analyst records the defect. The
+  clarification question is then proposed by the Clarification role and checked by code.</p>
+  {% if raisable %}
+  <form method="post" action="/ui/projects/{{ project.id }}/clarifications">
+    <label>Requirement (current version)</label>
+    <select name="version_id">{% for r, v in raisable %}<option value="{{ v.id }}">{{ r.human_id }} v{{ v.version_no }} [{{ v.state.value }}] &mdash; {{ v.statement[:90] }}</option>{% endfor %}</select>
+    <label>Defect type</label>
+    <select name="finding_type">{% for t in finding_types %}<option value="{{ t.value }}">{{ t.value }}</option>{% endfor %}</select>
+    <label>Severity</label>
+    <select name="severity">{% for s in severities %}<option value="{{ s.value }}" {% if s.value == "medium" %}selected{% endif %}>{{ s.value }}</option>{% endfor %}</select>
+    <label>Rationale</label><textarea name="rationale" rows="2" required></textarea>
+    <label>Words of the statement it concerns (optional)</label><input type="text" name="span_quote">
+    <label>Ask</label>
+    <select name="asked_of">{% for s in stakeholders %}<option value="{{ s.id }}">{{ s.name }} ({{ s.stakeholder_role }})</option>{% endfor %}</select>
+    <p><button type="submit" class="primary">Record defect and raise clarification</button></p>
+  </form>
+  {% else %}<p class="muted">No requirement is in a state that can be clarified (classified or later, before validation).</p>{% endif %}
+</fieldset>
+{% endif %}
+{% endblock %}

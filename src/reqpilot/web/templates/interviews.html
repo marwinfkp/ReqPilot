@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Interviews - {{ project.name }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/clarifications">open issues</a>
+  <a href="/ui/projects/{{ project.id }}/sources">sources &amp; extraction</a>
+{% endblock %}
+{% block content %}
+<h1>Interviews &mdash; {{ project.name }}</h1>
+<p class="note">Role-specific adaptive interviews (FR-ELI-001). A template is a topic framework,
+not a questionnaire: the model proposes each question, and the deterministic coverage tracker
+decides which topic comes next, how many follow-ups a topic may have (at most the configured
+bound), and when the interview is complete.</p>
+<p class="note warn">Model provider: <code>{{ provider }}</code>{% if not provider_is_model %}
+&mdash; <b>not a model</b>: the offline stub proposes nothing usable, so an interview stalls at its
+first question.{% else %} &mdash; an external model: only sessions declared <code>synthetic</code> are
+sent to it; any other session is refused before a call is made (masking is not implemented, P11).{% endif %}</p>
+
+<h2>Stakeholders</h2>
+{% if stakeholders %}
+<table>
+  <tr><th>Name</th><th>Role</th><th>Authority</th><th>Linked user</th><th>Interview</th></tr>
+  {% for s in stakeholders %}
+  <tr>
+    <td>{{ s.name }}</td><td class="mono">{{ s.stakeholder_role }}</td>
+    <td class="mono">{{ s.authority_level.value }}</td>
+    <td class="mono">{{ s.user_id or "&mdash; (an analyst answers on their behalf)"|safe }}</td>
+    <td>
+      {% if may_start %}
+      <form method="post" action="/ui/projects/{{ project.id }}/sessions" class="inline">
+        <input type="hidden" name="stakeholder_id" value="{{ s.id }}">
+        <select name="sensitivity">{% for v in sensitivities %}<option value="{{ v.value }}" {% if v.value == "synthetic" %}selected{% endif %}>{{ v.value }}</option>{% endfor %}</select>
+        <button type="submit" class="primary">Start interview</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">No stakeholders yet.</p>{% endif %}
+
+{% if may_create %}
+<fieldset>
+  <legend>Add a stakeholder</legend>
+  <form method="post" action="/ui/projects/{{ project.id }}/stakeholders">
+    <label>Name</label><input type="text" name="name" required>
+    <label>Role (selects the interview template)</label>
+    <select name="stakeholder_role">{% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}</select>
+    <label>Authority</label>
+    <select name="authority_level">{% for a in authorities %}<option value="{{ a.value }}">{{ a.value }}</option>{% endfor %}</select>
+    <label>Linked user id (optional; a project member with the Stakeholder role)</label>
+    <input type="text" name="user_id">
+    <p><button type="submit">Add stakeholder</button></p>
+  </form>
+</fieldset>
+{% endif %}
+
+<h2>Sessions</h2>
+{% if sessions %}
+<table>
+  <tr><th>Stakeholder</th><th>Template</th><th>Status</th><th>Covered</th><th>Unresolved</th><th>Remaining</th><th>Questions</th></tr>
+  {% for row, name, summary in sessions %}
+  <tr>
+    <td><a href="/ui/sessions/{{ row.id }}">{{ name }}</a></td>
+    <td class="mono">{{ row.template_id }}@{{ row.template_version }}</td>
+    <td><span class="state">{{ row.status.value }}</span></td>
+    <td>{{ summary.covered|length }} / {{ summary.applicable|length }}</td>
+    <td>{{ summary.unresolved|length }}</td>
+    <td>{{ summary.remaining|length }}</td>
+    <td>{{ row.questions_asked }} ({{ row.followups_asked }} follow-ups)</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">No interviews yet.</p>{% endif %}
+
+<h2>Who to interview next <span class="muted">(FR-ELI-007, secondary)</span></h2>
+{% if suggestion %}
+<p>Suggested role: <b>{{ suggestion.stakeholder_role }}</b> (template <code>{{ suggestion.template_id }}</code>).
+Its template addresses these uncovered topics: <span class="mono">{{ suggestion.gap_topics|join(", ") }}</span>.
+<span class="muted">Deterministic: uncovered topics weighted 2 when required, 1 when optional.</span></p>
+{% else %}<p class="muted">Every topic of every template is covered.</p>{% endif %}
+{% endblock %}

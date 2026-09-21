@@ -225,12 +225,16 @@ def start_analysis_run(
     extraction_rules: ExtractionRulesDep,
     settings: AppSettings,
 ) -> RunSummaryOut:
-    """Batch extraction (``source_ids``) or classification (``version_ids``)."""
+    """Batch extraction (``source_ids``, P4 ``session_ids``) or classification."""
     pid = _project(actor, project_id, Action.RUN_START)
     runner = AnalysisRunner(session, gateway, extraction_rules, settings=settings)
-    if payload.source_ids:
+    if payload.source_ids or payload.session_ids:
         summary = runner.extract(
-            actor=actor, project_id=pid, source_ids=payload.source_ids, domain=payload.domain or ""
+            actor=actor,
+            project_id=pid,
+            source_ids=payload.source_ids,
+            session_ids=payload.session_ids,
+            domain=payload.domain or "",
         )
     else:
         summary = runner.classify(actor=actor, project_id=pid, version_ids=payload.version_ids)

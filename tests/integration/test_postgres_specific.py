@@ -127,6 +127,11 @@ def test_migrations_create_nothing_beyond_the_current_phase(pg_engine) -> None:
         "source_document", "source_chunk", "extraction_candidate",
         "requirement_classification", "acceptance_criterion", "review_item",
         "prompt_template", "model_version",
+        # P4
+        "stakeholder", "interview_session", "utterance", "quality_finding", "clarification",
+        # The LangGraph checkpoint store, in the same database (architecture C.7);
+        # created by the elicitation graph's durable checkpointer on first use.
+        "checkpoint_migrations", "checkpoints", "checkpoint_blobs", "checkpoint_writes",
     }  # fmt: skip
     with pg_engine.connect() as conn:
         rows = conn.execute(

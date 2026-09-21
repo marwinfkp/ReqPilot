@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Interview - {{ stakeholder.name }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}/interviews">interviews</a>
+  <a href="/ui/projects/{{ project.id }}/clarifications">open issues</a>
+{% endblock %}
+{% block content %}
+<h1>Interview console</h1>
+<p><b>{{ stakeholder.name }}</b> &mdash; <span class="mono">{{ stakeholder.stakeholder_role }}</span>,
+{{ stakeholder.authority_level.value }} &middot; template <code>{{ template.template_id }}@{{ template.version }}</code>
+({{ template.title }}) &middot; status <span class="state">{{ row.status.value }}</span>
+&middot; data <span class="mono">{{ row.sensitivity.value }}</span></p>
+<p class="note warn">{{ not_approval }}</p>
+
+{% if turn.complete %}
+<p class="note"><b>The interview is complete.</b> Every applicable topic is covered or recorded as
+unresolved. {% if may_extract %}Extract requirements from the answers with the P3 pipeline:{% endif %}</p>
+{% if may_extract %}
+<form method="post" action="/ui/sessions/{{ row.id }}/extract">
+  <label>Identifier domain</label><input type="text" name="domain" value="LOAN" style="max-width:120px">
+  <button type="submit" class="primary">Extract and classify</button>
+</form>
+{% endif %}
+{% elif row.status.value == "stalled" %}
+<p class="note warn"><b>The session stalled:</b> <span class="mono">{{ row.stall_reason }}</span>.
+Nothing advanced. {% if may_manage %}Retry resumes it from where the database says it is.{% endif %}</p>
+{% if may_manage %}<form method="post" action="/ui/sessions/{{ row.id }}/resume"><button type="submit">Retry</button></form>{% endif %}
+{% elif row.status.value == "paused" %}
+<p class="note">The session is paused. The pending question is kept; resuming asks no new question.</p>
+{% if may_manage %}<form method="post" action="/ui/sessions/{{ row.id }}/resume"><button type="submit" class="primary">Resume</button></form>{% endif %}
+{% endif %}
+
+{% if turn.question and row.status.value == "active" %}
+<fieldset>
+  <legend>Current question &mdash; topic <span class="mono">{{ turn.question.topic_id }}</span>
+    {% if turn.question.is_followup %}(follow-up {{ row.followups_this_topic }} of at most {{ coverage.max_followups }}){% endif %}</legend>
+  <p style="font-size:17px">{{ turn.question.text }}</p>
+  {% if may_answer %}
+  <form method="post" action="/ui/sessions/{{ row.id }}/answer">
+    <label>Answer{% if not stakeholder.user_id or stakeholder.user_id != actor.actor_id %} (recorded on the stakeholder's behalf){% endif %}</label>
+    <textarea name="text" rows="4" required></textarea>
+    <p><button type="submit" class="primary">Submit answer</button></p>
+  </form>
+  {% endif %}
+  {% if may_manage %}<form method="post" action="/ui/sessions/{{ row.id }}/pause"><button type="submit">Pause</button></form>{% endif %}
+</fieldset>
+{% endif %}
+
+<h2>Topic coverage <span class="muted">(FR-ELI-006; written only by the deterministic tracker)</span></h2>
+<table>
+  <tr><th>Topic</th><th>Required</th><th>Status</th><th>Questions</th><th>Follow-ups</th><th>Last assessment</th></tr>
+  {% for topic_id in coverage.summary.applicable %}
+  {% set e = coverage.entries[topic_id] %}
+  <tr>
+    <td>{{ topics[topic_id].title }} <span class="muted mono">{{ topic_id }}</span></td>
+    <td>{{ "yes" if e.required else "no" }}</td>
+    <td><span class="state">{{ e.status }}</span></td>
+    <td>{{ e.questions }}</td><td>{{ e.followups }}</td>
+    <td class="mono">{{ e.last_assessment or "" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="muted">Remaining: {{ coverage.summary.remaining|join(", ") or "none" }} &middot;
+Unresolved at the follow-up bound: {{ coverage.summary.unresolved|join(", ") or "none" }}</p>
+
+<h2>Transcript</h2>
+<table>
+  <tr><th>#</th><th>Speaker</th><th>Topic</th><th>Text</th><th>Recorded</th></tr>
+  {% for u in utterances %}
+  <tr>
+    <td>{{ u.seq }}</td>
+    <td class="mono">{{ "interviewer" if u.speaker_kind.value == "system" else stakeholder.name }}{% if u.is_followup %} (follow-up){% endif %}</td>
+    <td class="mono">{{ u.topic_id or "" }}</td>
+    <td>{{ u.text }}</td>
+    <td class="muted">{{ u.created_at.strftime("%Y-%m-%d %H:%M:%S") }}{% if u.on_behalf %}<br>entered by analyst <code>{{ u.recorded_by }}</code>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

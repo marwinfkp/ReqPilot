@@ -1,0 +1,109 @@
+# Role-specific interview templates (roadmap phase P4; FR-ELI-001, FR-ELI-002;
+# architecture E #2: "LLM agent over a deterministic template + coverage
+# tracker").
+#
+# A template is a TOPIC FRAMEWORK, not a questionnaire: it names which topics of
+# the approved taxonomy (elicitation.yaml) apply to a stakeholder role, in what
+# priority, and which are required. The questions themselves are proposed by the
+# Stakeholder Interaction role from the live coverage state; the order in which
+# topics are taken up is decided deterministically from `priority` (lower
+# first), required topics before optional ones.
+#
+# Roles are the stakeholder business roles of the primary case study (retail
+# loan origination). They are not ReqPilot user roles and not agent roles.
+
+name: interview_templates
+version: "1.0.0"
+description: >
+  Seven role templates for the retail loan-origination case study, each a
+  prioritised selection of the approved topic taxonomy.
+
+rules:
+  templates:
+    - template_id: product_owner
+      version: "1.0.0"
+      stakeholder_role: product_owner
+      title: Business / Product Owner
+      topics:
+        - {topic_id: business_objectives, priority: 1, required: true, expected_answer_shape: "goals with a measurable target"}
+        - {topic_id: users_and_roles, priority: 2, required: true, expected_answer_shape: "user roles and what each needs"}
+        - {topic_id: current_workflow, priority: 3, required: true, expected_answer_shape: "today's steps and pain points"}
+        - {topic_id: inputs, priority: 4, required: true, expected_answer_shape: "documents and data received"}
+        - {topic_id: outputs, priority: 5, required: true, expected_answer_shape: "results and notifications produced"}
+        - {topic_id: business_rules, priority: 6, required: true, expected_answer_shape: "rules with their conditions"}
+        - {topic_id: exceptional_conditions, priority: 7, required: false, expected_answer_shape: "failure cases and expected handling"}
+        - {topic_id: performance, priority: 8, required: false, expected_answer_shape: "measurable speed or volume"}
+        - {topic_id: project_schedule, priority: 9, required: false, expected_answer_shape: "dates and milestones"}
+        - {topic_id: project_budget, priority: 10, required: false, expected_answer_shape: "budget or cost constraints"}
+
+    - template_id: customer
+      version: "1.0.0"
+      stakeholder_role: customer
+      title: Customer / End User
+      topics:
+        - {topic_id: users_and_roles, priority: 1, required: true, expected_answer_shape: "who applies and in what situation"}
+        - {topic_id: current_workflow, priority: 2, required: true, expected_answer_shape: "today's experience"}
+        - {topic_id: inputs, priority: 3, required: true, expected_answer_shape: "what the customer can provide"}
+        - {topic_id: outputs, priority: 4, required: true, expected_answer_shape: "what the customer expects back"}
+        - {topic_id: authentication, priority: 5, required: false, expected_answer_shape: "acceptable ways to sign in"}
+        - {topic_id: performance, priority: 6, required: false, expected_answer_shape: "acceptable waiting times"}
+        - {topic_id: availability, priority: 7, required: false, expected_answer_shape: "when the service is needed"}
+
+    - template_id: operations
+      version: "1.0.0"
+      stakeholder_role: operations
+      title: Analyst / Operations
+      topics:
+        - {topic_id: current_workflow, priority: 1, required: true, expected_answer_shape: "step-by-step process"}
+        - {topic_id: inputs, priority: 2, required: true, expected_answer_shape: "documents and data handled"}
+        - {topic_id: outputs, priority: 3, required: true, expected_answer_shape: "work products and hand-offs"}
+        - {topic_id: business_rules, priority: 4, required: true, expected_answer_shape: "rules applied by staff"}
+        - {topic_id: exceptional_conditions, priority: 5, required: true, expected_answer_shape: "exceptions and escalation"}
+        - {topic_id: authorization, priority: 6, required: false, expected_answer_shape: "who may do what"}
+        - {topic_id: audit_reporting, priority: 7, required: false, expected_answer_shape: "records and reports needed"}
+        - {topic_id: performance, priority: 8, required: false, expected_answer_shape: "volumes and turnaround"}
+
+    - template_id: security
+      version: "1.0.0"
+      stakeholder_role: security
+      title: Information Security
+      topics:
+        - {topic_id: authentication, priority: 1, required: true, expected_answer_shape: "authentication mechanisms"}
+        - {topic_id: authorization, priority: 2, required: true, expected_answer_shape: "access-control rules"}
+        - {topic_id: security_constraints, priority: 3, required: true, expected_answer_shape: "protection requirements"}
+        - {topic_id: data_collection, priority: 4, required: false, expected_answer_shape: "sensitive data handled"}
+        - {topic_id: audit_reporting, priority: 5, required: false, expected_answer_shape: "security logging needs"}
+        - {topic_id: integrations, priority: 6, required: false, expected_answer_shape: "trust boundaries with other systems"}
+
+    - template_id: compliance
+      version: "1.0.0"
+      stakeholder_role: compliance
+      title: Compliance
+      topics:
+        - {topic_id: regulatory_constraints, priority: 1, required: true, expected_answer_shape: "obligations named by the stakeholder"}
+        - {topic_id: data_collection, priority: 2, required: true, expected_answer_shape: "data and consent"}
+        - {topic_id: data_retention, priority: 3, required: true, expected_answer_shape: "retention periods and deletion"}
+        - {topic_id: audit_reporting, priority: 4, required: true, expected_answer_shape: "records and reports owed"}
+        - {topic_id: business_rules, priority: 5, required: false, expected_answer_shape: "rules the regulations imply"}
+
+    - template_id: risk
+      version: "1.0.0"
+      stakeholder_role: risk
+      title: Risk
+      topics:
+        - {topic_id: business_rules, priority: 1, required: true, expected_answer_shape: "decision rules and who owns them"}
+        - {topic_id: transaction_limits, priority: 2, required: true, expected_answer_shape: "limits and thresholds"}
+        - {topic_id: exceptional_conditions, priority: 3, required: true, expected_answer_shape: "exception handling"}
+        - {topic_id: audit_reporting, priority: 4, required: false, expected_answer_shape: "evidence needed"}
+
+    - template_id: technology
+      version: "1.0.0"
+      stakeholder_role: technology
+      title: Technology / Architecture
+      topics:
+        - {topic_id: integrations, priority: 1, required: true, expected_answer_shape: "systems and interfaces"}
+        - {topic_id: legacy_systems, priority: 2, required: true, expected_answer_shape: "systems replaced or kept"}
+        - {topic_id: performance, priority: 3, required: true, expected_answer_shape: "measurable targets"}
+        - {topic_id: availability, priority: 4, required: true, expected_answer_shape: "availability and recovery targets"}
+        - {topic_id: security_constraints, priority: 5, required: false, expected_answer_shape: "technical controls"}
+        - {topic_id: data_retention, priority: 6, required: false, expected_answer_shape: "storage and archiving"}

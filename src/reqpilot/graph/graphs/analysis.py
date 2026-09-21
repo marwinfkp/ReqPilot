@@ -4,6 +4,8 @@ Only the nodes batch extraction and classification need::
 
     START -> load_scope -+-> extract_requirements -> validate_extraction
                          |        -> persist_candidates -> classify -> END
+                         |        -> persist_revision -> classify -> END
+                         |                  (P4: a clarification's re-analysis)
                          +-> classify -> END            (classification-only run)
                          +-> error_handler -> END       (a failure at any step)
 
@@ -31,6 +33,7 @@ NODE_NAMES = (
     "extract_requirements",
     "validate_extraction",
     "persist_candidates",
+    "persist_revision",
     "classify",
     "error_handler",
 )
@@ -42,6 +45,7 @@ def build_analysis_graph(nodes: AnalysisNodes, checkpointer: Any | None = None) 
     graph.add_node("extract_requirements", nodes.extract_requirements)
     graph.add_node("validate_extraction", nodes.validate_extraction)
     graph.add_node("persist_candidates", nodes.persist_candidates)
+    graph.add_node("persist_revision", nodes.persist_revision)
     graph.add_node("classify", nodes.classify)
     graph.add_node("error_handler", nodes.error_handler)
 
@@ -63,9 +67,14 @@ def build_analysis_graph(nodes: AnalysisNodes, checkpointer: Any | None = None) 
     graph.add_conditional_edges(
         "validate_extraction",
         route_validation,
-        {"persist_candidates": "persist_candidates", "error_handler": "error_handler"},
+        {
+            "persist_candidates": "persist_candidates",
+            "persist_revision": "persist_revision",
+            "error_handler": "error_handler",
+        },
     )
     graph.add_edge("persist_candidates", "classify")
+    graph.add_edge("persist_revision", "classify")
     graph.add_edge("classify", END)
     graph.add_edge("error_handler", END)
     return graph.compile(checkpointer=checkpointer)
