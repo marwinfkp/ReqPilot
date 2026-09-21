@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}{{ requirement.human_id }}{% endblock %}
+{% block nav %}<a href="/ui/projects/{{ project_id }}">back to project</a>{% endblock %}
+{% block content %}
+<h1 class="mono">{{ requirement.human_id }}</h1>
+<p class="muted">current version: {{ current.version_no if current else "none" }} &middot;
+  baselined: {% if requirement.baselined_version_id %}yes{% else %}no{% endif %}</p>
+
+{% if current %}
+<h2>Current version</h2>
+<table>
+  <tr><th>State</th><td><span class="state">{{ current.state.value }}</span></td></tr>
+  <tr><th>Statement</th><td>{{ current.statement }}</td></tr>
+  <tr><th>Category</th><td>{{ current.category.value if current.category else "(unset)" }}</td></tr>
+  <tr><th>Priority</th><td>{{ current.priority.value if current.priority else "(unset)" }}</td></tr>
+  <tr><th>Source refs</th><td class="mono">{{ current.source_refs }}</td></tr>
+  <tr><th>Content hash</th><td class="mono">{{ current.content_hash }}</td></tr>
+  <tr><th>Change reason</th><td>{{ current.change_reason or "" }}</td></tr>
+</table>
+
+<fieldset>
+  <legend>Advance lifecycle</legend>
+  {% if targets %}
+    {% for t in targets %}
+    <form class="inline" method="post" action="/ui/requirement-versions/{{ current.id }}/transition">
+      <input type="hidden" name="target" value="{{ t.value }}">
+      <input type="hidden" name="requirement_id" value="{{ requirement.id }}">
+      <button type="submit">&rarr; {{ t.value }}</button>
+    </form>
+    {% endfor %}
+    <p class="muted">Only transitions whose guards currently pass are offered. The
+    service re-checks every one of them regardless.</p>
+  {% else %}
+    <p class="muted">No transition is available from
+    <span class="state">{{ current.state.value }}</span>.</p>
+  {% endif %}
+</fieldset>
+
+<fieldset>
+  <legend>New version</legend>
+  <p class="muted">Editing never modifies the current version. This creates a
+  successor; if the current version is approved or baselined it stays that way and
+  a G7 change gate is raised.</p>
+  <form method="post" action="/ui/requirements/{{ requirement.id }}/versions">
+    <label>Statement</label>
+    <textarea name="statement" rows="2" required>{{ current.statement }}</textarea>
+    <label>Change reason</label>
+    <input type="text" name="change_reason" required>
+    <label>Category</label>
+    <select name="category"><option value="">(keep)</option>
+      {% for c in categories %}<option value="{{ c.value }}">{{ c.value }}</option>{% endfor %}</select>
+    <button class="primary" type="submit">Create new version</button>
+  </form>
+</fieldset>
+{% endif %}
+
+<h2>Version history</h2>
+<table>
+  <tr><th>v</th><th>State</th><th>Statement</th><th>Hash</th><th>Reason</th><th>Created</th></tr>
+  {% for v in versions %}
+  <tr>
+    <td>{{ v.version_no }}</td>
+    <td><span class="state">{{ v.state.value }}</span></td>
+    <td>{{ v.statement }}</td>
+    <td class="mono">{{ v.content_hash[:12] }}&hellip;</td>
+    <td>{{ v.change_reason or "" }}</td>
+    <td class="muted">{{ v.created_at }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2>Approval tasks for this requirement</h2>
+{% if tasks %}
+<table>
+  <tr><th>Gate</th><th>Needs</th><th>Version</th><th>Status</th><th>Bound hash</th></tr>
+  {% for t in tasks %}
+  <tr><td class="mono">{{ t.gate.value }}</td>
+      <td class="mono">{{ t.required_role.value }}</td><td>{{ t.subject_version }}</td>
+      <td><span class="state">{{ t.status.value }}</span></td>
+      <td class="mono">{{ t.subject_version_hash[:12] }}&hellip;</td></tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">None.</p>{% endif %}
+{% endblock %}

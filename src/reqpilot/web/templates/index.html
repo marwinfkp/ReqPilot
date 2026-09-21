@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Projects{% endblock %}
+{% block content %}
+<h1>Projects</h1>
+<p class="muted">Only projects you are a member of appear here. Membership is read
+from the database, never from the request.</p>
+{% if projects %}
+<table>
+  <tr><th>Project</th><th>Domain</th><th>Lifecycle</th><th>Your roles</th></tr>
+  {% for p in projects %}
+  <tr>
+    <td><a href="/ui/projects/{{ p.id }}">{{ p.name }}</a></td>
+    <td>{{ p.domain }}</td>
+    <td><span class="state">{{ p.lifecycle_state }}</span></td>
+    <td class="mono">{{ roles_by_project.get(p.id, [])|join(", ") }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="note">You are not a member of any project.</p>
+{% endif %}
+{% endblock %}

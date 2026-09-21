@@ -135,7 +135,7 @@ alembic upgrade head
 ### Run
 
 ```bash
-uvicorn reqpilot.api.app:app --reload
+uvicorn reqpilot.main:app --reload   # composition root, added in P1
 ```
 
 Then `GET /health` (liveness, no database) and `GET /health/db` (readiness,

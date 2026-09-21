@@ -27,7 +27,7 @@ pytestmark = pytest.mark.integration
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#: Tables the foundation phase is responsible for. Nothing else should appear.
+#: Tables the foundation phase is responsible for.
 FOUNDATION_TABLES = {
     "app_user",
     "project",
@@ -76,11 +76,27 @@ def test_migration_creates_every_foundation_table(migrated_db) -> None:
     assert present >= FOUNDATION_TABLES
 
 
-def test_migration_creates_nothing_beyond_the_foundation(migrated_db) -> None:
-    """P0 must not have created Requirements Repository tables."""
+#: Tables the requirements-repository phase adds.
+REQUIREMENTS_REPOSITORY_TABLES = {
+    "requirement",
+    "requirement_version",
+    "approval_task",
+    "approval_decision",
+    "baseline",
+    "baseline_member",
+}
+
+
+def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None:
+    """The schema must not run ahead of the roadmap.
+
+    This assertion moves forward one phase at a time: each phase adds its own
+    table set here, and anything outside the union is a table that arrived early.
+    """
     present = set(inspect(migrated_db).get_table_names()) - {"alembic_version"}
-    unexpected = present - FOUNDATION_TABLES
-    assert not unexpected, f"P0 migration created out-of-scope tables: {sorted(unexpected)}"
+    permitted = FOUNDATION_TABLES | REQUIREMENTS_REPOSITORY_TABLES
+    unexpected = present - permitted
+    assert not unexpected, f"migrations created out-of-scope tables: {sorted(unexpected)}"
 
 
 def test_migration_matches_the_orm_models(migrated_db) -> None:

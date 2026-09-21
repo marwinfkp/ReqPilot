@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ReqPilot{% endblock %}</title>
+  <style>
+    :root { --line:#d7dce3; --muted:#5a6a7a; --fg:#1b2430; --accent:#2b5c8a; }
+    * { box-sizing: border-box; }
+    body { font: 15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif;
+           margin: 0; color: var(--fg); background: #fff; }
+    header { border-bottom: 1px solid var(--line); padding: 12px 20px;
+             display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+    header b { color: var(--accent); }
+    main { padding: 20px; max-width: 1100px; }
+    a { color: var(--accent); }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+    th, td { border: 1px solid var(--line); padding: 6px 9px; text-align: left;
+             vertical-align: top; font-size: 14px; }
+    th { background: #f4f6f8; }
+    form.inline { display: inline; }
+    fieldset { border: 1px solid var(--line); margin: 16px 0; padding: 12px; }
+    legend { font-weight: 600; }
+    label { display: block; margin: 6px 0 2px; font-size: 13px; color: var(--muted); }
+    input[type=text], textarea, select { width: 100%; max-width: 640px; padding: 5px;
+             border: 1px solid var(--line); font: inherit; }
+    button { padding: 5px 11px; border: 1px solid var(--line); background: #f4f6f8;
+             font: inherit; cursor: pointer; }
+    button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .state { font-family: ui-monospace, monospace; font-size: 12px; padding: 1px 6px;
+             border: 1px solid var(--line); border-radius: 3px; background: #f4f6f8; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .note { border-left: 3px solid var(--accent); padding: 6px 12px; background: #f4f8fb;
+            margin: 12px 0; font-size: 14px; }
+    .warn { border-left-color: #a5501e; background: #fdf4ee; }
+  </style>
+</head>
+<body>
+<header>
+  <b>ReqPilot</b>
+  <span class="muted">P1 &middot; requirements repository</span>
+  <a href="/ui/">projects</a>
+  {% block nav %}{% endblock %}
+  <span class="muted" style="margin-left:auto">acting as <code>{{ actor.actor_id }}</code></span>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

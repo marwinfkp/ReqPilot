@@ -28,6 +28,8 @@ dependencies = [
     "langgraph>=0.2",             # ADR-001: mandated orchestration framework
     "langgraph-checkpoint-postgres>=2.0",  # architecture C.7: checkpoint store
     "pyyaml>=6.0",                # architecture DQ-03: versioned rule/config data files
+    "jinja2>=3.1",                # ADR-008: server-rendered UI templates
+    "python-multipart>=0.0.9",    # ADR-008: HTML form submissions
 ]
 
 [project.optional-dependencies]
@@ -75,6 +77,9 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S", "N"]
+# `Form(...)` in a parameter default is FastAPI's required idiom for HTML form
+# handling; there is no alternative spelling.
+"src/reqpilot/web/router.py" = ["B008"]
 
 # ---------------------------------------------------------------------------
 # Types
@@ -124,9 +129,11 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "Layered dependency direction: api -> services -> repositories -> domain"
+name = "Layered dependency direction: main -> web -> api -> services -> repositories -> domain"
 type = "layers"
 layers = [
+    "reqpilot.main",
+    "reqpilot.web",
     "reqpilot.api",
     "reqpilot.services",
     "reqpilot.repositories",

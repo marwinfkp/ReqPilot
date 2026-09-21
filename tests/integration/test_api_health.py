@@ -70,10 +70,34 @@ def test_health_endpoints_are_registered() -> None:
     assert "/health/db" in paths
 
 
-def test_no_domain_endpoints_are_exposed_yet() -> None:
-    """P0 must not have shipped Requirements Repository endpoints."""
+def test_only_current_phase_endpoints_are_exposed() -> None:
+    """The API must not run ahead of the roadmap.
+
+    Requirement, approval and baseline endpoints belong to the current phase.
+    Everything listed below belongs to a later one and must be absent.
+    """
     paths = collect_paths(create_app())
-    assert not any(
-        p.startswith(("/api/v1/requirements", "/api/v1/baselines", "/api/v1/approval"))
-        for p in paths
+
+    future_prefixes = (
+        "/api/v1/analysis-runs",
+        "/api/v1/sessions",
+        "/api/v1/interviews",
+        "/api/v1/clarifications",
+        "/api/v1/conflicts",
+        "/api/v1/compliance",
+        "/api/v1/risks",
+        "/api/v1/sdlc-runs",
+        "/api/v1/artifacts",
+        "/api/v1/evaluations",
+        "/api/v1/kb",
     )
+    premature = [p for p in paths if p.startswith(future_prefixes)]
+    assert not premature, f"endpoints from a later roadmap phase appeared: {premature}"
+
+
+def test_current_phase_endpoints_are_present() -> None:
+    """Guard against the previous test passing because nothing is routed."""
+    paths = collect_paths(create_app())
+    assert any(p.endswith("/requirements") for p in paths)
+    assert any("approval-tasks" in p for p in paths)
+    assert any(p.endswith("/baselines") for p in paths)

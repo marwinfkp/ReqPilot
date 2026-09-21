@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ baseline.label }}{% endblock %}
+{% block nav %}<a href="/ui/projects/{{ project_id }}">back to project</a>{% endblock %}
+{% block content %}
+<h1>Baseline &mdash; {{ baseline.label }}</h1>
+<p class="muted">frozen {{ baseline.frozen_at }} &middot;
+   authorised by decision <code>{{ baseline.approval_decision_id }}</code></p>
+<p class="note">Every member below was APPROVED with a decision bound to its exact
+content hash. An unapproved version cannot enter a baseline.</p>
+<table>
+  <tr><th>v</th><th>State</th><th>Statement</th><th>Hash</th></tr>
+  {% for m in members %}
+  <tr><td>{{ m.version_no }}</td>
+      <td><span class="state">{{ m.state.value }}</span></td>
+      <td>{{ m.statement }}</td>
+      <td class="mono">{{ m.content_hash[:16] }}&hellip;</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

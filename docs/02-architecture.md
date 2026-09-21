@@ -1771,7 +1771,7 @@ Then the domain guard (H.3) and the DB trigger (H.4) apply independently at comm
 
 | Gate | Trigger (deterministic predicate) | Approver | Shown to reviewer | Actions | On approve | On reject | Blocks |
 |---|---|---|---|---|---|---|---|
-| **G1** Requirement baseline | analyst submits a `VALIDATED` set | Analyst + Compliance Officer | full requirement set, findings, mappings, risks, validation report | approve / reject / modify | versions → `APPROVED`, baseline committed | versions → `REJECTED`, back to clarification | **yes** — baseline unreachable |
+| **G1** Requirement baseline | analyst submits a `VALIDATED` set | Analyst + Compliance Officer (**both required — co-approval**) | full requirement set, findings, mappings, risks, validation report | approve / reject / modify | versions → `APPROVED`, baseline committed | versions → `REJECTED`, back to clarification | **yes** — baseline unreachable |
 | **G2** High-impact regulatory interpretation | `compliance_mapping.is_high_impact = true` | Compliance Officer | requirement, proposed mapping, **every cited chunk with full provenance**, advisory notice | approve / reject / modify mapping | mapping usable in artefacts | mapping discarded, gap recorded | **yes** — blocks `VALIDATED` |
 | **G3** High-risk security requirement | **authoritative** `security_privacy_finding.risk_level = high`, written by the deterministic evaluator (I.7) — never read from model output | Security Reviewer | derived requirement, control, evidence, **both the LLM's `proposed_risk_level` and the authoritative level with its `escalation_reason`** | approve / reject / modify | requirement enters the set | discarded with reason | **yes** |
 | **G4** Conflicting stakeholder decision | `conflict.involves_stakeholder_disagreement = true` | Analyst + affected stakeholders | both requirements, both sources, rationale | choose A / choose B / synthesise new / defer | conflict `RESOLVED`, losing version `SUPERSEDED` or `WITHDRAWN` | stays `OPEN` | **yes** — guard on `VALIDATED` |
@@ -1780,8 +1780,18 @@ Then the domain guard (H.3) and the DB trigger (H.4) apply independently at comm
 | **G7** Change to an approved requirement | edit requested on `APPROVED`/`BASELINED` version | the role that approved it originally | old version, new version, **diff**, change reason | approve / reject | new version `APPROVED`, old `SUPERSEDED` | new version discarded | **yes** — baselined version unchanged meanwhile |
 | **G8** High-severity risk | `risk.severity = High` (computed) | Risk Owner / Security Reviewer | risk, ratings + rationales, evidence, originating requirement, suggested mitigations | accept / mitigate / reject rating / close | risk status advances | risk stays `UNDER_REVIEW` | **yes** — blocks `VALIDATED` |
 
-G6 requiring four distinct roles is modelled as four tasks sharing a `task_group_id`; the gate passes
-only when all four have approved. In a small team one person may hold several roles — the
+**Multi-role gates are co-approval gates.** Every role a gate names must sign. Such a gate is
+modelled as **one task per required role, all sharing a `task_group_id`**, and it passes only when
+every task in the group is approved. `required_role` therefore stays singular (G.7): "who must sign
+this off" is one checkable value per task.
+
+This applies to **G1** (Analyst + Compliance Officer), **G6** (PM + Security + Compliance) and **G7**
+(Analyst + Compliance Officer). G1's co-approval reading is the approved Phase 0 one - analysis F.1
+records "Gates G2, and G1 co-approval" - and the annotation in the table above was added at P1
+closure so that the architecture states it as plainly as the analysis already did.
+
+G6 requiring several distinct roles is modelled as one task per role sharing a `task_group_id`; the
+gate passes only when all of them have approved. In a small team one person may hold several roles — the
 `approval_decision.role_exercised` field records *which* role each decision exercised, so the
 four-role requirement remains meaningful and auditable.
 

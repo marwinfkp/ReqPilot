@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Approvals{% endblock %}
+{% block nav %}<a href="/ui/projects/{{ project_id }}">back to project</a>{% endblock %}
+{% block content %}
+<h1>Approval queue</h1>
+<p class="muted">Your roles here: <span class="mono">{{ actor_roles|join(", ") or "none" }}</span>.
+A co-approval gate raises one task per required role, so each task below names
+exactly one signature it is waiting for. Buttons are hidden where you could not
+act &mdash; but the server refuses the action either way, which is what actually
+enforces the gate.</p>
+
+{% if rows %}
+{% for row in rows %}
+<fieldset>
+  <legend class="mono">{{ row.task.gate.value }} &middot; needs
+    {{ row.this_role.value }} &middot; {{ row.task.status.value }}</legend>
+
+  {% if row.version %}
+  <p><span class="mono">v{{ row.version.version_no }}</span> &mdash; {{ row.version.statement }}</p>
+  <p class="muted">state <span class="state">{{ row.version.state.value }}</span> &middot;
+     bound to hash <code>{{ row.task.subject_version_hash[:16] }}&hellip;</code></p>
+  {% endif %}
+
+  <p class="muted">
+    {{ row.task.gate.value }} requires
+    {{ row.needed|join(" + ") if row.requires_all else row.needed|join(" or ") }}
+    {% if row.requires_all %}<b>(all required &mdash; co-approval)</b>{% endif %}
+    &middot; still outstanding for this version:
+    <span class="mono">{{ row.outstanding|join(", ") or "none" }}</span>
+  </p>
+
+  {% if row.decisions %}
+  <table>
+    <tr><th>Decision</th><th>Role exercised</th><th>By</th><th>Justification</th></tr>
+    {% for d in row.decisions %}
+    <tr><td>{{ d.decision.value }}</td><td class="mono">{{ d.role_exercised.value }}</td>
+        <td class="mono">{{ d.decided_by }}</td><td>{{ d.justification or "" }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  {% if row.is_author %}
+    <p class="note warn">You authored this version, so you may not approve it.
+    Segregation of duties is enforced by the service.</p>
+  {% elif row.task.status.value != "OPEN" %}
+    <p class="muted">This task is {{ row.task.status.value }} and cannot be decided again.</p>
+  {% elif not row.can_sign %}
+    <p class="muted">This task must be signed as
+    <span class="mono">{{ row.this_role.value }}</span>, which you do not hold in
+    this project.</p>
+  {% else %}
+    <form method="post" action="/ui/approval-tasks/{{ row.task.id }}/decide">
+      <input type="hidden" name="project_id" value="{{ project_id }}">
+      {# Each task names one role, so the role is fixed rather than chosen. #}
+      <input type="hidden" name="role_exercised" value="{{ row.this_role.value }}">
+      <label>Decision (signing as <span class="mono">{{ row.this_role.value }}</span>)</label>
+      <select name="decision">
+        <option value="APPROVE">APPROVE</option>
+        <option value="REJECT">REJECT</option>
+        <option value="MODIFY">MODIFY</option>
+      </select>
+      <label>Justification (required to reject)</label>
+      <input type="text" name="justification">
+      <label>Baseline label (used when this decision completes the gate)</label>
+      <input type="text" name="baseline_label" placeholder="release-1">
+      <button class="primary" type="submit">Record decision</button>
+    </form>
+  {% endif %}
+</fieldset>
+{% endfor %}
+{% else %}
+<p class="note">No approval tasks.</p>
+{% endif %}
+{% endblock %}

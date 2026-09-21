@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}/tasks">approvals</a>
+  <a href="/ui/projects/{{ project.id }}/audit">audit</a>
+{% endblock %}
+{% block content %}
+<h1>{{ project.name }}</h1>
+<p class="muted">{{ project.domain }} &middot; lifecycle
+  <span class="state">{{ project.lifecycle_state }}</span> &middot;
+  your roles: <span class="mono">{{ actor_roles|join(", ") or "none" }}</span></p>
+
+<h2>Requirements</h2>
+{% if rows %}
+<form method="post" action="/ui/projects/{{ project.id }}/submit">
+<table>
+  <tr><th></th><th>ID</th><th>Statement</th><th>v</th><th>State</th></tr>
+  {% for row in rows %}
+  <tr>
+    <td>
+      {% if row.current and row.current.state.value == "VALIDATED" %}
+        <input type="checkbox" name="version_ids" value="{{ row.current.id }}">
+      {% endif %}
+    </td>
+    <td class="mono"><a href="/ui/requirements/{{ row.requirement.id }}">{{ row.requirement.human_id }}</a></td>
+    <td>{{ row.current.statement if row.current else "" }}</td>
+    <td>{{ row.current.version_no if row.current else "" }}</td>
+    <td><span class="state">{{ row.current.state.value if row.current else "" }}</span></td>
+  </tr>
+  {% endfor %}
+</table>
+<p><button class="primary" type="submit">Submit selected for G1 approval</button>
+<span class="muted">Only VALIDATED versions can be selected. This creates approval
+tasks &mdash; it does not create a baseline.</span></p>
+</form>
+{% else %}
+<p class="note">No requirements yet.</p>
+{% endif %}
+
+<fieldset>
+  <legend>New requirement</legend>
+  <form method="post" action="/ui/projects/{{ project.id }}/requirements">
+    <label>Statement</label>
+    <textarea name="statement" rows="2" required placeholder="The system shall ..."></textarea>
+    <label>Identifier domain (e.g. LOAN)</label>
+    <input type="text" name="domain" value="LOAN" required>
+    <label>Kind</label>
+    <select name="kind">{% for k in kinds %}<option value="{{ k.value }}">{{ k.value }}</option>{% endfor %}</select>
+    <label>Category</label>
+    <select name="category"><option value="">(unset)</option>
+      {% for c in categories %}<option value="{{ c.value }}">{{ c.value }}</option>{% endfor %}</select>
+    <label>Priority</label>
+    <select name="priority"><option value="">(unset)</option>
+      {% for p in priorities %}<option value="{{ p.value }}">{{ p.value }}</option>{% endfor %}</select>
+    <label>Source reference</label>
+    <input type="text" name="source_ref" value="interview-1" required>
+    <p class="muted">A source reference is mandatory before a requirement can advance.</p>
+    <button class="primary" type="submit">Create</button>
+  </form>
+</fieldset>
+
+<h2>Open approval tasks</h2>
+{% if tasks %}
+<ul>{% for t in tasks %}
+  <li class="mono">{{ t.gate.value }} &middot; version {{ t.subject_version }} &middot;
+      needs {{ t.required_role.value }} &middot;
+      <a href="/ui/projects/{{ project.id }}/tasks">review</a></li>
+{% endfor %}</ul>
+{% else %}<p class="muted">None open.</p>{% endif %}
+
+<h2>Baselines</h2>
+{% if baselines %}
+<ul>{% for b in baselines %}
+  <li><a href="/ui/baselines/{{ b.id }}">{{ b.label }}</a>
+      <span class="muted">frozen {{ b.frozen_at }}</span></li>
+{% endfor %}</ul>
+{% else %}<p class="muted">No baseline yet. A baseline exists only after G1 passes.</p>{% endif %}
+{% endblock %}

@@ -122,6 +122,95 @@ GATE_REQUIRED_ROLES: dict[Gate, frozenset[Role]] = {
 }
 
 
+#: Whether a gate needs a decision from **every** role in
+#: :data:`GATE_REQUIRED_ROLES` (co-approval) or from any one of them.
+#:
+#: **Settled, not a tuning knob.** G1 is co-approval: the approved Phase 0
+#: analysis F.1 records "Gates G2, and G1 co-approval", and architecture M.3
+#: now annotates the G1 row to match. G6 and G7 are co-approval for the same
+#: reason - every role a gate names must sign.
+#:
+#: A ``True`` value makes the gate fan out into one task per required role,
+#: sharing a ``task_group_id`` (architecture M.3). A ``False`` value is only
+#: meaningful for a gate that names exactly one role.
+GATE_REQUIRES_ALL_ROLES: dict[Gate, bool] = {
+    Gate.G1_REQUIREMENT_BASELINE: True,
+    Gate.G2_REGULATORY_INTERPRETATION: False,
+    Gate.G3_HIGH_RISK_SECURITY: False,
+    Gate.G4_STAKEHOLDER_CONFLICT: False,
+    Gate.G5_ARCHITECTURE_CRITICAL: False,
+    Gate.G6_SDLC_SELECTION: True,
+    Gate.G7_APPROVED_REQUIREMENT_CHANGE: True,
+    Gate.G8_HIGH_SEVERITY_RISK: False,
+}
+
+
+class ApprovalTaskStatus(StrEnum):
+    """Lifecycle of one approval task (architecture G.7).
+
+    A task is terminal once it is APPROVED or REJECTED; further decisions
+    against it are refused, so a decided task cannot be reused.
+    """
+
+    OPEN = "OPEN"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
+
+
+class ApprovalDecisionType(StrEnum):
+    """What a human decided (architecture M.3, ``FR-HIL-002``)."""
+
+    APPROVE = "APPROVE"
+    REJECT = "REJECT"
+    MODIFY = "MODIFY"
+
+
+class RequirementCategory(StrEnum):
+    """The thirteen classification categories (problem statement section 9).
+
+    Named here because the requirement schema carries a category field from the
+    moment requirements exist. **P1 does not classify anything**: a category is
+    supplied manually or left unset, and automated multi-label classification
+    belongs to a later roadmap phase.
+    """
+
+    BUSINESS = "business"
+    STAKEHOLDER = "stakeholder"
+    FUNCTIONAL = "functional"
+    SECURITY = "security"
+    PRIVACY = "privacy"
+    REGULATORY = "regulatory"
+    PERFORMANCE = "performance"
+    AVAILABILITY = "availability"
+    USABILITY = "usability"
+    DATA_MANAGEMENT = "data_management"
+    INTEGRATION = "integration"
+    AUDIT_REPORTING = "audit_reporting"
+    OPERATIONAL = "operational"
+
+
+class RequirementPriority(StrEnum):
+    """Requirement priority (problem statement section 8)."""
+
+    MUST = "must"
+    SHOULD = "should"
+    COULD = "could"
+    WONT = "wont"
+
+
+class ProjectLifecycleState(StrEnum):
+    """Project lifecycle (approved Phase 0; ``FR-PRJ-002``).
+
+    Advanced only by the deterministic project service, never by an API payload.
+    """
+
+    ELICITATION = "elicitation"
+    ANALYSIS = "analysis"
+    REVIEW = "review"
+    BASELINED = "baselined"
+
+
 class ActorKind(StrEnum):
     """Who or what performed an audited action (architecture O.1)."""
 
@@ -173,6 +262,22 @@ class AuditEventType(StrEnum):
     MEMBER_ADDED = "MEMBER_ADDED"
     PERMISSION_DENIED = "PERMISSION_DENIED"
 
+    # Requirements repository (added by the requirements-repository phase)
+    REQUIREMENT_CREATED = "REQUIREMENT_CREATED"
+    REQUIREMENT_VERSION_CREATED = "REQUIREMENT_VERSION_CREATED"
+    REQUIREMENT_WITHDRAWN = "REQUIREMENT_WITHDRAWN"
+    REQUIREMENT_SUPERSEDED = "REQUIREMENT_SUPERSEDED"
+    STATE_TRANSITION = "STATE_TRANSITION"
+
+    # Governance
+    APPROVAL_TASK_CREATED = "APPROVAL_TASK_CREATED"
+    APPROVAL_GRANTED = "APPROVAL_GRANTED"
+    APPROVAL_REJECTED = "APPROVAL_REJECTED"
+    APPROVAL_MODIFIED = "APPROVAL_MODIFIED"
+    GATE_PASSED = "GATE_PASSED"
+    BASELINE_COMMITTED = "BASELINE_COMMITTED"
+    BASELINE_MEMBER_ADDED = "BASELINE_MEMBER_ADDED"
+
 
 class Action(StrEnum):
     """Actions the policy can authorise (architecture ADR-009).
@@ -192,6 +297,17 @@ class Action(StrEnum):
     RUN_READ = "run.read"
     APPROVAL_DECIDE = "approval.decide"
 
+    # Requirements repository
+    REQUIREMENT_CREATE = "requirement.create"
+    REQUIREMENT_READ = "requirement.read"
+    REQUIREMENT_UPDATE = "requirement.update"
+    REQUIREMENT_TRANSITION = "requirement.transition"
+    REQUIREMENT_SUBMIT = "requirement.submit"
+    REQUIREMENT_WITHDRAW = "requirement.withdraw"
+    APPROVAL_TASK_READ = "approval_task.read"
+    BASELINE_CREATE = "baseline.create"
+    BASELINE_READ = "baseline.read"
+
 
 class ResourceType(StrEnum):
     """Resource types the policy can authorise against."""
@@ -201,3 +317,6 @@ class ResourceType(StrEnum):
     AUDIT_EVENT = "audit_event"
     GRAPH_RUN = "graph_run"
     APPROVAL_TASK = "approval_task"
+    REQUIREMENT = "requirement"
+    REQUIREMENT_VERSION = "requirement_version"
+    BASELINE = "baseline"

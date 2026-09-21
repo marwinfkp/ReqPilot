@@ -14,13 +14,18 @@ Three design rules are enforced here rather than trusted to callers:
 3. **Agent roles can never decide a gate.** Only a human actor holding the
    gate's role may perform ``APPROVAL_DECIDE``. This is the code-level form of
    "an LLM cannot approve its own output" (architecture J.1, M.2).
+4. **A gate decision is authorised per gate, never by action grant.**
+   ``APPROVAL_DECIDE`` is allowed only for a named gate and a declared role that
+   the gate requires (``GATE_REQUIRED_ROLES``) and that the actor holds in the
+   resource's project. The bare action is refused, and ``is_superuser`` does not
+   substitute for holding the gate's role.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from reqpilot.domain.enums import Action, ActorKind, ResourceType, Role
+from reqpilot.domain.enums import GATE_REQUIRED_ROLES, Action, ActorKind, Gate, ResourceType, Role
 from reqpilot.domain.errors import AuthorizationError, ProjectIsolationError
 from reqpilot.domain.ids import ActorId, ProjectId
 
@@ -52,11 +57,18 @@ class ResourceRef:
 
     ``project_id`` is ``None`` only for resources that genuinely have no project
     scope - creating a project being the obvious case.
+
+    ``gate`` and ``role_exercised`` are the context an ``APPROVAL_DECIDE`` check
+    needs: which gate is being decided, and in which role the actor claims to
+    decide it. Every other action ignores them, and ``APPROVAL_DECIDE`` without
+    them is refused.
     """
 
     resource_type: ResourceType
     project_id: ProjectId | None = None
     resource_id: str | None = None
+    gate: Gate | None = None
+    role_exercised: Role | None = None
 
 
 @dataclass(frozen=True)
@@ -82,8 +94,8 @@ class Decision:
 #: this mapping is refused (see :func:`can`).
 #:
 #: ``APPROVAL_DECIDE`` is deliberately absent. Gate decisions are authorised by
-#: the gate's own required roles (``GATE_REQUIRED_ROLES``) by the approval
-#: service in a later roadmap phase, not by a blanket action grant.
+#: the gate's own required roles (``GATE_REQUIRED_ROLES``) in
+#: :func:`_can_decide_gate`, not by a blanket action grant.
 _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
     Action.PROJECT_CREATE: frozenset({Role.ANALYST}),
     Action.PROJECT_READ: frozenset(
@@ -119,6 +131,48 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
             Role.AUDITOR,
         }
     ),
+    # --- requirements repository -------------------------------------
+    # Authoring is the analyst's job. Reviewing roles can read everything in
+    # their project but cannot author, which is what keeps the later approval
+    # meaningful rather than a rubber stamp.
+    Action.REQUIREMENT_CREATE: frozenset({Role.ANALYST}),
+    Action.REQUIREMENT_UPDATE: frozenset({Role.ANALYST}),
+    Action.REQUIREMENT_TRANSITION: frozenset({Role.ANALYST}),
+    Action.REQUIREMENT_SUBMIT: frozenset({Role.ANALYST}),
+    Action.REQUIREMENT_WITHDRAW: frozenset({Role.ANALYST}),
+    Action.REQUIREMENT_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.STAKEHOLDER,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.APPROVAL_TASK_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    # Committing a baseline is authorised by passing G1, and the actor who
+    # completes G1 may be either of its required roles - so both can write the
+    # baseline that the gate has just authorised, and nobody else can.
+    Action.BASELINE_CREATE: frozenset({Role.ANALYST, Role.COMPLIANCE_OFFICER}),
+    Action.BASELINE_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.STAKEHOLDER,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
 }
 
 #: Actions an actor may perform without belonging to a project.
@@ -128,7 +182,15 @@ _UNSCOPED_ACTIONS: frozenset[Action] = frozenset({Action.PROJECT_CREATE})
 #: permitted actions positively means a new mutating action is refused for
 #: Auditors by default rather than having to be remembered.
 _AUDITOR_READ_ONLY_ACTIONS: frozenset[Action] = frozenset(
-    {Action.PROJECT_READ, Action.AUDIT_READ, Action.AUDIT_VERIFY, Action.RUN_READ}
+    {
+        Action.PROJECT_READ,
+        Action.AUDIT_READ,
+        Action.AUDIT_VERIFY,
+        Action.RUN_READ,
+        Action.REQUIREMENT_READ,
+        Action.APPROVAL_TASK_READ,
+        Action.BASELINE_READ,
+    }
 )
 
 
@@ -148,16 +210,14 @@ def can(actor: Actor, action: Action, resource: ResourceRef) -> Decision:
     if not isinstance(action, Action):  # pragma: no cover - defensive
         return Decision(False, "unknown action")
 
+    # Gate decisions are authorised per gate against GATE_REQUIRED_ROLES, not by
+    # a blanket action grant. Evaluated before the superuser shortcut so that no
+    # flag can stand in for holding the gate's role.
+    if action is Action.APPROVAL_DECIDE:
+        return _can_decide_gate(actor, resource)
+
     if actor.is_superuser:
         return Decision(True, "superuser")
-
-    # Gate decisions are authorised per-gate by the approval service against
-    # GATE_REQUIRED_ROLES, not by a blanket action grant.
-    if action is Action.APPROVAL_DECIDE:
-        return Decision(
-            False,
-            "approval.decide is authorised per-gate by the approval service, not by action grant",
-        )
 
     grants = _ACTION_GRANTS.get(action)
     if grants is None:
@@ -194,6 +254,37 @@ def can(actor: Actor, action: Action, resource: ResourceRef) -> Decision:
         )
 
     return Decision(True, f"granted via role(s) {sorted(permitted)}")
+
+
+def _can_decide_gate(actor: Actor, resource: ResourceRef) -> Decision:
+    """Authorise a human decision at one gate, in one declared role.
+
+    Reached only from :func:`can`, after the non-human refusal. Project isolation
+    is evaluated before the gate's roles, as for every other scoped action.
+    """
+    gate, role = resource.gate, resource.role_exercised
+    if gate is None or role is None:
+        return Decision(
+            False,
+            "approval.decide is authorised per-gate, not by action grant; "
+            "a gate and the role exercised are required",
+        )
+    if resource.project_id is None:
+        return Decision(
+            False, f"action {Action.APPROVAL_DECIDE} requires a project-scoped resource"
+        )
+
+    held = actor.roles_in(resource.project_id)
+    if not held:
+        return Decision(False, "actor holds no role in the resource's project (project isolation)")
+
+    gate_roles = GATE_REQUIRED_ROLES.get(gate, frozenset())
+    if role not in gate_roles:
+        return Decision(False, f"{role} may not decide {gate}; it requires {sorted(gate_roles)}")
+    if role not in held:
+        return Decision(False, f"actor does not hold {role} in this project (holds {sorted(held)})")
+
+    return Decision(True, f"{role} may decide {gate}")
 
 
 def require(actor: Actor, action: Action, resource: ResourceRef) -> None:

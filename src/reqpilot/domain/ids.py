@@ -19,6 +19,12 @@ ActorId = NewType("ActorId", UUID)
 GraphRunId = NewType("GraphRunId", UUID)
 AgentRunId = NewType("AgentRunId", UUID)
 AuditEventId = NewType("AuditEventId", UUID)
+RequirementId = NewType("RequirementId", UUID)
+RequirementVersionId = NewType("RequirementVersionId", UUID)
+ApprovalTaskId = NewType("ApprovalTaskId", UUID)
+ApprovalDecisionId = NewType("ApprovalDecisionId", UUID)
+BaselineId = NewType("BaselineId", UUID)
+TaskGroupId = NewType("TaskGroupId", UUID)
 
 
 def new_uuid() -> UUID:
@@ -53,3 +59,31 @@ def thread_id_for(run_id: GraphRunId) -> str:
     checkpoint can always be traced back to its ``graph_run`` row.
     """
     return str(run_id)
+
+
+def new_requirement_id() -> RequirementId:
+    return RequirementId(uuid4())
+
+
+def new_requirement_version_id() -> RequirementVersionId:
+    return RequirementVersionId(uuid4())
+
+
+def new_approval_task_id() -> ApprovalTaskId:
+    return ApprovalTaskId(uuid4())
+
+
+def new_approval_decision_id() -> ApprovalDecisionId:
+    return ApprovalDecisionId(uuid4())
+
+
+def new_baseline_id() -> BaselineId:
+    return BaselineId(uuid4())
+
+
+def new_task_group_id() -> TaskGroupId:
+    """A submission groups its per-version approval tasks under one id.
+
+    Architecture M.3 uses the same mechanism for G6's multi-role grouping.
+    """
+    return TaskGroupId(uuid4())

@@ -1,11 +1,12 @@
-"""FastAPI application factory (architecture ADR-002, section S).
+"""The API application (architecture ADR-002, section S).
 
-P0 exposes health endpoints only. Domain endpoints arrive with the roadmap
-phases that own them - adding them now, ahead of the domain they operate on,
-would be speculative.
+This factory builds the **API only**. The demonstration UI is assembled on top
+of it by :mod:`reqpilot.main`, which is the composition root.
 
-The layering rule this module sits at the top of:
-``api -> services -> repositories -> domain``, one way only, enforced in CI.
+Keeping the two apart is not tidiness for its own sake: the layered dependency
+rule runs ``web → api → services → repositories → domain``, one way. If this
+module imported the web package the direction would reverse and the contract
+would - correctly - fail.
 """
 
 from __future__ import annotations
@@ -13,24 +14,27 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from reqpilot import __version__
-from reqpilot.api.routes import health
+from reqpilot.api.errors import install_error_handlers
+from reqpilot.api.routes import governance, health, requirements
+
+DESCRIPTION = (
+    "Agentic requirements engineering and SDLC recommendation assistant. "
+    "Roadmap phase P1 (Requirements repository): deterministic system of record, "
+    "immutable versions, lifecycle, G1 approval and baselines. No AI."
+)
 
 
 def create_app() -> FastAPI:
-    """Build the application.
+    """Build the API application.
 
-    A factory rather than a module-level singleton so tests can construct an
-    app with overridden settings without mutating global state.
+    A factory rather than a module-level singleton so tests can construct an app
+    with overridden dependencies without mutating global state.
     """
-    app = FastAPI(
-        title="ReqPilot",
-        version=__version__,
-        description=(
-            "Agentic requirements engineering and SDLC recommendation assistant. "
-            "Roadmap phase P0 (Foundations): health endpoints only."
-        ),
-    )
+    app = FastAPI(title="ReqPilot", version=__version__, description=DESCRIPTION)
+    install_error_handlers(app)
     app.include_router(health.router)
+    app.include_router(requirements.router)
+    app.include_router(governance.router)
     return app
 
 

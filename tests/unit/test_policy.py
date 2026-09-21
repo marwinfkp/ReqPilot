@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 from tests.conftest import make_actor
 
-from reqpilot.domain.enums import Action, ActorKind, Gate, ResourceType, Role
+from reqpilot.domain.enums import GATE_REQUIRED_ROLES, Action, ActorKind, Gate, ResourceType, Role
 from reqpilot.domain.errors import AuthorizationError, ProjectIsolationError
 from reqpilot.domain.ids import ActorId, ProjectId, new_uuid
 from reqpilot.domain.policy import Actor, ResourceRef, can, require
@@ -140,6 +140,78 @@ def test_agent_gate_denial_survives_superuser(project_id: ProjectId) -> None:
         ResourceRef(resource_type=ResourceType.APPROVAL_TASK, project_id=project_id),
     )
     assert not decision.allowed
+
+
+# --- gate decisions ------------------------------------------------------
+
+
+def gate_resource(project_id: ProjectId, gate: Gate, role: Role) -> ResourceRef:
+    return ResourceRef(
+        resource_type=ResourceType.APPROVAL_TASK,
+        project_id=project_id,
+        gate=gate,
+        role_exercised=role,
+    )
+
+
+@pytest.mark.parametrize("gate", list(Gate))
+def test_a_gate_is_decided_only_by_its_own_roles(gate: Gate, project_id: ProjectId) -> None:
+    """APPROVAL_DECIDE is not a blanket grant: every role is tried at every gate.
+
+    Each actor is human and holds the role it exercises in this project, so the
+    only thing that can differ is whether GATE_REQUIRED_ROLES names that role.
+    """
+    for role in Role:
+        actor = make_actor(project_id=project_id, roles={role})
+        decision = can(actor, Action.APPROVAL_DECIDE, gate_resource(project_id, gate, role))
+        assert decision.allowed is (role in GATE_REQUIRED_ROLES[gate]), (role, decision.reason)
+
+
+def test_a_gate_role_must_be_held_in_this_project(
+    project_id: ProjectId, other_project_id: ProjectId
+) -> None:
+    analyst = make_actor(project_id=project_id, roles={Role.ANALYST})
+    gate = Gate.G1_REQUIREMENT_BASELINE
+
+    claimed = can(
+        analyst, Action.APPROVAL_DECIDE, gate_resource(project_id, gate, Role.COMPLIANCE_OFFICER)
+    )
+    assert not claimed.allowed
+    assert "does not hold" in claimed.reason
+
+    elsewhere = can(
+        analyst, Action.APPROVAL_DECIDE, gate_resource(other_project_id, gate, Role.ANALYST)
+    )
+    assert not elsewhere.allowed
+    assert "project isolation" in elsewhere.reason
+
+
+def test_superuser_flag_does_not_grant_a_gate_decision(project_id: ProjectId) -> None:
+    """Holding the gate's role is the only way in; the flag is not a substitute."""
+    root = Actor(
+        actor_id=ActorId(new_uuid()),
+        roles_by_project={project_id: frozenset({Role.PROJECT_MANAGER})},
+        is_superuser=True,
+    )
+    bare = ResourceRef(resource_type=ResourceType.APPROVAL_TASK, project_id=project_id)
+    assert not can(root, Action.APPROVAL_DECIDE, bare)
+    assert not can(
+        root,
+        Action.APPROVAL_DECIDE,
+        gate_resource(project_id, Gate.G1_REQUIREMENT_BASELINE, Role.ANALYST),
+    )
+
+
+def test_agent_is_refused_even_with_a_complete_gate_context(
+    agent_actor: Actor, project_id: ProjectId
+) -> None:
+    decision = can(
+        agent_actor,
+        Action.APPROVAL_DECIDE,
+        gate_resource(project_id, Gate.G1_REQUIREMENT_BASELINE, Role.COMPLIANCE_OFFICER),
+    )
+    assert not decision.allowed
+    assert "never decide an approval gate" in decision.reason
 
 
 # --- role-specific behaviour ---------------------------------------------

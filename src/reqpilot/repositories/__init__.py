@@ -9,16 +9,30 @@ Two rules every repository in this package follows:
    missed endpoint decorator cannot leak data (architecture ADR-009).
 """
 
+from reqpilot.repositories.approval import (
+    ApprovalDecisionRepository,
+    ApprovalTaskRepository,
+)
 from reqpilot.repositories.base import ProjectScopedRepository
+from reqpilot.repositories.baseline import BaselineRepository
 from reqpilot.repositories.database import (
     check_database_health,
     get_engine,
     get_session_factory,
     session_scope,
 )
+from reqpilot.repositories.requirements import (
+    RequirementRepository,
+    RequirementVersionRepository,
+)
 
 __all__ = [
+    "ApprovalDecisionRepository",
+    "ApprovalTaskRepository",
+    "BaselineRepository",
     "ProjectScopedRepository",
+    "RequirementRepository",
+    "RequirementVersionRepository",
     "check_database_health",
     "get_engine",
     "get_session_factory",
