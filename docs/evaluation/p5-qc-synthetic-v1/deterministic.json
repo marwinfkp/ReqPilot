@@ -1,0 +1,85 @@
+{
+  "benchmark_id": "P5-QC-SYNTHETIC-v1",
+  "benchmark_version": "1",
+  "manifest_sha256": "0b0dde3fc2ad251a5c5eebbbcabd00641525c629780898cf94306a9eddae64ef",
+  "mode": "deterministic",
+  "e2": {
+    "confusion": {
+      "tp": 20,
+      "fp": 1,
+      "fn": 0,
+      "tn": 19,
+      "precision": 0.9524,
+      "recall": 1.0,
+      "f1": 0.9756,
+      "false_positive_rate": 0.05
+    },
+    "items": 40,
+    "ambiguous": 20,
+    "false_positives": [
+      "A40"
+    ],
+    "missed": [],
+    "target": null,
+    "target_note": "set from this first measurement (Phase 0 O.1)"
+  },
+  "e3": {
+    "confusion": {
+      "tp": 7,
+      "fp": 4,
+      "fn": 5,
+      "tn": 764,
+      "precision": 0.6364,
+      "recall": 0.5833,
+      "f1": 0.6087,
+      "false_positive_rate": 0.0052
+    },
+    "definite_only": {
+      "tp": 5,
+      "fp": 0,
+      "fn": 7,
+      "tn": 768,
+      "precision": 1.0,
+      "recall": 0.4167,
+      "f1": 0.5883,
+      "false_positive_rate": 0.0
+    },
+    "planted_conflicts": 12,
+    "labelled_distractors": 14,
+    "negative_pairs": 768,
+    "distractor_false_positives": [
+      "D03",
+      "D06",
+      "D10",
+      "D11"
+    ],
+    "distractor_false_positive_rate": 0.2857,
+    "missed": [
+      "K03",
+      "K06",
+      "K08",
+      "K10",
+      "K11"
+    ],
+    "unlabelled_false_positives": [],
+    "recall_by_kind": {
+      "actor_scope": 1.0,
+      "logical": 1.0,
+      "numeric": 0.6,
+      "security": 0.5,
+      "timing": 0.3333
+    },
+    "recall_exit_bar": 0.8,
+    "meets_recall_exit_bar": false
+  },
+  "model_calls": {},
+  "all_calls_real_model": false,
+  "counts_for_roadmap_exit": false,
+  "counts_note": "ablation or offline run: reported, not the roadmap-exit figure",
+  "notes": [
+    "e3 run: status=completed, errors=0, semantic_failures=0, provider_calls=0, tokens_in=0, tokens_out=0",
+    "e2 run: status=completed, errors=0, semantic_failures=0, provider_calls=0, tokens_in=0, tokens_out=0",
+    "embedder: BAAI/bge-small-en-v1.5",
+    "gateway provider: openai; model: gpt-5.6-luna"
+  ]
+}

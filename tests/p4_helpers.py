@@ -50,6 +50,12 @@ _DEPTH = re.compile(r"Follow-up depth for this topic: (\d+)")
 _DEFECT = re.compile(r"id ([0-9a-f-]{36})")
 
 
+def _no_conflict(request: LLMRequest) -> str:
+    from tests.p5_helpers import adjudication
+
+    return adjudication(request, "no_conflict")
+
+
 @dataclass
 class ScriptedPersonaModel:
     """A deterministic stand-in for the model, driven by the persona fixture."""
@@ -70,6 +76,10 @@ class ScriptedPersonaModel:
             "requirement_extraction": self.extraction,
             "requirement_classification": self.classification,
             "clarification_question": self.clarification,
+            # P5: a clarification's re-analysis continues into quality analysis;
+            # the persona's scripted model finds nothing to add there.
+            "requirement_quality_review": lambda _r: json.dumps({"findings": []}),
+            "conflict_adjudication": _no_conflict,
         }[kind](request)
 
     # -- role #2 -----------------------------------------------------------

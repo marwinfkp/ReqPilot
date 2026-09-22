@@ -42,6 +42,7 @@ from reqpilot.retrieval.embeddings import EmbeddingProvider, provider_for
 from reqpilot.retrieval.rules import RetrievalRules, load_retrieval_rules
 from reqpilot.rules.elicitation import ElicitationRules, load_elicitation_rules
 from reqpilot.rules.extraction import ExtractionRules, load_extraction_rules
+from reqpilot.rules.quality import QualityRules, load_quality_rules
 
 
 def get_db() -> Iterator[Session]:
@@ -166,6 +167,18 @@ def get_elicitation_rules(
     return _elicitation_rules(str(settings.rules_dir))
 
 
+@lru_cache(maxsize=4)
+def _quality_rules(rules_dir: str) -> QualityRules:
+    return load_quality_rules(Path(rules_dir))
+
+
+def get_quality_rules(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> QualityRules:
+    """The versioned quality and conflict heuristics (P5), validated once per process."""
+    return _quality_rules(str(settings.rules_dir))
+
+
 def get_llm_gateway(settings: Annotated[Settings, Depends(get_settings)]) -> LLMGateway:
     """The one model access boundary (ADR-006), built from configuration.
 
@@ -183,3 +196,4 @@ AppSettings = Annotated[Settings, Depends(get_settings)]
 Gateway = Annotated[LLMGateway, Depends(get_llm_gateway)]
 ExtractionRulesDep = Annotated[ExtractionRules, Depends(get_extraction_rules)]
 ElicitationRulesDep = Annotated[ElicitationRules, Depends(get_elicitation_rules)]
+QualityRulesDep = Annotated[QualityRules, Depends(get_quality_rules)]

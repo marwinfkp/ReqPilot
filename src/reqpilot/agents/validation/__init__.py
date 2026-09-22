@@ -26,20 +26,34 @@ from reqpilot.agents.validation.extraction import (
     deduplicate,
     validate_proposal,
 )
+from reqpilot.agents.validation.quality import (
+    AcceptedQualityFinding,
+    ConflictDecision,
+    QualityReviewDecision,
+    locate,
+    validate_conflict,
+    validate_quality_findings,
+)
 
 __all__ = [
     "MIN_QUOTE_WORDS",
+    "AcceptedQualityFinding",
     "AssessmentDecision",
     "ClarificationQuestionDecision",
     "ClassificationDecision",
+    "ConflictDecision",
+    "QualityReviewDecision",
     "QuestionDecision",
     "RecordedProposal",
     "decide",
     "deduplicate",
+    "locate",
     "normalise_question",
     "validate_assessment",
     "validate_clarification",
     "validate_classification",
+    "validate_conflict",
     "validate_proposal",
+    "validate_quality_findings",
     "validate_question",
 ]

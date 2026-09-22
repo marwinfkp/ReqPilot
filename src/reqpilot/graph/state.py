@@ -126,6 +126,30 @@ class AnalysisState(BaseGraphState, total=False):
     clarification_id: str
     #: P4: the outcome of a clarification re-analysis (a ``ReanalysisStatus`` value).
     revision_status: str
+    # ---- P5: quality and conflict detection (C.3 nodes 6-8) ----------------
+    #: A quality run: ``load_scope`` goes straight to ``quality_analysis``.
+    quality_mode: bool
+    #: After ``classify``, analyse the versions this run produced (P5; set for a
+    #: clarification's re-analysis, FR-CLR-003's quality half).
+    analyse_quality: bool
+    #: A quality run's versions (empty = every current one). A follow-on
+    #: analysis after ``classify`` uses ``requirement_version_ids`` instead.
+    quality_version_ids: list[str]
+    #: Conflicts only for pairs touching ``quality_version_ids`` (else all pairs).
+    quality_focus: bool
+    #: Whether the LLM semantic layer runs (review and adjudication).
+    semantic: bool
+    #: False: record findings only, no conflict shortlist (default: detect).
+    detect_conflicts: bool
+    quality_finding_ids: Annotated[list[str], operator.add]
+    #: The deterministic shortlist: ids and scores only, cleared by
+    #: ``conflict_adjudicate`` (architecture D.2 ``conflict_pairs``, D.4).
+    conflict_pairs: list[dict]
+    conflict_ids: Annotated[list[str], operator.add]
+    #: Architecture D.2 routing flag: any open conflict was recorded.
+    has_open_conflicts: bool
+    #: Semantic calls that failed or were refused (recorded; rules still ran).
+    semantic_failures: Annotated[int, operator.add]
 
 
 class ElicitationState(BaseGraphState, total=False):

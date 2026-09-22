@@ -85,7 +85,7 @@ def assert_is_deterministic_router(func: object) -> None:
 # Routers are annotated with the full state type: LangGraph reads the
 # annotation as the router's input schema, and a narrower type would hide the
 # fields the route depends on.
-AfterScope = Literal["extract_requirements", "classify", "error_handler"]
+AfterScope = Literal["extract_requirements", "classify", "quality_analysis", "error_handler"]
 AfterExtraction = Literal["validate_extraction", "error_handler"]
 AfterValidation = Literal["persist_candidates", "persist_revision", "error_handler"]
 
@@ -95,6 +95,8 @@ def route_after_scope(state: AnalysisState) -> AfterScope:
     extract; versions only -> classify; a bad scope -> fail."""
     if state.get("errors"):
         return "error_handler"
+    if state.get("quality_mode"):
+        return "quality_analysis"
     if (
         state.get("scope_source_ids")
         or state.get("scope_session_ids")
@@ -115,6 +117,41 @@ def route_validation(state: AnalysisState) -> AfterValidation:
     if state.get("errors"):
         return "error_handler"
     return "persist_revision" if state.get("clarification_id") else "persist_candidates"
+
+
+# --- P5: quality and conflict detection (C.3 nodes 6-8) --------------------------
+
+AfterClassify = Literal["quality_analysis", "__end__"]
+AfterQuality = Literal["conflict_shortlist", "error_handler", "__end__"]
+AfterShortlist = Literal["conflict_adjudicate", "__end__"]
+
+
+def route_after_classify(state: AnalysisState) -> AfterClassify:
+    """C.3: ``classify`` -> ``quality_analysis`` when the run analyses what it produced.
+
+    A P3 batch run ends at ``classify`` as before; a clarification's re-analysis
+    (P5: the quality half of FR-CLR-003) continues into quality analysis for its
+    new version. Nothing to analyse -> end.
+    """
+    if state.get("errors"):
+        return "__end__"
+    if state.get("analyse_quality") and state.get("requirement_version_ids"):
+        return "quality_analysis"
+    return "__end__"
+
+
+def route_after_quality(state: AnalysisState) -> AfterQuality:
+    """Findings recorded -> the conflict shortlist, unless the run skips conflicts."""
+    if state.get("errors"):
+        return "error_handler"
+    if state.get("detect_conflicts") is False:
+        return "__end__"
+    return "conflict_shortlist"
+
+
+def route_conflict_shortlist(state: AnalysisState) -> AfterShortlist:
+    """Shortlisted pairs -> adjudicate; none -> end (``gate_fanout`` is a later phase)."""
+    return "conflict_adjudicate" if state.get("conflict_pairs") else "__end__"
 
 
 # ---------------------------------------------------------------------------

@@ -18,6 +18,7 @@ from reqpilot.domain.enums import (
     ClarificationStatus,
     InterviewSessionKind,
     QualityFindingStatus,
+    QualityFindingType,
     ResourceType,
 )
 from reqpilot.domain.ids import ProjectId
@@ -118,11 +119,40 @@ class UtteranceRepository(ProjectScopedRepository[Utterance]):
 class QualityFindingRepository(ProjectScopedRepository[QualityFinding]):
     resource_type = ResourceType.QUALITY_FINDING
 
-    def add(self, finding: QualityFinding) -> QualityFinding:
-        self.authorize(Action.QUALITY_FINDING_CREATE, ProjectId(finding.project_id))
+    def add(
+        self, finding: QualityFinding, *, action: Action = Action.QUALITY_FINDING_CREATE
+    ) -> QualityFinding:
+        """Record a finding: by an analyst (P4, the default) or a detector (P5,
+        ``QUALITY_FINDING_DETECT``, which the pipeline may perform)."""
+        if action not in (Action.QUALITY_FINDING_CREATE, Action.QUALITY_FINDING_DETECT):
+            raise ValueError(f"{action} does not record a quality finding")
+        self.authorize(action, ProjectId(finding.project_id))
         self._session.add(finding)
         self._session.flush()
         return finding
+
+    def save(self, finding: QualityFinding, *, action: Action) -> QualityFinding:
+        """Persist a resolution (P5: ``QUALITY_FINDING_RESOLVE`` / ``_DISMISS``)."""
+        if action not in (Action.QUALITY_FINDING_RESOLVE, Action.QUALITY_FINDING_DISMISS):
+            raise ValueError(f"{action} does not close a quality finding")
+        self.authorize(action, ProjectId(finding.project_id))
+        self._session.flush()
+        return finding
+
+    def list_for_project(
+        self,
+        project_id: ProjectId,
+        *,
+        status: QualityFindingStatus | None = None,
+        finding_type: QualityFindingType | None = None,
+    ) -> list[QualityFinding]:
+        self.authorize(Action.QUALITY_FINDING_READ, project_id)
+        stmt = self.scoped(select(QualityFinding), QualityFinding.project_id, project_id)
+        if status is not None:
+            stmt = stmt.where(QualityFinding.status == status)
+        if finding_type is not None:
+            stmt = stmt.where(QualityFinding.finding_type == finding_type)
+        return list(self._session.scalars(stmt.order_by(QualityFinding.created_at)))
 
     def get(self, project_id: ProjectId, finding_id: uuid.UUID) -> QualityFinding | None:
         self.authorize(Action.QUALITY_FINDING_READ, project_id)

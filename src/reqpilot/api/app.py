@@ -21,6 +21,7 @@ from reqpilot.api.routes import (
     governance,
     health,
     knowledge,
+    quality,
     requirements,
 )
 
@@ -34,7 +35,10 @@ DESCRIPTION = (
     "not approval) and P4 (elicitation and clarification: adaptive, role-specific "
     "interviews on a checkpointed LangGraph interrupt/resume loop with deterministic "
     "coverage and bounded follow-ups; clarifications bound to a requirement and a defect, "
-    "whose answers create a new requirement version). Model calls go to the configured "
+    "whose answers create a new requirement version) and P5 (quality and conflict "
+    "detection: deterministic quality rules plus validated model proposals, a bounded "
+    "conflict shortlist before any pairwise model call, conflicts as transition guards "
+    "that only a human resolves). Model calls go to the configured "
     "provider: the offline stub by default, "
     "or OpenAI when LLM_PROVIDER=openai."
 )
@@ -54,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(knowledge.router)
     app.include_router(extraction.router)
     app.include_router(elicitation.router)
+    app.include_router(quality.router)
     return app
 
 

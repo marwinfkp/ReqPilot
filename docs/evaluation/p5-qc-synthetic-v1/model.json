@@ -1,0 +1,79 @@
+{
+  "benchmark_id": "P5-QC-SYNTHETIC-v1",
+  "benchmark_version": "1",
+  "manifest_sha256": "0b0dde3fc2ad251a5c5eebbbcabd00641525c629780898cf94306a9eddae64ef",
+  "mode": "model",
+  "e2": {
+    "confusion": {
+      "tp": 20,
+      "fp": 3,
+      "fn": 0,
+      "tn": 17,
+      "precision": 0.8696,
+      "recall": 1.0,
+      "f1": 0.9303,
+      "false_positive_rate": 0.15
+    },
+    "items": 40,
+    "ambiguous": 20,
+    "false_positives": [
+      "A24",
+      "A27",
+      "A40"
+    ],
+    "missed": [],
+    "target": null,
+    "target_note": "set from this first measurement (Phase 0 O.1)"
+  },
+  "e3": {
+    "confusion": {
+      "tp": 12,
+      "fp": 0,
+      "fn": 0,
+      "tn": 768,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "definite_only": {
+      "tp": 11,
+      "fp": 0,
+      "fn": 1,
+      "tn": 768,
+      "precision": 1.0,
+      "recall": 0.9167,
+      "f1": 0.9565,
+      "false_positive_rate": 0.0
+    },
+    "planted_conflicts": 12,
+    "labelled_distractors": 14,
+    "negative_pairs": 768,
+    "distractor_false_positives": [],
+    "distractor_false_positive_rate": 0.0,
+    "missed": [],
+    "unlabelled_false_positives": [],
+    "recall_by_kind": {
+      "actor_scope": 1.0,
+      "logical": 1.0,
+      "numeric": 1.0,
+      "security": 1.0,
+      "timing": 1.0
+    },
+    "recall_exit_bar": 0.8,
+    "meets_recall_exit_bar": true
+  },
+  "model_calls": {
+    "requirement_extraction": 8,
+    "conflict_detection": 100
+  },
+  "all_calls_real_model": true,
+  "counts_for_roadmap_exit": true,
+  "counts_note": "configured pipeline with a real model on every semantic call",
+  "notes": [
+    "e3 run: status=completed, errors=0, semantic_failures=0, provider_calls=104, tokens_in=137815, tokens_out=25988",
+    "e2 run: status=completed, errors=0, semantic_failures=0, provider_calls=4, tokens_in=5116, tokens_out=6955",
+    "embedder: BAAI/bge-small-en-v1.5",
+    "gateway provider: openai; model: gpt-5.6-luna"
+  ]
+}

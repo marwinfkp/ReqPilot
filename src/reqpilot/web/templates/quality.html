@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Quality &amp; conflicts - {{ project.name }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/clarifications">open issues</a>
+  <a href="/ui/projects/{{ project.id }}/review">review queue</a>
+{% endblock %}
+{% block content %}
+<h1>Quality findings &amp; conflicts</h1>
+<p class="note warn">{{ not_approval }}</p>
+<p class="muted">Deterministic rules report what they can point at; a model's proposals are
+recorded only after deterministic validation, with the ruleset's severity. Review priority is a
+heuristic signal, not a probability. An open finding blocks VALIDATED; an open or under-review
+conflict blocks VALIDATED and submission for approval (D12: a guard, not a state).</p>
+
+{% if may_run %}
+<form method="post" action="/ui/projects/{{ project.id }}/quality-runs">
+  <button type="submit" class="primary">Run quality &amp; conflict analysis</button>
+</form>
+{% endif %}
+
+<h2>Conflicts</h2>
+{% if conflicts %}
+<table>
+  <tr><th>Class / kind</th><th>Requirement A</th><th>Requirement B</th><th>Rationale</th><th>Status</th><th>Decision</th></tr>
+  {% for c in conflicts %}
+  <tr>
+    <td><span class="state">{{ c.conflict_class.value }}</span><br><span class="mono">{{ c.kind.value }}</span>
+      <div class="muted">{{ c.severity.value }} &middot; priority {{ c.review_priority.value }}<br>by {{ c.detected_by.value }}</div>
+      {% if c.involves_stakeholder_disagreement %}<div class="note">stakeholder disagreement (G4)</div>{% endif %}</td>
+    <td><span class="mono">{{ c.a.requirement_human_id }} v{{ c.a.version_no }}</span><br>{{ c.a.statement }}
+      <div class="muted">evidence: &ldquo;{{ c.a.evidence }}&rdquo;<br>{{ c.a.stakeholder or "" }}</div></td>
+    <td><span class="mono">{{ c.b.requirement_human_id }} v{{ c.b.version_no }}</span><br>{{ c.b.statement }}
+      <div class="muted">evidence: &ldquo;{{ c.b.evidence }}&rdquo;<br>{{ c.b.stakeholder or "" }}</div></td>
+    <td>{{ c.rationale }}</td>
+    <td><span class="state">{{ c.status.value }}</span>
+      {% if c.resolution %}<div class="muted">{{ c.resolution.value }}: {{ c.resolution_reason }}</div>
+      {% elif c.resolution_reason %}<div class="muted">{{ c.resolution_reason }}</div>{% endif %}</td>
+    <td>
+      {% if may_resolve and c.status.value in ["open", "under_review"] %}
+        {% if c.status.value == "open" %}
+        <form method="post" action="/ui/conflicts/{{ c.id }}/review"><button type="submit">Take under review</button></form>
+        {% endif %}
+        <form method="post" action="/ui/conflicts/{{ c.id }}/resolve">
+          <select name="resolution">{% for r in resolutions %}<option value="{{ r.value }}">{{ r.value }}</option>{% endfor %}</select>
+          <input type="text" name="reason" required placeholder="reason (G4 decision)">
+          <label><input type="checkbox" name="withdraw_other" value="true"> withdraw the other version</label>
+          <button type="submit" class="primary">Resolve</button>
+        </form>
+        <form method="post" action="/ui/conflicts/{{ c.id }}/dismiss">
+          <input type="text" name="reason" required placeholder="why this is not a conflict">
+          <button type="submit">Dismiss</button>
+        </form>
+        {% if stakeholders %}
+        <form method="post" action="/ui/conflicts/{{ c.id }}/clarify">
+          <select name="side"><option value="a">ask about A</option><option value="b">ask about B</option></select>
+          <select name="asked_of">{% for s in stakeholders %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
+          <button type="submit">Raise a clarification</button>
+        </form>
+        {% endif %}
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">No conflicts recorded.</p>{% endif %}
+
+<h2>Quality findings</h2>
+{% if findings %}
+<table>
+  <tr><th>Requirement</th><th>Type / severity</th><th>Rationale &amp; evidence</th><th>Detected by</th><th>Status</th><th>Decision</th></tr>
+  {% for f in findings %}
+  <tr>
+    <td class="mono">{{ f.requirement_human_id }} v{{ f.version_no }}</td>
+    <td><span class="mono">{{ f.finding_type.value }}</span><div class="muted">{{ f.severity.value }} &middot; priority {{ f.review_priority.value }}</div></td>
+    <td>{{ f.rationale }}{% if f.span_quote %}<div class="muted">about: &ldquo;{{ f.span_quote }}&rdquo;</div>{% endif %}</td>
+    <td class="mono">{{ f.detected_by.value }}<div class="muted">{{ f.rule_id or "" }}</div></td>
+    <td><span class="state">{{ f.status.value }}</span>{% if f.resolution_reason %}<div class="muted">{{ f.resolution_reason }}</div>{% endif %}</td>
+    <td>
+      {% if may_close and f.status.value == "open" %}
+      <form method="post" action="/ui/quality-findings/{{ f.id }}/resolve">
+        <input type="text" name="reason" required placeholder="how it was resolved">
+        <button type="submit">Resolve</button>
+      </form>
+      <form method="post" action="/ui/quality-findings/{{ f.id }}/dismiss">
+        <input type="text" name="reason" required placeholder="why it is not a defect">
+        <button type="submit">Dismiss</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">No findings recorded.</p>{% endif %}
+
+<h2>Project glossary</h2>
+{% if glossary %}
+<ul>{% for t in glossary %}<li><strong>{{ t.term }}</strong> &mdash; {{ t.definition }}</li>{% endfor %}</ul>
+{% else %}<p class="muted">No terms defined; undefined acronyms are reported as findings.</p>{% endif %}
+{% if may_glossary %}
+<form method="post" action="/ui/projects/{{ project.id }}/glossary">
+  <input type="text" name="term" required placeholder="term">
+  <input type="text" name="definition" required placeholder="definition">
+  <button type="submit">Add term</button>
+</form>
+{% endif %}
+{% endblock %}

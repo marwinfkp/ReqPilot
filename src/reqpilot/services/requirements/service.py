@@ -47,6 +47,7 @@ from reqpilot.domain.versioning import compute_version_hash
 from reqpilot.repositories.approval import ApprovalTaskRepository
 from reqpilot.repositories.elicitation import ClarificationRepository, QualityFindingRepository
 from reqpilot.repositories.extraction import ClassificationRepository
+from reqpilot.repositories.quality import ConflictRepository
 from reqpilot.repositories.requirements import (
     RequirementRepository,
     RequirementVersionRepository,
@@ -118,6 +119,7 @@ class RequirementService:
         self._classifications = ClassificationRepository(session, actor)
         self._findings = QualityFindingRepository(session, actor)
         self._clarifications = ClarificationRepository(session, actor)
+        self._conflicts = ConflictRepository(session, actor)
         self._audit = AuditService(session)
 
     # -- creation ---------------------------------------------------------
@@ -291,8 +293,9 @@ class RequirementService:
         """Assemble the guard context from what actually exists in P1.
 
         Fields whose producers belong to later roadmap phases stay at their
-        defaults - zero open problems - which is accurate rather than permissive:
-        nothing can raise a quality defect or a conflict yet.
+        defaults - zero open problems - which is accurate rather than permissive.
+        From P4 open quality findings count; from P5 open conflicts do too. Risk
+        (P7) and the G2/G3/G5 gate fan-out beyond P1's tasks are still later.
         """
         blocking = [
             task
@@ -319,6 +322,9 @@ class RequirementService:
             blocking_gate_task_count=len(blocking),
             is_baselined=version.state is RequirementState.BASELINED,
             open_defect_count=open_findings,
+            # P5: an open or under-review conflict on either side blocks
+            # VALIDATED and PENDING_APPROVAL ([DESIGN] D12: a guard, not a state).
+            open_conflict_count=self._conflicts.blocking_count(project_id, version.id),
             clarification_answer_present=answered,
         )
 

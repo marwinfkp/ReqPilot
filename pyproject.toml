@@ -108,6 +108,7 @@ ignore = [
 "src/reqpilot/web/knowledge.py" = ["B008"]
 "src/reqpilot/web/extraction.py" = ["B008"]
 "src/reqpilot/web/elicitation.py" = ["B008"]
+"src/reqpilot/web/quality.py" = ["B008"]
 
 # ---------------------------------------------------------------------------
 # Types

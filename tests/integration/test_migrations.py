@@ -123,6 +123,11 @@ ELICITATION_TABLES = {
 }
 
 
+#: Tables the quality-and-conflict phase adds (architecture G.4, G.5): conflicts
+#: and the project glossary.
+QUALITY_TABLES = {"conflict", "glossary_term"}
+
+
 def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None:
     """The schema must not run ahead of the roadmap.
 
@@ -136,6 +141,7 @@ def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None
         | KNOWLEDGE_BASE_TABLES
         | EXTRACTION_TABLES
         | ELICITATION_TABLES
+        | QUALITY_TABLES
     )
     unexpected = present - permitted
     assert not unexpected, f"migrations created out-of-scope tables: {sorted(unexpected)}"
@@ -250,6 +256,30 @@ def test_downgrading_p4_removes_exactly_the_elicitation_tables(
             | KNOWLEDGE_BASE_TABLES
             | EXTRACTION_TABLES
         )
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
+    command.upgrade(config, "head")
+
+
+def test_downgrading_p5_removes_exactly_the_quality_tables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rolling P5 back leaves P0-P4 intact, with the P4 finding columns only."""
+    url = sqlite_url(tmp_path / "p5-down.db")
+    monkeypatch.setenv("DATABASE_URL", url)
+    get_settings.cache_clear()
+    config = alembic_config(url)
+    command.upgrade(config, "head")
+    command.downgrade(config, "0006_p4_elicitation")
+    engine = create_engine(url, future=True)
+    try:
+        inspector = inspect(engine)
+        present = set(inspector.get_table_names())
+        assert not present & QUALITY_TABLES, "downgrade left P5 tables behind"
+        assert present >= ELICITATION_TABLES
+        finding_columns = {c["name"] for c in inspector.get_columns("quality_finding")}
+        assert not {"rule_id", "evidence", "resolution_reason"} & finding_columns
     finally:
         engine.dispose()
         get_settings.cache_clear()

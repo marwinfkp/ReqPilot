@@ -55,9 +55,9 @@ P1_TABLES = {
 #: Tables belonging to later roadmap phases. None may appear yet.
 #: The knowledge-base tables arrived with P2 and are no longer "future". The
 #: project corpus and the glossary are deliberately still absent after P2.
+#: ``glossary_term`` and ``conflict`` arrived with P5 (quality and conflict
+#: detection) and left this list then; everything below is still later.
 FUTURE_PHASE_TABLES = {
-    "glossary_term",
-    "conflict",
     "traceability_link",
     "compliance_mapping",
     "risk",

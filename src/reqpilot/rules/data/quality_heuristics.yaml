@@ -1,0 +1,331 @@
+# Quality and conflict heuristics (roadmap phase P5; architecture M7
+# "quality_heuristics.yaml", C.3 nodes 6-8, E #6, H.2).
+#
+# Every value here decides what the deterministic layer reports about a
+# requirement, and which pairs of requirements a model is asked to compare, so it
+# is versioned data rather than code (DQ-03). Each finding and conflict records
+# the rule id that produced it.
+#
+# Provenance of the term lists: the problem-statement checklist (§10) and the
+# categories of "unverifiable language" in ISO/IEC/IEEE 29148 (superlatives,
+# subjective language, vague adverbs and adjectives, loopholes, open-ended
+# terms, vague pronouns). The words below are ReqPilot's own generic
+# requirements-engineering vocabulary; no standard text is reproduced, and the
+# lists were written before the P5 benchmark was run.
+#
+# Values marked PROVISIONAL are starting points to be re-set from the first E2 /
+# E3 measurement (Phase 0 O.1). Review signals are heuristic
+# review-prioritisation signals, NOT probabilities (Phase 0 H.1).
+
+name: quality_heuristics
+version: "1.0.0"
+description: >
+  Deterministic quality checks (ambiguity, incompleteness, testability,
+  infeasibility, source, terminology, security/privacy signals, duplication),
+  the authoritative severity per finding type, and the deterministic conflict
+  shortlist and contradiction rules.
+
+rules:
+  # --- ambiguity (FR-QAL-001) ------------------------------------------------
+  ambiguity:
+    # Subjective or vague words and phrases. Matched on word boundaries,
+    # case-insensitively.
+    vague_terms:
+      - user-friendly
+      - user friendly
+      - easy to use
+      - easy
+      - simple
+      - intuitive
+      - modern
+      - flexible
+      - robust
+      - seamless
+      - efficient
+      - efficiently
+      - effective
+      - adequate
+      - sufficient
+      - appropriate
+      - reasonable
+      - relevant
+      - significant
+      - normal
+      - good
+      - better
+      - best
+      - optimal
+      - state-of-the-art
+      - fast
+      - quick
+      - quickly
+      - promptly
+      - rapidly
+      - timely
+      - in a timely manner
+      - soon
+      - immediately
+      - large
+      - small
+      - short
+      - long
+      - many
+      - most
+      - several
+      - some
+      - few
+      - various
+      - key
+      - gracefully
+      - securely
+      - highly
+      - minimise
+      - minimize
+      - maximise
+      - maximize
+      - optimise
+      - optimize
+      - suspicious
+    # Loopholes and open-ended phrases.
+    loopholes:
+      - as appropriate
+      - as needed
+      - as required
+      - as applicable
+      - as necessary
+      - if possible
+      - where possible
+      - where appropriate
+      - if necessary
+      - if needed
+      - etc
+      - and/or
+      - but not limited to
+      - and so on
+    # Time-and-speed words are not ambiguous when the statement also gives a
+    # measurable quantity of time ("promptly, within 2 seconds").
+    timing_terms:
+      - fast
+      - quick
+      - quickly
+      - promptly
+      - rapidly
+      - timely
+      - in a timely manner
+      - soon
+      - immediately
+    # A statement whose grammatical subject is only a pronoun names no actor.
+    vague_subject_pronouns: [it, this, that, they, these, those]
+    review_signal: 0.6
+
+  # --- incompleteness (FR-QAL-002) -------------------------------------------
+  incompleteness:
+    placeholders:
+      - tbd
+      - tbc
+      - tba
+      - to be determined
+      - to be confirmed
+      - to be decided
+      - to be defined
+      - "???"
+      - xxx
+      - "[...]"
+    modal_verbs: [shall, must, will, should, may, can]
+    review_signal: 0.5
+
+  # --- testability (FR-QAL-003) ----------------------------------------------
+  testability:
+    # Quality words that need a measurable criterion to be verifiable.
+    quality_terms:
+      - secure
+      - securely
+      - reliable
+      - reliably
+      - available
+      - scalable
+      - responsive
+      - performant
+      - fast
+      - quick
+      - quickly
+      - user-friendly
+      - user friendly
+      - easy to use
+      - intuitive
+      - robust
+      - efficient
+      - high performance
+      - highly available
+    # Classification categories whose requirements need a measurable criterion.
+    measurable_categories: [performance, availability, usability]
+    review_signal: 0.6
+
+  # --- infeasibility (FR-QAL-009, secondary) ----------------------------------
+  infeasibility:
+    absolute_terms:
+      - "100% availability"
+      - "100% uptime"
+      - "100 % availability"
+      - zero downtime
+      - never fail
+      - never fails
+      - never go down
+      - instantaneous
+      - instantaneously
+      - instantly
+      - unlimited
+      - infinite
+      - zero latency
+      - no errors
+      - always available
+      - all possible
+    review_signal: 0.5
+
+  # --- undefined terminology (FR-QAL-005) --------------------------------------
+  terminology:
+    # Upper-case tokens of this length are candidate acronyms; ones not in the
+    # project glossary and not listed here are reported.
+    acronym_min_length: 2
+    acronym_max_length: 6
+    common_acronyms:
+      [ID, PDF, CSV, SMS, EUR, USD, GBP, UTC, URL, API, UI, IT, PIN, OTP, JSON, XML, HTML,
+       PNG, JPEG, JPG, MB, KB, GB, TB, AM, PM, FAQ, OK, UK, US, EU]
+    review_signal: 0.3
+
+  # --- security / privacy signals (FR-QAL-008: delegated to P6) ----------------
+  # A SIGNAL only - the requirement mentions sensitive data and says nothing
+  # about protecting it. The analysis itself is FR-SEC-001 / FR-CMP-002 (P6).
+  security_privacy:
+    security_data_terms:
+      [password, passwords, credential, credentials, card number, card numbers, cvv, pin,
+       account number, account numbers, access token, api key, private key]
+    privacy_data_terms:
+      [personal data, date of birth, national id, passport, home address, income,
+       bank statement, bank statements, payslip, payslips, phone number, email address,
+       health, biometric]
+    protection_terms:
+      [encrypt, encrypted, encryption, mask, masked, masking, hash, hashed, access control,
+       authoris, authoriz, role, permission, consent, retain, retention, delete, deletion,
+       purge, audit, anonymis, anonymiz, pseudonymis, pseudonymiz, protect, secure,
+       securely, restricted, tls]
+    review_signal: 0.3
+
+  # --- missing source (FR-QAL-006) ------------------------------------------------
+  source:
+    review_signal: 0.8
+
+  # --- duplication (FR-QAL-004) -----------------------------------------------------
+  duplication:
+    # Token-set Jaccard at or above which two statements are near-duplicates
+    # (the P3 review threshold, extraction.yaml dedupe.review_similarity).
+    near_duplicate_similarity: 0.8
+    review_signal_exact: 0.9
+    review_signal_near: 0.6
+
+  # --- authoritative severity per finding type ---------------------------------------
+  # A model may *propose* a severity; the recorded severity is this table's
+  # (deterministic code disposes). Low = worth a look; high = likely blocks use.
+  severity_by_type:
+    ambiguity: medium
+    incompleteness: medium
+    untestability: medium
+    duplication: medium
+    near_duplicate: low
+    undefined_term: low
+    missing_source: high
+    inconsistency: medium
+    infeasibility: medium
+    missing_security_consideration: low
+    missing_privacy_consideration: low
+
+  # --- review priority labels (heuristic, not probabilities) -------------------------
+  review_priority:
+    high_at: 0.7
+    medium_at: 0.4
+
+  # --- LLM semantic quality review (role #3 support) -----------------------------------
+  semantic_quality:
+    enabled: true
+    # Requirements per model call (bounds prompt size and call count).
+    batch_size: 10
+    # Finding types a model may propose; everything else is rule-only.
+    proposable_types:
+      [ambiguity, incompleteness, untestability, undefined_term, infeasibility, inconsistency]
+    max_findings_per_requirement: 4
+    max_quote_chars: 300
+    # A proposal whose explanation claims an authority it does not have is
+    # refused, whatever else it says (the model proposes; it never decides).
+    authority_phrases:
+      - has been approved
+      - have been approved
+      - is approved
+      - are approved
+      - i approve
+      - we approve
+      - mark this requirement approved
+      - marked as approved
+      - is baselined
+      - has been baselined
+      - is compliant
+      - are compliant
+      - is non-compliant
+      - lifecycle state
+      - conflict is resolved
+      - dismiss this finding
+
+  # --- conflict detection (FR-CNF-001..004; architecture E #6) --------------------------
+  conflict:
+    # Deterministic shortlist (FR-CNF-004). A pair is shortlisted when its score
+    # reaches the threshold; each requirement keeps at most top_k partners; a
+    # run adjudicates at most max_pairs. PROVISIONAL.
+    shortlist_threshold: 0.35
+    top_k_per_requirement: 4
+    max_pairs_per_run: 150
+    # Added to a pair's score when both statements fall in one topic family, or
+    # both carry quantities of one unit class.
+    topic_family_bonus: 0.2
+    unit_class_bonus: 0.15
+    # Content-word overlap (overlap coefficient) the deterministic contradiction
+    # rules need before they call a pair a definite conflict.
+    numeric_rule_overlap: 0.5
+    negation_rule_overlap: 0.75
+    # Pairs this lexically similar are duplicates, not conflicts.
+    duplicate_similarity: 0.8
+    max_versions_per_run: 300
+    # Deterministic outcomes without a model: definite -> recorded; a
+    # contradiction signal the rules cannot settle -> potential (only when the
+    # semantic adjudicator is unavailable or disabled).
+    semantic_adjudication: true
+    review_signal_definite: 0.9
+    review_signal_potential: 0.5
+    severity_by_class:
+      definite: high
+      potential: medium
+    # Generic requirements-engineering topic families (structured attribute
+    # matching for the shortlist). Stems, matched as word prefixes.
+    topic_families:
+      authentication: [sign-in, sign in, signin, login, log in, logon, authenticat, password, multi-factor, mfa, one-time, otp, credential, smart card]
+      session: [session, inactivity, idle, timeout, time out, expire, log out, logout]
+      availability: [available, availability, uptime, downtime, offline, maintenance, 24/7, 24 hours, outage]
+      retention: [retain, retention, delete, deletion, purge, archive, keep, store, storage]
+      notification: [notify, notification, notified, send, sms, email, e-mail, letter, message]
+      performance: [respond, response, latency, within, second, seconds, load, throughput, concurrent]
+      capacity: [concurrent, users, sessions, capacity, sized, volume, transactions per]
+      limits: [limit, maximum, minimum, up to, at least, above, below, exceed]
+      authorisation: [override, approve, permitted, allowed, only, role, authoris, authoriz, access]
+      audit: [audit, log, logging, trail, record]
+      upload: [upload, document, file, attachment, mb, size, format]
+    # Words naming who a requirement is about. When both statements name
+    # actors and the sets are disjoint, the rules never call a pair definite.
+    actor_terms:
+      [applicant, applicants, customer, customers, staff, employee, employees, underwriter,
+       underwriters, administrator, administrators, admin, officer, officers, manager,
+       managers, auditor, auditors, analyst, analysts, team, branch, operator, operators,
+       agent, agents, user, users, partner, partners, vendor, vendors]
+    # Phrases that scope a requirement to a condition. Different conditions ->
+    # never definite (conditional compatibility is for the adjudicator).
+    condition_markers:
+      [during, when, whenever, while, if, unless, except, excluding, outside, in case, on weekends,
+       on saturdays, on sundays, at month-end, at month end, under, before, after hours, between]
+    negation_markers: [not, never, no, cannot, "can't", must not, shall not, prohibited, forbidden, only]

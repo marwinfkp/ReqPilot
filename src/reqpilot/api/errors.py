@@ -30,6 +30,7 @@ from reqpilot.domain.errors import (
     LicenceViolationError,
     ProjectIsolationError,
     PromptRegistryError,
+    QualityError,
     ReqPilotError,
     RequirementIdError,
     ReviewError,
@@ -62,6 +63,7 @@ ERROR_STATUS: tuple[tuple[type[Exception], int], ...] = (
     # Elicitation and clarification refusals in the current state (P4).
     (ElicitationError, status.HTTP_409_CONFLICT),
     (ClarificationError, status.HTTP_409_CONFLICT),
+    (QualityError, status.HTTP_409_CONFLICT),
     # A trust-boundary refusal is not the caller's input error.
     (EgressRefusedError, status.HTTP_409_CONFLICT),
     (PromptRegistryError, status.HTTP_500_INTERNAL_SERVER_ERROR),

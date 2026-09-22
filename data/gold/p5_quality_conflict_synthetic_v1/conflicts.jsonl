@@ -1,0 +1,26 @@
+{"pair_id": "K01", "a": "C01", "b": "C02", "label": "conflict", "kind": "numeric", "note": "at least 500 vs at most 100 concurrent sessions for the same population"}
+{"pair_id": "K02", "a": "C03", "b": "C04", "label": "conflict", "kind": "timing", "note": "60 vs 15 minutes of inactivity for the same applicant session"}
+{"pair_id": "K03", "a": "C05", "b": "C06", "label": "conflict", "kind": "timing", "note": "no planned downtime vs a weekly planned maintenance window on the same portal"}
+{"pair_id": "K04", "a": "C07", "b": "C08", "label": "conflict", "kind": "numeric", "note": "retain 7 years vs delete after 12 months, same records"}
+{"pair_id": "K05", "a": "C09", "b": "C10", "label": "conflict", "kind": "actor_scope", "note": "branch staff may override vs only the credit risk team may override"}
+{"pair_id": "K06", "a": "C11", "b": "C12", "label": "conflict", "kind": "security", "note": "single-factor email link only vs mandatory multi-factor authentication"}
+{"pair_id": "K07", "a": "C13", "b": "C14", "label": "conflict", "kind": "logical", "note": "send the decision by SMS vs never send decision details by SMS"}
+{"pair_id": "K08", "a": "C15", "b": "C16", "label": "conflict", "kind": "numeric", "note": "2 s vs up to 10 s under the same stated condition (normal load)"}
+{"pair_id": "K09", "a": "C17", "b": "C18", "label": "conflict", "kind": "numeric", "note": "reject above 50,000 EUR vs accept up to 75,000 EUR"}
+{"pair_id": "K10", "a": "C19", "b": "C20", "label": "conflict", "kind": "timing", "note": "within one working day vs weekly batch notification"}
+{"pair_id": "K11", "a": "C21", "b": "C22", "label": "conflict", "kind": "numeric", "note": "5 MB maximum per document vs accept 20 MB scanned documents"}
+{"pair_id": "K12", "a": "C23", "b": "C24", "label": "conflict", "kind": "security", "note": "audit entries never deleted vs administrators delete entries older than 90 days"}
+{"pair_id": "D01", "a": "C25", "b": "C26", "label": "no_conflict", "distractor": "conditional_compatible", "note": "normal operation vs explicitly scoped month-end processing"}
+{"pair_id": "D02", "a": "C27", "b": "C28", "label": "no_conflict", "distractor": "conditional_compatible", "note": "weekday business-hours availability; Saturday maintenance is outside it"}
+{"pair_id": "D03", "a": "C29", "b": "C04", "label": "no_conflict", "distractor": "near_miss_actor", "note": "staff console sessions vs applicant sessions: different populations"}
+{"pair_id": "D04", "a": "C30", "b": "C08", "label": "no_conflict", "distractor": "near_miss_numeric", "note": "archiving after 30 days is not deletion; compatible with deletion at 12 months"}
+{"pair_id": "D05", "a": "C30", "b": "C07", "label": "no_conflict", "distractor": "near_miss_numeric", "note": "archiving is compatible with 7-year retention"}
+{"pair_id": "D06", "a": "C31", "b": "C14", "label": "no_conflict", "distractor": "near_miss_logical", "note": "email delivery is not SMS"}
+{"pair_id": "D07", "a": "C31", "b": "C13", "label": "no_conflict", "distractor": "near_miss_logical", "note": "two delivery channels can coexist"}
+{"pair_id": "D08", "a": "C32", "b": "C25", "label": "no_conflict", "distractor": "duplicate", "note": "the same requirement from two stakeholders: a duplicate, not a conflict"}
+{"pair_id": "D09", "a": "C33", "b": "C34", "label": "no_conflict", "distractor": "refinement", "note": "additional accepted formats extend, do not contradict"}
+{"pair_id": "D10", "a": "C35", "b": "C17", "label": "no_conflict", "distractor": "near_miss_numeric", "note": "manual review above 25,000 is a different action from rejection above 50,000"}
+{"pair_id": "D11", "a": "C35", "b": "C18", "label": "no_conflict", "distractor": "near_miss_numeric", "note": "manual review is compatible with accepting up to 75,000"}
+{"pair_id": "D12", "a": "C36", "b": "C12", "label": "no_conflict", "distractor": "near_miss_actor", "note": "staff sign-in exception vs applicant sign-in rule: different populations"}
+{"pair_id": "D13", "a": "C39", "b": "C24", "label": "no_conflict", "distractor": "near_miss_security", "note": "recording changes is compatible with a retention rule on old entries"}
+{"pair_id": "D14", "a": "C32", "b": "C26", "label": "no_conflict", "distractor": "conditional_compatible", "note": "normal operation vs explicitly scoped month-end processing"}

@@ -1,0 +1,29 @@
+{
+  "name": "p5_quality_conflict_synthetic",
+  "version": "1",
+  "benchmark_id": "P5-QC-SYNTHETIC-v1",
+  "kind": "synthetic_reference_benchmark",
+  "metrics": [
+    "E2",
+    "E3"
+  ],
+  "case_study": "retail loan origination (fictional)",
+  "counts": {
+    "requirements": 40,
+    "planted_conflicts": 12,
+    "labelled_distractors": 14,
+    "ambiguity_items": 40,
+    "ambiguous": 20
+  },
+  "reference_generation": "written by the AI coding assistant (Claude, Anthropic) on 2026-09-22, before the P5 detectors were implemented and before any ReqPilot run over it",
+  "review": "not reviewed by the project author before evaluation (autonomous P5 instruction); author review pending",
+  "harness": "services/evaluation/quality_eval.py (E2/E3 protocol in BENCHMARK.md)",
+  "frozen_at": "2026-09-22",
+  "frozen_by": "Claude (AI coding assistant), on the project author's autonomous P5 instruction",
+  "files": {
+    "ambiguity.jsonl": "c6f2b1cefb54c46b1ef0afea14caf4f83f4368919dfaceb9b0a5e9c7b4f79e75",
+    "BENCHMARK.md": "e0290cde1da56d06f420223a2c9d902db465f9c5823934f2322610b519d931b0",
+    "conflicts.jsonl": "143cb3d1857ee666217a2f0013514fa3a53aacc2ab7f73fda5bbe04e8686a072",
+    "requirements.jsonl": "699fcc04c4fac10ccb1ae2958e90afedbae4bf852d399dcc6c1b07f5a13d257d"
+  }
+}

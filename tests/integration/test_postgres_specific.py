@@ -129,6 +129,8 @@ def test_migrations_create_nothing_beyond_the_current_phase(pg_engine) -> None:
         "prompt_template", "model_version",
         # P4
         "stakeholder", "interview_session", "utterance", "quality_finding", "clarification",
+        # P5
+        "conflict", "glossary_term",
         # The LangGraph checkpoint store, in the same database (architecture C.7);
         # created by the elicitation graph's durable checkpointer on first use.
         "checkpoint_migrations", "checkpoints", "checkpoint_blobs", "checkpoint_writes",

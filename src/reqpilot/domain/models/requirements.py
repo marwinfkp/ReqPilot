@@ -82,6 +82,9 @@ class RequirementVersion(Base):
     __tablename__ = "requirement_version"
     __table_args__ = (
         UniqueConstraint("requirement_id", "version_no", name="requirement_version_no"),
+        # P5: lets conflicts and findings reference a version *in their project*
+        # with a composite foreign key (cross-project references are impossible).
+        UniqueConstraint("id", "project_id", name="id_project"),
         CheckConstraint("version_no >= 1", name="version_no_positive"),
         Index("ix_requirement_version_state", "project_id", "state"),
     )

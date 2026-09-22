@@ -1,0 +1,40 @@
+{"id": "A01", "statement": "The system shall process loan applications in a timely manner.", "ambiguous": true, "spans": ["in a timely manner"]}
+{"id": "A02", "statement": "The decision report shall include all relevant information about the applicant.", "ambiguous": true, "spans": ["relevant information"]}
+{"id": "A03", "statement": "The system shall handle large volumes of applications.", "ambiguous": true, "spans": ["large volumes"]}
+{"id": "A04", "statement": "Applicants shall be notified as appropriate when their application changes.", "ambiguous": true, "spans": ["as appropriate"]}
+{"id": "A05", "statement": "The application form shall be easy to use for most customers.", "ambiguous": true, "spans": ["easy to use", "most customers"]}
+{"id": "A06", "statement": "The customer portal shall have a modern look and feel.", "ambiguous": true, "spans": ["modern look and feel"]}
+{"id": "A07", "statement": "The system shall respond promptly to eligibility requests.", "ambiguous": true, "spans": ["promptly"]}
+{"id": "A08", "statement": "Loan officers shall review flagged applications as needed.", "ambiguous": true, "spans": ["as needed"]}
+{"id": "A09", "statement": "The system shall support many document file types.", "ambiguous": true, "spans": ["many"]}
+{"id": "A10", "statement": "The branch dashboard shall show the key metrics.", "ambiguous": true, "spans": ["key metrics"]}
+{"id": "A11", "statement": "Errors during submission shall be handled gracefully.", "ambiguous": true, "spans": ["gracefully"]}
+{"id": "A12", "statement": "The system shall store applicant data securely.", "ambiguous": true, "spans": ["securely"]}
+{"id": "A13", "statement": "The online application form shall be short.", "ambiguous": true, "spans": ["short"]}
+{"id": "A14", "statement": "The system shall minimise manual work for underwriters.", "ambiguous": true, "spans": ["minimise manual work"]}
+{"id": "A15", "statement": "Where possible, the system shall pre-fill the applicant's details.", "ambiguous": true, "spans": ["Where possible"]}
+{"id": "A16", "statement": "The system shall notify the applicant soon after the credit decision.", "ambiguous": true, "spans": ["soon"]}
+{"id": "A17", "statement": "The approval workflow shall be flexible.", "ambiguous": true, "spans": ["flexible"]}
+{"id": "A18", "statement": "After review, it shall be sent to them by the system.", "ambiguous": true, "spans": ["it", "them"]}
+{"id": "A19", "statement": "The system shall provide adequate logging of underwriting actions.", "ambiguous": true, "spans": ["adequate"]}
+{"id": "A20", "statement": "The system shall reject suspicious applications.", "ambiguous": true, "spans": ["suspicious"]}
+{"id": "A21", "statement": "The system shall lock an applicant account after 5 consecutive failed sign-in attempts.", "ambiguous": false, "spans": []}
+{"id": "A22", "statement": "The system shall send a decision email to the applicant within 24 hours of the underwriter's decision.", "ambiguous": false, "spans": []}
+{"id": "A23", "statement": "The system shall display the application reference number on the submission confirmation page.", "ambiguous": false, "spans": []}
+{"id": "A24", "statement": "The system shall accept document uploads in PDF, JPEG or PNG format of up to 10 MB each.", "ambiguous": false, "spans": []}
+{"id": "A25", "statement": "The application form shall require the applicant's date of birth.", "ambiguous": false, "spans": []}
+{"id": "A26", "statement": "The system shall retain approved loan files for 7 years after the loan is repaid.", "ambiguous": false, "spans": []}
+{"id": "A27", "statement": "The underwriting console shall show the applicant's credit score next to each application.", "ambiguous": false, "spans": []}
+{"id": "A28", "statement": "The system shall encrypt stored applicant documents using AES-256.", "ambiguous": false, "spans": []}
+{"id": "A29", "statement": "The system shall generate a report of approved loans by branch on the first working day of each month.", "ambiguous": false, "spans": []}
+{"id": "A30", "statement": "The system shall reject applications from applicants younger than 18 years.", "ambiguous": false, "spans": []}
+{"id": "A31", "statement": "The system shall return the eligibility result within 3 seconds for 95% of requests.", "ambiguous": false, "spans": []}
+{"id": "A32", "statement": "Only users with the Underwriter role shall be able to approve a loan.", "ambiguous": false, "spans": []}
+{"id": "A33", "statement": "The system shall record the user ID and timestamp of every change to an application.", "ambiguous": false, "spans": []}
+{"id": "A34", "statement": "The system shall allow applicants to save a partially completed application and resume it within 30 days.", "ambiguous": false, "spans": []}
+{"id": "A35", "statement": "The system shall send an SMS reminder 3 days before each repayment due date.", "ambiguous": false, "spans": []}
+{"id": "A36", "statement": "The system shall calculate the monthly repayment from the loan amount, the annual interest rate and the loan term entered by the applicant.", "ambiguous": false, "spans": []}
+{"id": "A37", "statement": "The system shall export the list of pending applications as a CSV file.", "ambiguous": false, "spans": []}
+{"id": "A38", "statement": "The system shall display all monetary amounts in euros with two decimal places.", "ambiguous": false, "spans": []}
+{"id": "A39", "statement": "The system shall prevent submission of an application that has no signed consent declaration.", "ambiguous": false, "spans": []}
+{"id": "A40", "statement": "The system shall start the month-end batch run as soon as the finance team closes the monthly ledger.", "ambiguous": false, "spans": []}

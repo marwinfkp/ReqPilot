@@ -57,6 +57,7 @@ from reqpilot.domain.models.requirements import RequirementVersion
 from reqpilot.domain.policy import Actor
 from reqpilot.domain.proposals import ExtractionDecision, ProposalRecord
 from reqpilot.domain.requirement_ids import RequirementKind
+from reqpilot.graph.nodes.quality import QualityNodes
 from reqpilot.graph.state import AnalysisState, NodeError
 from reqpilot.llm.gateway import LLMGateway
 from reqpilot.llm.types import StructuredResult
@@ -68,11 +69,14 @@ from reqpilot.repositories.elicitation import (
 )
 from reqpilot.repositories.extraction import CandidateRepository, SourceDocumentRepository
 from reqpilot.repositories.requirements import RequirementVersionRepository
+from reqpilot.retrieval.embeddings import EmbeddingProvider
 from reqpilot.rules.extraction import ExtractionRules
+from reqpilot.rules.quality import QualityRules
 from reqpilot.services.audit import AuditService
 from reqpilot.services.classification import ClassificationService
 from reqpilot.services.elicitation import source_facts
 from reqpilot.services.extraction import ExtractionService, RunLog
+from reqpilot.services.quality import VersionView
 from reqpilot.services.requirements import RequirementService
 from reqpilot.services.review import ReviewQueue
 
@@ -94,6 +98,14 @@ class RunContext:
     rules: ExtractionRules
     decision: ExtractionDecision | None = None
     window_segments: dict[str, dict[str, SegmentView]] = field(default_factory=dict)
+    # --- P5: quality and conflict detection --------------------------------
+    quality_rules: QualityRules | None = None
+    #: The local embedding provider for the conflict shortlist (ADR-005). The
+    #: vectors it produces live only in this transient tier - never stored.
+    embedder: EmbeddingProvider | None = None
+    #: The versions a quality run reads, and those it records findings for.
+    quality_pool: dict[str, VersionView] = field(default_factory=dict)
+    quality_scope: list[str] = field(default_factory=list)
 
     @property
     def project_id(self) -> ProjectId:
@@ -109,6 +121,8 @@ class AnalysisNodes:
 
     def __init__(self, ctx: RunContext) -> None:
         self.ctx = ctx
+        #: C.3 nodes 6-8 (P5), sharing this run's context and recording helpers.
+        self.quality = QualityNodes(self)
 
     # ------------------------------------------------------------------
     # 1. load_scope

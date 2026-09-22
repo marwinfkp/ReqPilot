@@ -34,7 +34,9 @@ from reqpilot.graph.nodes.analysis import AnalysisNodes, RunContext
 from reqpilot.graph.state import AnalysisState
 from reqpilot.llm.accounting import UsageLedger
 from reqpilot.llm.gateway import LLMGateway
+from reqpilot.retrieval.embeddings import EmbeddingProvider
 from reqpilot.rules.extraction import ExtractionRules
+from reqpilot.rules.quality import QualityRules, packaged_quality_rules
 from reqpilot.services.extraction import RunLog, RunRecorder
 
 #: Architecture D3: a run processes a bounded batch.
@@ -58,6 +60,11 @@ class RunSummary:
     cost_estimate: float | None
     #: P4 clarification re-analysis: a ``ReanalysisStatus`` value, else ``None``.
     revision_status: str | None = None
+    #: P5: what quality analysis and conflict detection recorded in this run.
+    quality_finding_ids: tuple[uuid.UUID, ...] = ()
+    conflict_ids: tuple[uuid.UUID, ...] = ()
+    #: Semantic (LLM) calls that failed or were refused; the rules still ran.
+    semantic_failures: int = 0
 
 
 class AnalysisRunner:
@@ -68,11 +75,21 @@ class AnalysisRunner:
         rules: ExtractionRules,
         *,
         settings: Settings | None = None,
+        quality_rules: QualityRules | None = None,
+        embedder: EmbeddingProvider | None = None,
     ) -> None:
         self._session = session
         self._gateway = gateway
         self._rules = rules
         self._settings = settings or get_settings()
+        self._quality_rules = quality_rules or packaged_quality_rules()
+        #: The conflict shortlist's embedding provider (ADR-005, local). ``None``
+        #: shortlists on lexical and structural signals only.
+        self._embedder = embedder
+
+    def semantic_default(self) -> bool:
+        """The LLM semantic layer runs unless the gateway is the offline stub."""
+        return self._gateway.provider_name != "stub"
 
     def extract(
         self,
@@ -137,9 +154,58 @@ class AnalysisRunner:
                 "scope_session_ids": [],
                 "scope_version_ids": [],
                 "clarification_id": str(clarification_id),
+                # P5: the quality half of FR-CLR-003 - a new version is analysed,
+                # and checked for conflicts against the current set.
+                "analyse_quality": True,
+                "quality_focus": True,
+                "semantic": self.semantic_default(),
             },
             scope={"mode": "clarification_reanalysis", "clarification_id": str(clarification_id)},
             trigger=trigger,
+        )
+
+    def analyse_quality(
+        self,
+        *,
+        actor: Actor,
+        project_id: ProjectId,
+        version_ids: Sequence[uuid.UUID] = (),
+        semantic: bool | None = None,
+        detect_conflicts: bool = True,
+    ) -> RunSummary:
+        """Quality analysis and conflict detection over the project's requirements (P5).
+
+        Architecture C.3 nodes 6-8. With no ``version_ids`` every current version
+        is analysed and every pair is a conflict candidate (``FR-CNF-001``: the
+        full requirement set); with ``version_ids`` findings are recorded for
+        those versions and conflicts only for pairs touching them. ``semantic``
+        defaults to on unless the gateway is the offline stub.
+        """
+        if len(version_ids) > self._quality_rules.max_versions_per_run:
+            raise ReqPilotError(
+                f"a quality run takes at most {self._quality_rules.max_versions_per_run} versions"
+            )
+        use_semantic = self.semantic_default() if semantic is None else semantic
+        return self._run(
+            actor,
+            project_id,
+            {
+                "domain": "",
+                "scope_source_ids": [],
+                "scope_version_ids": [],
+                "quality_mode": True,
+                "quality_version_ids": [str(v) for v in dict.fromkeys(version_ids)],
+                "quality_focus": bool(version_ids),
+                "semantic": use_semantic,
+                "detect_conflicts": detect_conflicts,
+            },
+            scope={
+                "mode": "quality",
+                "versions": len(set(version_ids)) or "all_current",
+                "semantic": use_semantic,
+                "detect_conflicts": detect_conflicts,
+                "ruleset": self._quality_rules.ruleset_ref,
+            },
         )
 
     def classify(
@@ -181,6 +247,8 @@ class AnalysisRunner:
             log=log,
             gateway=self._gateway.with_usage(ledger),
             rules=self._rules,
+            quality_rules=self._quality_rules,
+            embedder=self._embedder,
         )
         state: AnalysisState = {
             "run_id": str(run.id),
@@ -209,6 +277,9 @@ class AnalysisRunner:
             rejected=final.get("rejected", 0),
             classified=len(final.get("classified_version_ids", [])),
             review_items=len(final.get("review_item_ids", [])),
+            quality_findings=len(final.get("quality_finding_ids", [])),
+            conflicts=len(final.get("conflict_ids", [])),
+            semantic_failures=final.get("semantic_failures", 0),
             provider_calls=ledger.calls,
             tokens_in=ledger.tokens_in,
             tokens_out=ledger.tokens_out,
@@ -233,4 +304,7 @@ class AnalysisRunner:
             tokens_out=ledger.tokens_out,
             cost_estimate=ledger.cost_estimate,
             revision_status=final.get("revision_status"),
+            quality_finding_ids=tuple(uuid.UUID(v) for v in final.get("quality_finding_ids", [])),
+            conflict_ids=tuple(uuid.UUID(v) for v in final.get("conflict_ids", [])),
+            semantic_failures=final.get("semantic_failures", 0),
         )

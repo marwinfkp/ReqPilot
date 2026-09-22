@@ -220,3 +220,7 @@ class InterviewStalledError(ElicitationError):
 
 class ClarificationError(ReqPilotError):
     """A clarification operation refused in its current state (FR-CLR-001..004)."""
+
+
+class QualityError(ReqPilotError):
+    """A quality-finding, conflict or glossary operation refused in its state (P5)."""

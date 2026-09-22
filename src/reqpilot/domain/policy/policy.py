@@ -35,6 +35,12 @@ The design rules enforced here rather than trusted to callers:
    session - whatever roles it carries (architecture E #2, E #4; ``FR-ELI-005``,
    ``FR-CLR-004``). Which *session* a Stakeholder-role user may read or answer -
    only their own - is checked by the elicitation services on top of this.
+8. **A detected defect or conflict is a proposal; closing it is a human's call.**
+   From P5 the analysis pipeline records what the quality rules and the model
+   found (``QUALITY_FINDING_DETECT``, ``CONFLICT_DETECT``). It can never resolve
+   or dismiss a finding, take a conflict under review, resolve or dismiss a
+   conflict, or edit the project glossary - whatever roles it carries
+   (architecture E #6, M.3 G4; ``FR-CNF-005``).
 """
 
 from __future__ import annotations
@@ -306,6 +312,39 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
     ),
     Action.CLARIFICATION_ANSWER: frozenset({Role.ANALYST, Role.STAKEHOLDER}),
     Action.CLARIFICATION_DISMISS: frozenset({Role.ANALYST}),
+    # --- quality and conflict detection (P5) -----------------------------
+    # The analyst owns the requirement set: detections are recorded in the
+    # analyst's name by the pipeline, and only a human analyst closes them.
+    # Everyone who reads requirements reads their findings and conflicts; a
+    # stakeholder is one of the "affected stakeholders" of G4 (M.3).
+    Action.QUALITY_FINDING_DETECT: frozenset({Role.ANALYST}),
+    Action.QUALITY_FINDING_RESOLVE: frozenset({Role.ANALYST}),
+    Action.QUALITY_FINDING_DISMISS: frozenset({Role.ANALYST}),
+    Action.CONFLICT_DETECT: frozenset({Role.ANALYST}),
+    Action.CONFLICT_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.STAKEHOLDER,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.CONFLICT_REVIEW: frozenset({Role.ANALYST}),
+    Action.CONFLICT_RESOLVE: frozenset({Role.ANALYST}),
+    Action.CONFLICT_DISMISS: frozenset({Role.ANALYST}),
+    Action.GLOSSARY_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.STAKEHOLDER,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.GLOSSARY_MANAGE: frozenset({Role.ANALYST}),
 }
 
 #: Actions an actor may perform without belonging to a project. For these the
@@ -334,6 +373,8 @@ _AUDITOR_READ_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.SESSION_READ,
         Action.QUALITY_FINDING_READ,
         Action.CLARIFICATION_READ,
+        Action.CONFLICT_READ,
+        Action.GLOSSARY_READ,
     }
 )
 
@@ -362,6 +403,13 @@ _HUMAN_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.CLARIFICATION_RAISE,
         Action.CLARIFICATION_ANSWER,
         Action.CLARIFICATION_DISMISS,
+        # Rule 8 (P5): closing a detected defect or conflict is a human decision.
+        Action.QUALITY_FINDING_RESOLVE,
+        Action.QUALITY_FINDING_DISMISS,
+        Action.CONFLICT_REVIEW,
+        Action.CONFLICT_RESOLVE,
+        Action.CONFLICT_DISMISS,
+        Action.GLOSSARY_MANAGE,
     }
 )
 

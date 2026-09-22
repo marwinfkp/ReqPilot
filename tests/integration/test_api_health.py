@@ -82,7 +82,7 @@ def test_only_current_phase_endpoints_are_exposed() -> None:
     future_prefixes = (
         "/api/v1/analysis-runs",
         "/api/v1/interviews",
-        "/api/v1/conflicts",
+        # "/api/v1/conflicts" arrived with P5 (quality and conflict detection).
         "/api/v1/compliance",
         "/api/v1/risks",
         "/api/v1/sdlc-runs",
@@ -115,3 +115,9 @@ def test_current_phase_endpoints_are_present() -> None:
     assert "/api/v1/clarifications/{clarification_id}/answer" in paths
     assert "/api/v1/clarifications/{clarification_id}/dismiss" in paths
     assert any(p.endswith("/classification") for p in paths)
+    # P5: quality runs, findings, conflicts with both sides, the glossary.
+    assert "/api/v1/projects/{project_id}/quality-runs" in paths
+    assert "/api/v1/projects/{project_id}/quality-findings" in paths
+    assert "/api/v1/projects/{project_id}/conflicts" in paths
+    assert "/api/v1/conflicts/{conflict_id}/resolve" in paths
+    assert "/api/v1/projects/{project_id}/glossary" in paths

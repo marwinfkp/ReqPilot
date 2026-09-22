@@ -1,0 +1,40 @@
+{"id": "C01", "statement": "The system shall support at least 500 concurrent applicant sessions.", "stakeholder": "Priya Nair (fictional), operations lead"}
+{"id": "C02", "statement": "The system shall be sized for a maximum of 100 concurrent applicant sessions.", "stakeholder": "Tomas Berg (fictional), technology lead"}
+{"id": "C03", "statement": "The system shall keep an applicant's session active for 60 minutes without activity so that applicants can gather their documents.", "stakeholder": "Ana Costa (fictional), customer representative"}
+{"id": "C04", "statement": "The system shall end any applicant session after 15 minutes of inactivity.", "stakeholder": "Leon Wu (fictional), security officer"}
+{"id": "C05", "statement": "The customer portal shall be available 24 hours a day, 7 days a week, with no planned downtime.", "stakeholder": "Priya Nair (fictional), operations lead"}
+{"id": "C06", "statement": "The customer portal shall be taken offline every Sunday from 01:00 to 05:00 for planned maintenance.", "stakeholder": "Tomas Berg (fictional), technology lead"}
+{"id": "C07", "statement": "The system shall retain rejected loan applications for 7 years.", "stakeholder": "Mira Solberg (fictional), compliance officer"}
+{"id": "C08", "statement": "The system shall delete rejected loan applications 12 months after the decision.", "stakeholder": "Jonas Ek (fictional), privacy lead"}
+{"id": "C09", "statement": "Branch staff shall be able to override the automated credit decision for any application.", "stakeholder": "Rosa Delgado (fictional), branch manager"}
+{"id": "C10", "statement": "Only the credit risk team shall be permitted to override an automated credit decision.", "stakeholder": "Henrik Lund (fictional), risk officer"}
+{"id": "C11", "statement": "The system shall allow applicants to sign in using only their email address and a one-time link.", "stakeholder": "Dana Reyes (fictional), product owner"}
+{"id": "C12", "statement": "The system shall require multi-factor authentication for every applicant sign-in.", "stakeholder": "Leon Wu (fictional), security officer"}
+{"id": "C13", "statement": "The system shall send the loan decision to the applicant by SMS.", "stakeholder": "Ana Costa (fictional), customer representative"}
+{"id": "C14", "statement": "The system shall not send loan decision details by SMS.", "stakeholder": "Mira Solberg (fictional), compliance officer"}
+{"id": "C15", "statement": "The eligibility check shall return a result within 2 seconds under normal load.", "stakeholder": "Dana Reyes (fictional), product owner"}
+{"id": "C16", "statement": "The eligibility check may take up to 10 seconds under normal load because it calls the credit bureau.", "stakeholder": "Tomas Berg (fictional), technology lead"}
+{"id": "C17", "statement": "The system shall reject any personal loan application above 50,000 EUR.", "stakeholder": "Henrik Lund (fictional), risk officer"}
+{"id": "C18", "statement": "The system shall accept personal loan applications of up to 75,000 EUR.", "stakeholder": "Dana Reyes (fictional), product owner"}
+{"id": "C19", "statement": "The system shall notify the applicant of the credit decision within one working day of a complete application.", "stakeholder": "Dana Reyes (fictional), product owner"}
+{"id": "C20", "statement": "Credit decisions shall be batched and notified to applicants once per week.", "stakeholder": "Priya Nair (fictional), operations lead"}
+{"id": "C21", "statement": "The system shall limit each uploaded document to a maximum size of 5 MB.", "stakeholder": "Tomas Berg (fictional), technology lead"}
+{"id": "C22", "statement": "The system shall accept scanned supporting documents of up to 20 MB each.", "stakeholder": "Ana Costa (fictional), customer representative"}
+{"id": "C23", "statement": "Audit log entries shall never be modified or deleted.", "stakeholder": "Mira Solberg (fictional), compliance officer"}
+{"id": "C24", "statement": "Administrators shall be able to delete audit log entries older than 90 days to free storage.", "stakeholder": "Priya Nair (fictional), operations lead"}
+{"id": "C25", "statement": "The system shall display the application status page within 2 seconds during normal operation.", "stakeholder": "Dana Reyes (fictional), product owner"}
+{"id": "C26", "statement": "During month-end batch processing, the application status page may take up to 5 seconds to display.", "stakeholder": "Tomas Berg (fictional), technology lead"}
+{"id": "C27", "statement": "The internal underwriting console shall be available during business hours, Monday to Friday from 08:00 to 18:00.", "stakeholder": "Rosa Delgado (fictional), branch manager"}
+{"id": "C28", "statement": "The internal underwriting console may be taken offline on Saturdays for maintenance.", "stakeholder": "Tomas Berg (fictional), technology lead"}
+{"id": "C29", "statement": "Staff sessions on the underwriting console shall expire after 30 minutes of inactivity.", "stakeholder": "Leon Wu (fictional), security officer"}
+{"id": "C30", "statement": "The system shall move uploaded documents to archive storage 30 days after the application is decided.", "stakeholder": "Tomas Berg (fictional), technology lead"}
+{"id": "C31", "statement": "The system shall send the loan decision to the applicant by email.", "stakeholder": "Mira Solberg (fictional), compliance officer"}
+{"id": "C32", "statement": "The application status page shall be displayed within 2 seconds during normal operation.", "stakeholder": "Ana Costa (fictional), customer representative"}
+{"id": "C33", "statement": "The system shall allow applicants to upload supporting documents in PDF format.", "stakeholder": "Ana Costa (fictional), customer representative"}
+{"id": "C34", "statement": "The system shall also accept JPEG and PNG images as supporting documents.", "stakeholder": "Dana Reyes (fictional), product owner"}
+{"id": "C35", "statement": "The system shall route any personal loan application above 25,000 EUR to manual review.", "stakeholder": "Henrik Lund (fictional), risk officer"}
+{"id": "C36", "statement": "The system shall require multi-factor authentication for staff sign-in, except from the branch network where a smart card is used.", "stakeholder": "Leon Wu (fictional), security officer"}
+{"id": "C37", "statement": "The system shall produce a monthly report of approved loans by branch.", "stakeholder": "Rosa Delgado (fictional), branch manager"}
+{"id": "C38", "statement": "The system shall offer the customer portal in English and Spanish.", "stakeholder": "Ana Costa (fictional), customer representative"}
+{"id": "C39", "statement": "The system shall record every change to an applicant's contact details in the audit log.", "stakeholder": "Mira Solberg (fictional), compliance officer"}
+{"id": "C40", "statement": "The system shall encrypt applicant documents at rest.", "stakeholder": "Leon Wu (fictional), security officer"}

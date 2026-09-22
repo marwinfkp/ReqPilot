@@ -25,11 +25,16 @@ def test_the_active_templates_load_with_their_roles() -> None:
     registry = PromptRegistry()
     assert registry.names() == (
         "clarification_question",
+        "conflict_adjudication",
         "requirement_classification",
         "requirement_extraction",
+        "requirement_quality_review",
         "stakeholder_answer_assessment",
         "stakeholder_interview_question",
     )
+    # P5: the quality review supports role #3; conflict adjudication is role #6.
+    assert registry.get("requirement_quality_review").role is AgentRole.REQUIREMENT_EXTRACTION
+    assert registry.get("conflict_adjudication").role is AgentRole.CONFLICT_DETECTION
     # P4: role #2's two templates and role #4's, each bound to its role.
     assert registry.get("stakeholder_interview_question").role is AgentRole.STAKEHOLDER_INTERACTION
     assert registry.get("stakeholder_answer_assessment").role is AgentRole.STAKEHOLDER_INTERACTION

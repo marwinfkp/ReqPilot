@@ -56,8 +56,9 @@ neither the requirement nor its finding (FR-CLR-004).</p>
 {% if may_raise %}
 <fieldset>
   <legend>Record a defect and raise a clarification</legend>
-  <p class="muted">Quality analysis is roadmap P5; in P4 an analyst records the defect. The
-  clarification question is then proposed by the Clarification role and checked by code.</p>
+  <p class="muted">An analyst records the defect here; findings the P5 quality analysis detected
+  are on the quality page. The clarification question is then proposed by the Clarification role
+  and checked by code.</p>
   {% if raisable %}
   <form method="post" action="/ui/projects/{{ project.id }}/clarifications">
     <label>Requirement (current version)</label>

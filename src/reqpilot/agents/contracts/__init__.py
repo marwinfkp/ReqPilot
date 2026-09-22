@@ -1,8 +1,8 @@
 """Typed input/output contracts for the agent roles (architecture F).
 
 P3: Requirement Extraction (#3) and Classification (#5). P4: Stakeholder
-Interaction (#2) and Clarification (#4). The other roles' contracts arrive with
-their phases.
+Interaction (#2) and Clarification (#4). P5: quality review (#3 support) and
+Conflict Detection (#6). The other roles' contracts arrive with their phases.
 """
 
 from reqpilot.agents.contracts.clarification import ClarificationInput, ClarificationProposal
@@ -23,6 +23,13 @@ from reqpilot.agents.contracts.extraction import (
     SegmentView,
     SupportedText,
 )
+from reqpilot.agents.contracts.quality import (
+    ConflictAdjudication,
+    ConflictPairView,
+    ProposedQualityFinding,
+    QualityReviewItem,
+    QualityReviewOutput,
+)
 
 __all__ = [
     "AnswerAssessment",
@@ -30,6 +37,8 @@ __all__ = [
     "ClarificationInput",
     "ClarificationProposal",
     "ClassificationOutput",
+    "ConflictAdjudication",
+    "ConflictPairView",
     "EvidenceQuote",
     "ExtractedRequirement",
     "ExtractionOutput",
@@ -37,6 +46,9 @@ __all__ = [
     "ProposedCriterion",
     "ProposedLabel",
     "ProposedPriority",
+    "ProposedQualityFinding",
+    "QualityReviewItem",
+    "QualityReviewOutput",
     "QuestionProposal",
     "SegmentView",
     "SupportedText",

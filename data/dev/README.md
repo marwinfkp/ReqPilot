@@ -38,6 +38,12 @@ implementation they are meant to judge. A CI check enforces the direction.
   clear, vague and incomplete answers per interview topic, an injected
   instruction, and a clarification. It stands in for the human answering in
   the P4 tests and demonstration; it is not a model and not a benchmark.
+- [`quality/`](quality/) (P5) - 13 **fictional** requirements for a fictional
+  bank's mobile app. The set seeds a definite conflict, a near-miss, a duplicate,
+  ambiguity, a placeholder, a security signal, an undefined acronym and an
+  injected instruction. It drives the P5 tests and the demonstration. It is not
+  the P5 benchmark (`../gold/p5_quality_conflict_synthetic_v1`), and its wording
+  deliberately differs from it.
 
 ## Roadmap note
 

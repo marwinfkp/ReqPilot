@@ -17,6 +17,7 @@ from reqpilot.api.app import create_app as create_api_app
 from reqpilot.web.elicitation import router as elicitation_web_router
 from reqpilot.web.extraction import router as extraction_web_router
 from reqpilot.web.knowledge import router as knowledge_web_router
+from reqpilot.web.quality import router as quality_web_router
 from reqpilot.web.router import router as web_router
 
 
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(knowledge_web_router)
     app.include_router(extraction_web_router)
     app.include_router(elicitation_web_router)
+    app.include_router(quality_web_router)
     return app
 
 

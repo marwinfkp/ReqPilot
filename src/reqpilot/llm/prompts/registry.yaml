@@ -10,9 +10,13 @@ active:
   stakeholder_interview_question: "1.0.0"
   stakeholder_answer_assessment: "1.0.0"
   clarification_question: "1.0.0"
+  requirement_quality_review: "1.0.0"
+  conflict_adjudication: "1.0.0"
 locked:
   requirement_extraction@1.0.0: "6ed48601cc05add136aa5984128d95f4df449da99ce359e38f1b973ff492098e"
   requirement_classification@1.0.0: "5fa3028a730f15e422959bc1ad9a7e3489878090f61757d983bd26b99c5ab37a"
   stakeholder_interview_question@1.0.0: "df2b2ca9698732267dbe7b1b0c3457ebb57de297379457ad41d7aea3e62073b2"
   stakeholder_answer_assessment@1.0.0: "be8186949d86993f42e85fd8969f8208651ca1b32ffd044fad18f3fdfdef392b"
   clarification_question@1.0.0: "c24e0f1f42ecdb30a870d47c0e9e9143563bad4163af7512aa47c9d4f0e63d0b"
+  requirement_quality_review@1.0.0: "ec40da6210de66041d04d85050f23a00a99dc40a0c944bf106ae9cce9264f0b3"
+  conflict_adjudication@1.0.0: "c2bbda09be647f19584460d24f9c61967c19ebe28e704817b52ae304f6318e11"

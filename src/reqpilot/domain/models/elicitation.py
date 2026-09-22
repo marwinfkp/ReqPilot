@@ -241,19 +241,36 @@ class Utterance(Base):
 class QualityFinding(Base):
     """A defect recorded against one requirement version (G.4).
 
-    P4 defines the interface the clarification loop needs; the Quality-Analysis
-    role that detects findings automatically is roadmap P5.
+    P4 defined the interface the clarification loop needs, with analyst-recorded
+    findings. P5 adds the detector that writes the same rows: a deterministic
+    rule (``detected_by = rule``) or a model proposal that passed deterministic
+    validation (``detected_by = agent``), with its evidence, review signal and
+    run provenance. A finding is *about* a version; it never changes the version.
     """
 
     __tablename__ = "quality_finding"
     __table_args__ = (
         UniqueConstraint("id", "requirement_version_id", name="id_version"),
         CheckConstraint("length(rationale) >= 1", name="rationale_not_empty"),
+        CheckConstraint(
+            "status = 'OPEN' OR length(coalesce(resolution_reason, '')) >= 1",
+            name="closed_has_reason",
+        ),
+        # P5: the other version of a (near-)duplicate is in the same project.
+        ForeignKeyConstraint(
+            ["related_version_id", "project_id"],
+            ["requirement_version.id", "requirement_version.project_id"],
+            name="fk_quality_finding_related_same_project",
+            ondelete="CASCADE",
+        ),
         Index("ix_quality_finding_project_version", "project_id", "requirement_version_id"),
+        Index("ix_quality_finding_project_status", "project_id", "status"),
     )
 
-    #: Only the status and its timestamp may change - and in P4 nothing changes it.
-    MUTABLE_FIELDS: ClassVar[frozenset[str]] = frozenset({"status", "updated_at"})
+    #: Only the status and its resolution may change, once (P5: resolve, dismiss).
+    MUTABLE_FIELDS: ClassVar[frozenset[str]] = frozenset(
+        {"status", "updated_at", "resolution_reason", "resolved_by", "resolved_at"}
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     project_id: Mapped[uuid.UUID] = mapped_column(
@@ -278,6 +295,26 @@ class QualityFinding(Base):
         SAEnum(FindingDetector, name="finding_detector_enum"), nullable=False
     )
     recorded_by: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    # --- P5: detection provenance --------------------------------------------
+    #: The deterministic rule, or the prompt, that produced the finding.
+    rule_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    #: Heuristic review-prioritisation signal in [0, 1] - not a probability.
+    review_signal: Mapped[float | None] = mapped_column(nullable=True)
+    #: ``[{"kind": "statement_span", "quote", "start", "end"}, ...]`` - what the
+    #: detector saw, located in the version's own statement.
+    evidence: Mapped[list] = mapped_column(JsonType, nullable=False, default=list)
+    #: The other version of a duplicate / near-duplicate, in the same project.
+    related_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    graph_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("graph_run.id", ondelete="SET NULL"), nullable=True
+    )
+    agent_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("agent_run.id", ondelete="SET NULL"), nullable=True
+    )
+    # --- P5: human resolution ---------------------------------------------------
+    resolution_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    resolved_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = created_at_column()
     updated_at: Mapped[dt.datetime] = _updated_at_column()
 
@@ -440,8 +477,14 @@ def _guard_elicitation_immutability(session: Session, _context: object, _instanc
             )
         if isinstance(instance, InterviewSession) and changed & InterviewSession.IDENTITY_FIELDS:
             raise ImmutableRecordError("a session's project, stakeholder and template are fixed")
-        if isinstance(instance, QualityFinding) and changed - QualityFinding.MUTABLE_FIELDS:
-            raise ImmutableRecordError("a quality finding's content is immutable")
+        if isinstance(instance, QualityFinding):
+            if changed - QualityFinding.MUTABLE_FIELDS:
+                raise ImmutableRecordError("a quality finding's content is immutable")
+            if _previous(instance, "status") not in (None, QualityFindingStatus.OPEN) or (
+                changed & {"resolution_reason", "resolved_by", "resolved_at"}
+                and "status" not in changed
+            ):
+                raise ImmutableRecordError("a quality finding is resolved or dismissed once")
         if isinstance(instance, Clarification):
             if changed & Clarification.CONTENT_FIELDS:
                 raise ImmutableRecordError("a clarification's question and binding are immutable")

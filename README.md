@@ -15,7 +15,7 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 
 ---
 
-## Current status — roadmap phase P4 (Elicitation & clarification)
+## Current status — roadmap phase P5 (Quality & conflict detection)
 
 | Stage | State |
 |---|---|
@@ -25,7 +25,8 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 | P1 Requirements repository — `docs/04-p1-requirements-repository.md` | Complete |
 | P2 Knowledge base & RAG — `docs/05-p2-knowledge-base-rag.md` | P2 IMPLEMENTATION COMPLETE — ET-06 PENDING: the implementation checklist is complete; the roadmap exit waits on ET-06, which needs the team-curated corpus and 20-question probe and has not been measured |
 | P3 Extraction & classification — `docs/06-p3-extraction-classification.md` | P3 COMPLETE — ROADMAP EXIT PASSED: E1 = 0.967 (P = R = F1) with OpenAI `gpt-5.6-luna` on **E1-SYNTHETIC-v1**, a synthetic reference benchmark reviewed by the sole project author. It is not an independently annotated gold standard and not evidence of real-world accuracy. The two author-approved deviations are recorded in docs/06 §20 |
-| **P4 Elicitation & clarification — `docs/07-p4-elicitation-clarification.md`** | **P4 COMPLETE — ROADMAP EXIT PASSED**: a scripted synthetic persona interview (LangGraph `elicitation_graph` with a real interrupt and PostgreSQL checkpointing) yields a usable requirement set through the P3 path; follow-ups trigger on seeded vague answers within a deterministic bound; answering a clarification creates a new immutable requirement version, never auto-approved. P5 (quality engine) is not started |
+| P4 Elicitation & clarification — `docs/07-p4-elicitation-clarification.md` | P4 COMPLETE — ROADMAP EXIT PASSED: a scripted synthetic persona interview (LangGraph `elicitation_graph` with a real interrupt and PostgreSQL checkpointing) yields a usable requirement set through the P3 path; follow-ups trigger on seeded vague answers within a deterministic bound; answering a clarification creates a new immutable requirement version, never auto-approved |
+| **P5 Quality & conflict detection — `docs/08-p5-quality-conflict.md`** | **P5 COMPLETE — ROADMAP EXIT PASSED**: deterministic quality rules plus validated model proposals; a bounded deterministic shortlist before any pairwise model call; conflicts as transition guards (D12) that only a human resolves. On **P5-QC-SYNTHETIC-v1** (a synthetic benchmark written by the AI assistant, author review pending) the configured pipeline scored E3 conflict recall 1.00 with no false positives (0/768), and E2 ambiguity P 0.87 / R 1.00 (FP rate 0.15). Not evidence of real-world accuracy. P6 is not started |
 
 P0 built the foundation. P1 built the deterministic requirements repository:
 immutable requirement versions, a guarded lifecycle, G1 human approval, and
@@ -33,6 +34,14 @@ baselines. P2 built the grounding layer: a typed, versioned knowledge base
 (C.1 taxonomy), structure-aware chunking with exact offsets, local embeddings,
 PostgreSQL + pgvector hybrid retrieval with the source allowlist enforced
 **inside the query**, immutable evidence, and exact citation resolution.
+
+P5 added requirement analysis: deterministic checks for ambiguity,
+incompleteness, testability, infeasibility, duplication, missing sources,
+undefined acronyms (against a project glossary) and security/privacy signals;
+an LLM quality review whose proposals code validates; conflict detection with a
+deterministic shortlist, deterministic contradiction rules and LLM adjudication;
+and human review. An open conflict blocks VALIDATED and submission for approval,
+and only an analyst resolves it. Findings feed the P4 clarification loop.
 
 P4 added interactive elicitation: role-specific interview templates over the
 21 §7 topics, a deterministic coverage tracker and follow-up bound, append-only

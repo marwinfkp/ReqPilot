@@ -432,6 +432,18 @@ class AuditEventType(StrEnum):
     CLARIFICATION_DISMISSED = "CLARIFICATION_DISMISSED"
     CLARIFICATION_REANALYSED = "CLARIFICATION_REANALYSED"
 
+    # Quality and conflict detection (added by the quality phase, P5). The
+    # conflict events are named in architecture E #6 and O.2; the review events
+    # follow the P1-P4 precedent of a phase adding the events it raises.
+    QUALITY_FINDING_RESOLVED = "QUALITY_FINDING_RESOLVED"
+    QUALITY_FINDING_DISMISSED = "QUALITY_FINDING_DISMISSED"
+    CONFLICT_SHORTLISTED = "CONFLICT_SHORTLISTED"
+    CONFLICT_PROPOSED = "CONFLICT_PROPOSED"
+    CONFLICT_REVIEWED = "CONFLICT_REVIEWED"
+    CONFLICT_RESOLVED = "CONFLICT_RESOLVED"
+    CONFLICT_DISMISSED = "CONFLICT_DISMISSED"
+    GLOSSARY_TERM_ADDED = "GLOSSARY_TERM_ADDED"
+
 
 class Action(StrEnum):
     """Actions the policy can authorise (architecture ADR-009).
@@ -514,6 +526,26 @@ class Action(StrEnum):
     #: Dismissing a clarification with a recorded reason (``FR-CLR-004``).
     CLARIFICATION_DISMISS = "clarification.dismiss"
 
+    # Quality and conflict detection (P5)
+    #: Recording what the quality engine detected - a rule's finding or a model's
+    #: validated proposal. The pipeline does this on the analyst's behalf; a
+    #: detected finding decides nothing.
+    QUALITY_FINDING_DETECT = "quality_finding.detect"
+    #: Closing a finding: resolved (the defect is gone) or dismissed (it never was).
+    QUALITY_FINDING_RESOLVE = "quality_finding.resolve"
+    QUALITY_FINDING_DISMISS = "quality_finding.dismiss"
+    #: Recording a detected conflict (``FR-CNF-001``..``003``). Pipeline, like detect.
+    CONFLICT_DETECT = "conflict.detect"
+    CONFLICT_READ = "conflict.read"
+    #: Taking a conflict under review, resolving it (the G4 decision,
+    #: ``FR-CNF-005``) or dismissing it as not a conflict. Human decisions.
+    CONFLICT_REVIEW = "conflict.review"
+    CONFLICT_RESOLVE = "conflict.resolve"
+    CONFLICT_DISMISS = "conflict.dismiss"
+    #: The project glossary against which undefined terms are detected (``FR-QAL-005``).
+    GLOSSARY_READ = "glossary.read"
+    GLOSSARY_MANAGE = "glossary.manage"
+
 
 class ResourceType(StrEnum):
     """Resource types the policy can authorise against."""
@@ -541,6 +573,8 @@ class ResourceType(StrEnum):
     UTTERANCE = "utterance"
     QUALITY_FINDING = "quality_finding"
     CLARIFICATION = "clarification"
+    CONFLICT = "conflict"
+    GLOSSARY_TERM = "glossary_term"
 
 
 # ---------------------------------------------------------------------------
@@ -719,15 +753,29 @@ class AnswerStatus(StrEnum):
 
 
 class QualityFindingType(StrEnum):
-    """Defect types a quality finding may carry (architecture G.4; P5 detects them)."""
+    """Defect types a quality finding may carry (architecture G.4; problem statement §10).
+
+    P4 defined the first seven; P5 adds the rest of the §10 checklist it detects.
+    A *conflict between two requirements* is not a finding type: it is its own
+    entity (``conflict``, G.4) and a transition guard (D12), never a state.
+    """
 
     AMBIGUITY = "ambiguity"
     INCOMPLETENESS = "incompleteness"
     UNTESTABILITY = "untestability"
+    #: An exact duplicate of another requirement (``FR-QAL-004``).
     DUPLICATION = "duplication"
     UNDEFINED_TERM = "undefined_term"
     MISSING_SOURCE = "missing_source"
     INCONSISTENCY = "inconsistency"
+    #: Overlapping, not identical, wording with another requirement (``FR-QAL-004``).
+    NEAR_DUPLICATE = "near_duplicate"
+    #: An absolute or impossible target (``FR-QAL-009``, secondary).
+    INFEASIBILITY = "infeasibility"
+    #: A *signal* only: the full analysis is P6 (``FR-QAL-008`` -> ``FR-SEC-001``).
+    MISSING_SECURITY_CONSIDERATION = "missing_security_consideration"
+    #: A *signal* only: the full analysis is P6 (``FR-QAL-008`` -> ``FR-CMP-002``).
+    MISSING_PRIVACY_CONSIDERATION = "missing_privacy_consideration"
 
 
 class FindingSeverity(StrEnum):
@@ -743,10 +791,15 @@ class QualityFindingStatus(StrEnum):
 
 
 class FindingDetector(StrEnum):
-    """Who recorded a finding. P4 has only human-recorded findings."""
+    """Who recorded a finding or a conflict.
+
+    ``rule`` - a deterministic heuristic (P5); ``agent`` - a model proposal that
+    passed deterministic validation (P5); ``human`` - an analyst (P4).
+    """
 
     HUMAN = "human"
     AGENT = "agent"
+    RULE = "rule"
 
 
 class ClarificationStatus(StrEnum):
@@ -765,3 +818,81 @@ class ReanalysisStatus(StrEnum):
     NO_CHANGE = "no_change"
     #: Re-analysis failed; the answered clarification stands and can be retried.
     FAILED = "failed"
+
+
+# ---------------------------------------------------------------------------
+# Quality and conflict detection (roadmap phase P5)
+# ---------------------------------------------------------------------------
+
+
+class ConflictClass(StrEnum):
+    """How sure the detector is that two requirements contradict (P5).
+
+    Only these two are ever persisted. A pair judged compatible under its
+    conditions, a duplicate, unrelated, or without enough information is not a
+    conflict and leaves no ``conflict`` row.
+    """
+
+    #: The two cannot both be satisfied as written.
+    DEFINITE = "definite"
+    #: They may contradict; conditions or scope are unclear. A human decides.
+    POTENTIAL = "potential"
+
+
+class ConflictKind(StrEnum):
+    """What the two requirements disagree about (architecture E #6: ``type``)."""
+
+    NUMERIC = "numeric"
+    TIMING = "timing"
+    ACTOR_SCOPE = "actor_scope"
+    LOGICAL = "logical"
+    SECURITY = "security"
+    BEHAVIOURAL = "behavioural"
+    OTHER = "other"
+
+
+class ConflictVerdict(StrEnum):
+    """Every outcome the conflict pipeline distinguishes for a shortlisted pair."""
+
+    DEFINITE_CONFLICT = "definite_conflict"
+    POTENTIAL_CONFLICT = "potential_conflict"
+    CONDITIONAL_COMPATIBLE = "conditional_compatible"
+    DUPLICATE = "duplicate"
+    NO_CONFLICT = "no_conflict"
+    INSUFFICIENT_INFORMATION = "insufficient_information"
+
+
+class ConflictStatus(StrEnum):
+    """A conflict's review status. ``OPEN`` and ``UNDER_REVIEW`` block (D12)."""
+
+    OPEN = "open"
+    UNDER_REVIEW = "under_review"
+    RESOLVED = "resolved"
+    DISMISSED = "dismissed"
+
+
+#: Conflict statuses that still block ``VALIDATED`` and ``PENDING_APPROVAL`` (H.2).
+BLOCKING_CONFLICT_STATUSES: frozenset[ConflictStatus] = frozenset(
+    {ConflictStatus.OPEN, ConflictStatus.UNDER_REVIEW}
+)
+
+
+class ConflictResolution(StrEnum):
+    """The G4 decision (architecture M.3): choose A, choose B, or synthesise new.
+
+    "Defer" is not a resolution: a deferred conflict simply stays open.
+    """
+
+    CHOOSE_A = "choose_a"
+    CHOOSE_B = "choose_b"
+    SYNTHESISE_NEW = "synthesise_new"
+    #: Both stand, reconciled by a stated condition the analyst records.
+    RECONCILED = "reconciled"
+
+
+class ReviewPriority(StrEnum):
+    """A heuristic review-prioritisation label - never a probability (Phase 0 H.1)."""
+
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"

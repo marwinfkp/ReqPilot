@@ -103,9 +103,22 @@ Offsets index the transcript's text with line endings normalised to `
 That result re-baselines ET-07 (provisional F1 >= 0.75) - it is not tested
 against it.
 
+## P5-QC-SYNTHETIC-v1 - the P5 exit slot (E2, E3)
+
+**Frozen on 2026-09-22 as `p5_quality_conflict_synthetic_v1/`.** It holds 40
+requirements with 12 planted conflicts and 14 labelled near-miss distractors
+(E3), and 40 statements, half ambiguous (E2). Like E1-SYNTHETIC-v1 it is a
+**synthetic reference benchmark**. It was written by the AI assistant *before* the
+P5 detectors existed, but by the same assistant that then wrote them, and the
+project author has not reviewed it. Its `BENCHMARK.md` fixes the counting
+protocol. `services/evaluation/quality_eval.py` and `scripts/run_p5_eval.py`
+verify the manifest and compute E2/E3. The results are in
+`docs/evaluation/p5-qc-synthetic-v1/` and `docs/08` §17. A correction is `_v2`.
+
 ## Roadmap note
 
 Empty in P0. Gold datasets are produced alongside the phases they evaluate, and
 each is frozen before use (`docs/01-analysis.md` §O, §P). After P3 this directory
-holds `e1_synthetic_v1/`, frozen before ReqPilot was run on it. It is never edited;
-a correction would be `e1_synthetic_v2/`.
+holds `e1_synthetic_v1/`, frozen before ReqPilot was run on it; after P5 also
+`p5_quality_conflict_synthetic_v1/`. Neither is ever edited; a correction is a new
+`_v2`.
