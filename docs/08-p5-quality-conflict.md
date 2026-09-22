@@ -663,3 +663,33 @@ is unchanged, and no E1, E2 or E3 result was re-run or changed.
 
 **The invariant:** the same frozen benchmark produces the same hashes on Windows and Linux, and any change to its
 content is still refused. A new frozen set's manifest must record `file_canonical_sha256` values.
+
+## 26. CI provider-SDK guard (post-P5 CI fix, 2026-09-22)
+
+**Root cause.** The CI step "Assert no provider SDK crept into the dependency tree" still enforced the P0 rule: any of
+`anthropic`, `openai` or `ollama` installed means fail. At P3 closure OpenAI became the selected provider (architecture
+Y), and `openai` joined the `openai` and `dev` extras. The adapter's offline tests use the SDK's error types. CI
+installs `.[dev]`, so the step failed on every run.
+
+At P3 the equivalent *test* was updated: the default configuration imports no provider SDK (docs/06). The CI step was
+not.
+
+**Fix.** The step now runs `python scripts/check_provider_sdks.py`. The guard:
+
+- reads the installed distributions (`importlib.metadata`), with no import and no provider call;
+- fails if any known LLM provider SDK other than the approved ones is installed;
+- passes when none is installed.
+
+The allowlist is `APPROVED_PROVIDER_SDKS = {"openai"}`. Anthropic, Ollama, Google, Mistral, Cohere, Groq, Together,
+LiteLLM and the LangChain provider packages are refused. Approving a provider is a deliberate edit, made together with
+its gateway adapter (ADR-006).
+
+**Tests.** `tests/security/test_provider_sdk_guard.py` checks that:
+
+- OpenAI passes, and so do no provider or an empty environment;
+- anthropic, ollama and name variants fail;
+- the real environment passes;
+- `pyproject.toml` declares no unapproved provider, and keeps OpenAI optional;
+- the workflow runs the guard without `continue-on-error` or `|| true`, with `LLM_PROVIDER: stub`.
+
+**Scope.** No application code, gateway, provider behaviour, model or configuration changed.

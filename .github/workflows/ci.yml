@@ -60,10 +60,10 @@ jobs:
       - name: Tests (offline; the `llm` mark is excluded by default)
         run: pytest -q
 
-      - name: Assert no provider SDK crept into the dependency tree
-        run: |
-          if pip show anthropic openai ollama > /dev/null 2>&1; then
-            echo "A provider SDK is installed. P0 implements no model invocation."
-            exit 1
-          fi
-          echo "No provider SDK installed."
+      # P0 had no provider SDK. At P3 closure OpenAI was selected (architecture Y)
+      # and its SDK is an approved dependency (the `openai` extra, and `dev` for
+      # the adapter's offline tests). Every other provider SDK is still refused:
+      # the allowlist lives in the script, and changing it is a deliberate act.
+      # No model is called here - the offline tests above run LLM_PROVIDER=stub.
+      - name: Assert only approved provider SDKs are in the dependency tree
+        run: python scripts/check_provider_sdks.py
