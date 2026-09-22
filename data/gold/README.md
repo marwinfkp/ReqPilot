@@ -28,6 +28,17 @@ This exists for one reason: it makes it impossible to quietly tune the gold set
 after seeing results. That is a recognised threat to validity, and a hash is a
 cheaper defence than discipline.
 
+## Hashing is platform-independent
+
+A manifest records, for each file, the sha256 of its **canonical content**: the text decoded as UTF-8, with CRLF
+replaced by LF (`src/reqpilot/domain/integrity.py`, `file_canonical_sha256`). A Windows checkout (CRLF under
+`core.autocrlf=true`) and a Linux checkout (LF) of the same frozen file therefore verify alike. Any other change - a
+character, a lone CR, a BOM, whitespace - still fails the check. `.gitattributes` also checks this directory out with
+LF everywhere. Freeze a new set with `file_canonical_sha256`, never with a hash of raw working-tree bytes.
+
+Until 2026-09-22 the harness hashed raw bytes, so E1 and P5 manifest values recorded on Windows did not verify on
+Linux CI. The fix re-recorded two E1 entries in canonical form, content unchanged (docs/08 §25).
+
 ## Versioning
 
 A gold set is never edited in place. Corrections create `_v2`, and evaluation

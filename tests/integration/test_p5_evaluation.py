@@ -7,7 +7,6 @@ score would be pressure to tune the system - or the benchmark - to it.
 
 from __future__ import annotations
 
-import hashlib
 import importlib.util
 import json
 import shutil
@@ -19,6 +18,7 @@ from tests.p3_helpers import TEST_SETTINGS
 from tests.p5_helpers import REPO_ROOT
 
 from reqpilot.domain.errors import GoldSetIntegrityError
+from reqpilot.domain.integrity import file_canonical_sha256
 from reqpilot.llm import build_gateway
 from reqpilot.retrieval.embeddings import HashingEmbeddingProvider
 from reqpilot.services.evaluation.quality_eval import (
@@ -30,7 +30,10 @@ from reqpilot.services.evaluation.quality_eval import (
 pytestmark = pytest.mark.integration
 
 BENCHMARK = REPO_ROOT / "data" / "gold" / "p5_quality_conflict_synthetic_v1"
-FROZEN_MANIFEST_SHA256 = "0b0dde3fc2ad251a5c5eebbbcabd00641525c629780898cf94306a9eddae64ef"
+#: The manifest's canonical (UTF-8, LF) sha256 - the same on every platform. It was
+#: first recorded as 0b0dde3f..., the hash of the Windows CRLF working-tree bytes of
+#: this same, unchanged manifest (see docs/08 "Cross-platform benchmark hashing").
+FROZEN_MANIFEST_SHA256 = "5dd8fd66a2300a87ec2fe8ff0de81da2ed687f974872ab1058153d6569fd62b0"
 
 
 def test_the_frozen_benchmark_is_intact() -> None:
@@ -84,7 +87,7 @@ def _tiny(tmp_path: Path) -> Path:
         (directory / name).write_text(
             "\n".join(json.dumps(r) for r in lines) + "\n", encoding="utf-8"
         )
-        files[name] = hashlib.sha256((directory / name).read_bytes()).hexdigest()
+        files[name] = file_canonical_sha256(directory / name)
     (directory / "manifest.json").write_text(
         json.dumps({"name": "tiny", "version": "1", "files": files}), encoding="utf-8"
     )

@@ -985,7 +985,7 @@ output passes the unchanged P3 contract and governance, and nothing more.
 
 ### 20.1 The benchmark: E1-SYNTHETIC-v1
 
-- **Location:** `data/gold/e1_synthetic_v1/`, frozen on 2026-09-21. Manifest sha256 `6bce917368818c29…`. Its
+- **Location:** `data/gold/e1_synthetic_v1/`, frozen on 2026-09-21. Manifest sha256 `6bce917368818c29…` (the hash of its Windows CRLF working-tree bytes; since the 2026-09-22 cross-platform integrity fix the recorded, platform-independent hash is `dfc8d21b6d0fa229…`, with the benchmark content unchanged: docs/08 §25). Its
   `BENCHMARK.md` has the full methodology, annotation guideline and coverage.
 - **Transcript:** one fictional requirements interview for the retail loan origination portal. It has 70 speaker
   turns (71 segments) and 1,653 words. It contains no real people, data, credentials or regulations.

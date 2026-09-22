@@ -13,7 +13,9 @@ with false-positive rates reported"; the P5 brief adds seeded conflict recall
 *before* evaluation, and implemented here without discretion:
 
 1. **The benchmark is frozen.** It is read only through its manifest, and every
-   file's sha256 must match before anything is computed (R.3, D16).
+   file's sha256 must match before anything is computed (R.3, D16). The hash is
+   of the canonical content - UTF-8 text with CRLF as LF - so the same frozen
+   file verifies alike on Windows and Linux (``domain/integrity``).
 2. **E3 counts unordered pairs.** Every pair of the corpus is labelled: the
    planted conflicts are positive; every other pair, the labelled distractors
    included, is negative. A predicted positive is a pair with a persisted
@@ -31,7 +33,6 @@ Nothing here reads ``data/gold/`` on its own: the caller names the benchmark.
 
 from __future__ import annotations
 
-import hashlib
 import json
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field
@@ -39,6 +40,7 @@ from itertools import combinations
 from pathlib import Path
 
 from reqpilot.domain.errors import GoldSetIntegrityError
+from reqpilot.domain.integrity import file_canonical_sha256
 
 MANIFEST = "manifest.json"
 #: The P5 brief's exit bar for E3 (not an approved Phase 0 target).
@@ -46,7 +48,8 @@ E3_RECALL_EXIT_BAR = 0.80
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """The platform-independent content hash (UTF-8 text with CRLF as LF)."""
+    return file_canonical_sha256(path)
 
 
 def _jsonl(path: Path) -> list[dict]:

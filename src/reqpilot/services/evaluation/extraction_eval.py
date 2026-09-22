@@ -10,7 +10,9 @@ This module implements the protocol, and refuses to report a number that the
 protocol does not support:
 
 1. **The gold set is frozen.** It is read only through its manifest, and every
-   file's sha256 must match before anything is computed (R.3, D16). A modified
+   file's sha256 must match before anything is computed (R.3, D16). The hash is
+   of the canonical content - UTF-8 text with CRLF as LF - so a Windows and a
+   Linux checkout of the same frozen file verify alike (``domain/integrity``). A modified
    or unlisted file refuses the evaluation.
 2. **Code proposes pairs; humans adjudicate.** "Semantic match" is a human
    judgement. :func:`propose_pairs` lists candidate (prediction, gold) pairs -
@@ -40,6 +42,7 @@ from pathlib import Path
 from typing import Literal
 
 from reqpilot.domain.errors import EvaluationError, GoldSetIntegrityError
+from reqpilot.domain.integrity import file_canonical_sha256
 from reqpilot.domain.similarity import token_jaccard
 
 #: ET-07 (approved Phase 0 H.2): "Extraction F1 >= 0.75 - Placeholder only -
@@ -58,7 +61,12 @@ REQUIREMENTS_FILE = "requirements.jsonl"
 
 
 def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """The platform-independent content hash (UTF-8 text with CRLF as LF).
+
+    Raw working-tree bytes differ between a Windows and a Linux checkout of the
+    same frozen file, so they cannot identify it (``domain/integrity``).
+    """
+    return file_canonical_sha256(path)
 
 
 def normalise(text: str) -> str:

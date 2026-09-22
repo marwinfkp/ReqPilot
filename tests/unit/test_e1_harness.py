@@ -7,13 +7,13 @@ presented as E1.
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
 import pytest
 
 from reqpilot.domain.errors import EvaluationError, GoldSetIntegrityError
+from reqpilot.domain.integrity import file_canonical_sha256
 from reqpilot.services.evaluation.extraction_eval import (
     GOLD_TRANSCRIPT_ONE,
     Adjudication,
@@ -76,7 +76,7 @@ def write_gold(root: Path, *, role: str | None = GOLD_TRANSCRIPT_ONE) -> Path:
         )
     (directory / "requirements.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
     files = {
-        path.relative_to(directory).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        path.relative_to(directory).as_posix(): file_canonical_sha256(path)
         for path in directory.rglob("*")
         if path.is_file()
     }

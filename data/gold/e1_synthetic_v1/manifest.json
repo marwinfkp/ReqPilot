@@ -13,9 +13,9 @@
   "frozen_at": "2026-09-21",
   "frozen_by": "Marwin Francis (project author)",
   "files": {
-    "BENCHMARK.md": "fe60c058602353b3cff8ad640c1c87d1c829ba4b0d9101c9759c2d5dc951522e",
+    "BENCHMARK.md": "785e289022758bf9c1dc17d27f99083b322f1f4b645dd583c27bda3db82ae4a7",
     "requirements.jsonl": "276df134507845f2960bc3448eb3c7f16bb48203b59c7c6d47bee342056867e5",
-    "REVIEW_SHEET.md": "fd42e0cdf6476f49530221d0fe59388ef66e6e0c27b91e1d7c63c177e0919cd4",
+    "REVIEW_SHEET.md": "4fbf02d74e91d9f9bf955b908d6b45fc431ec5c0a406c0114ae6e3135aed95fa",
     "transcripts/loan_origination_interview_e1_synthetic.md": "afc277958ebc043f052f8b7181add05d11908b7e6683456623968c8e9dde9625"
   }
 }

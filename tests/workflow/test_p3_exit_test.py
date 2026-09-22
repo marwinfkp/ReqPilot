@@ -14,7 +14,6 @@ a scripted run E1 even against a gold set.
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
@@ -31,6 +30,7 @@ from reqpilot.domain.enums import (
     Role,
 )
 from reqpilot.domain.ids import ProjectId
+from reqpilot.domain.integrity import file_canonical_sha256
 from reqpilot.domain.lifecycle import RequirementState
 from reqpilot.services.approval import ApprovalService
 from reqpilot.services.audit import AuditService
@@ -132,7 +132,7 @@ def _write_tiny_gold(root: Path, text: str) -> Path:
     }
     (directory / "requirements.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
     files = {
-        p.relative_to(directory).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+        p.relative_to(directory).as_posix(): file_canonical_sha256(p)
         for p in directory.rglob("*")
         if p.is_file()
     }

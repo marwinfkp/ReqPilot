@@ -2,6 +2,10 @@
 
 **Benchmark:** `data/gold/p5_quality_conflict_synthetic_v1`. Manifest sha256
 `0b0dde3fc2ad251a5c5eebbbcabd00641525c629780898cf94306a9eddae64ef`, verified by the harness before each run.
+That is the hash of the manifest's Windows CRLF bytes. Since the 2026-09-22 cross-platform integrity fix (docs/08
+§25), the harness hashes canonical content (UTF-8, LF): the same, unchanged manifest is
+`5dd8fd66a2300a87ec2fe8ff0de81da2ed687f974872ab1058153d6569fd62b0` on every platform. The results below are
+unchanged.
 
 **Harness:**
 

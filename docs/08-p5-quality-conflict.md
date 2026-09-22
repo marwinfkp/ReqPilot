@@ -369,7 +369,7 @@ database**, runs the unchanged `analyse_quality`, and writes the reports to `doc
 
 ## 16. Frozen benchmark description
 
-`data/gold/p5_quality_conflict_synthetic_v1/` (P5-QC-SYNTHETIC-v1), manifest sha256 `0b0dde3f…9eddae64ef`:
+`data/gold/p5_quality_conflict_synthetic_v1/` (P5-QC-SYNTHETIC-v1), manifest sha256 `5dd8fd66…6569fd62b0` (canonical, platform-independent; first recorded as `0b0dde3f…`, the hash of the same unchanged manifest's Windows CRLF bytes, §25):
 
 - **`requirements.jsonl`:** 40 fictional loan-origination requirements, each attributed to a fictional stakeholder.
 - **`conflicts.jsonl`:**
@@ -556,8 +556,8 @@ The **exit test** (`test_p5_exit_quality_and_conflict_detection`) covers steps 1
 | `ruff format --check .` / `ruff check .` | 287 files formatted / all checks passed |
 | `mypy` | Success: no issues in 173 source files |
 | `lint-imports` | 5 contracts kept, 0 broken |
-| E1 benchmark | `load_gold_set(e1_synthetic_v1)` verifies, manifest sha256 `6bce9173…0f3a870`, unchanged |
-| P5 benchmark | manifest sha256 `0b0dde3f…` verified by test and by the harness |
+| E1 benchmark | `load_gold_set(e1_synthetic_v1)` verifies, manifest sha256 `6bce9173…0f3a870`, unchanged (CRLF form; `dfc8d21b…` canonically since §25) |
+| P5 benchmark | manifest sha256 `0b0dde3f…` (CRLF form; `5dd8fd66…` canonically since §25) verified by test and by the harness |
 | Secrets | No key in source, tests, fixtures, prompts, docs or reports. The only key-shaped string is the pre-existing `FAKE_KEY` in `tests/unit/test_openai_provider.py`. `.env` is still listed in `.gitignore` |
 | Git | No Git operation was performed |
 
@@ -592,3 +592,74 @@ workflow, everything passes. This is unchanged from P1.
   benchmark version, never on v1.
 
 P6 has not been started.
+
+## 25. Cross-platform benchmark hashing (post-P5 integrity fix, 2026-09-22)
+
+**This is an infrastructure fix to how integrity is checked. It is not an evaluation change.** The benchmark content
+is unchanged, and no E1, E2 or E3 result was re-run or changed.
+
+### Root cause
+
+- **Raw-byte hashing.** Both loaders hashed raw working-tree bytes: `extraction_eval._sha256_file` for E1 and
+  `quality_eval._sha256` for P5.
+- **Host-dependent bytes.** With `core.autocrlf=true`, Git stores text blobs with LF. A Windows checkout writes CRLF;
+  a Linux checkout (GitHub Actions) writes LF. The same frozen file therefore had two hashes.
+- **E1's affected entries.** Two E1 files had been frozen as CRLF bytes on Windows: `BENCHMARK.md` and
+  `REVIEW_SHEET.md`. On Linux, "BENCHMARK.md does not match its frozen hash" (it is checked first).
+  - This failed `test_e1_benchmark.py`, and `test_p3_exit_test.py`, which loads E1.
+- **P5's affected hash.** All four P5 file entries were frozen from LF bytes and verify everywhere. But the P5
+  `manifest.json` was written by `Path.write_text` on Windows, which turned `
+` into CRLF. The manifest's own sha256
+  (`0b0dde3f…`), pinned in `test_p5_evaluation.py`, was a CRLF-only value; on Linux it is `5dd8fd66…`.
+- **Reproduction.** A copy of the repository with every text file converted to LF, as a Linux checkout would be,
+  failed exactly the six CI tests before the fix and passes after it. A copy converted entirely to CRLF also passes
+  after it.
+- **Why it recurred.** The same kind of failure was seen in P3 and P4: any benchmark file written with CRLF on Windows
+  before freezing re-triggered it.
+
+### Fix
+
+- **One canonical hash.** `src/reqpilot/domain/integrity.py` defines it: the file decoded as UTF-8, CRLF replaced by
+  LF, then sha256. This is the rule the prompt registry already used for its locks (`llm/prompts.file_sha256`).
+  - Nothing else is normalised. A lone CR, trailing whitespace, a BOM or any character change still changes the hash
+    (tested).
+  - Non-UTF-8 files, which Git never converts, are hashed as stored.
+- **Both loaders use it**, for every listed file and for the manifest's own hash.
+- **Only the two CRLF-frozen E1 entries were re-recorded**, in `data/gold/e1_synthetic_v1/manifest.json`:
+  - `BENCHMARK.md`: `fe60c058…` → `785e2890…`;
+  - `REVIEW_SHEET.md`: `fd42e0cd…` → `4fbf02d7…`.
+  - Before re-recording, the script checked that both files still matched their old frozen hashes exactly, so their
+    content is proven unchanged.
+  - No other field changed. The manifest is stored with LF, as Git holds it.
+  - The E1 manifest's canonical sha256 is now `dfc8d21b…`.
+- **The P5 manifest file is unchanged.** Its canonical sha256 is `5dd8fd66…`.
+- **Historical run records are left as written:** `docs/evaluation/*/run.json`, `deterministic.json` and `model.json`.
+  They record the CRLF-form hashes of the same content.
+- **`.gitattributes`** (new, limited to `data/gold/**` text files) checks benchmarks out with LF on every platform, so
+  working trees match the Git blobs. The integrity check does not depend on it.
+
+### Tests and verification
+
+**`tests/integration/test_benchmark_integrity_cross_platform.py` (16 tests):**
+
+- LF and CRLF give the same hash;
+- other edits still change it;
+- the real E1 and P5 sets verify as an all-LF (Linux) copy and as an all-CRLF (Windows) copy, with the same manifest
+  hash;
+- a content change is refused in both representations;
+- a lone CR is refused.
+
+**Test helpers:** three tests that build throw-away manifests (`test_e1_harness`, `test_p3_exit_test`,
+`test_p5_evaluation`) now hash with the same canonical function. No integrity assertion was removed.
+
+**Results after the fix:**
+
+| Run | Result |
+|---|---|
+| Offline suite | 1,474 collected: 1,291 passed, 0 failed, 178 skipped, 5 deselected |
+| Live PostgreSQL (fresh database) | 1,469 passed, 0 failed, 0 skipped, 5 deselected |
+| Simulated Linux (LF) and Windows (CRLF) checkouts, the six CI-failing tests plus the new ones | 46 passed each |
+| Quality gates | ruff format and check clean, mypy clean (174 files), import-linter 5/5 kept |
+
+**The invariant:** the same frozen benchmark produces the same hashes on Windows and Linux, and any change to its
+content is still refused. A new frozen set's manifest must record `file_canonical_sha256` values.

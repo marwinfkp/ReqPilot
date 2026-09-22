@@ -555,7 +555,7 @@ One scripted persona is not a benchmark. No E-metric is claimed.
 | No secrets | No key in any tracked-to-be file. The only key-shaped string is the pre-existing `FAKE_KEY` in `tests/unit/test_openai_provider.py` |
 | `.env` ignored | `.gitignore` lists `.env` and `.env.*` (checked by reading the file; no Git command was run) |
 | Default tests offline | Run with the network proxied to a closed port. `tests/hermetic.py` removes `LLM_*` variables and disables `.env` |
-| E1 benchmark untouched | `load_gold_set(data/gold/e1_synthetic_v1)` verifies, manifest sha256 `6bce9173…0f3a870` |
+| E1 benchmark untouched | `load_gold_set(data/gold/e1_synthetic_v1)` verifies, manifest sha256 `6bce9173…0f3a870` (CRLF working-tree form; platform-independent form `dfc8d21b…` since the 2026-09-22 integrity fix, docs/08 §25) |
 
 ## 22. Known limitations
 
