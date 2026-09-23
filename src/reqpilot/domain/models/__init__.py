@@ -9,10 +9,12 @@ project corpus (``source_document``, ``source_chunk``), extraction proposals,
 classification, acceptance criteria, the review queue, and prompt and model
 provenance. The elicitation phase adds stakeholders, interview sessions,
 utterances, quality findings and clarifications. The quality phase adds
-conflicts and the project glossary.
+conflicts and the project glossary. The compliance phase adds compliance
+mappings and their evidence links, compliance gaps, and security/privacy
+findings and their evidence links.
 
-Tables belonging to later roadmap phases - compliance, risk, SDLC, artefacts,
-evaluation - are still deliberately absent. A test
+Tables belonging to later roadmap phases - risk, SDLC, artefacts, evaluation -
+are still deliberately absent. A test
 asserts that the migrations create nothing beyond the tables named here.
 """
 
@@ -20,6 +22,13 @@ from reqpilot.domain.models.approval import ApprovalDecision, ApprovalTask
 from reqpilot.domain.models.audit import AuditEvent
 from reqpilot.domain.models.base import Base
 from reqpilot.domain.models.baseline import Baseline, BaselineMember
+from reqpilot.domain.models.compliance import (
+    ComplianceGap,
+    ComplianceMapping,
+    ComplianceMappingEvidence,
+    SecurityPrivacyFinding,
+    SecurityPrivacyFindingEvidence,
+)
 from reqpilot.domain.models.elicitation import (
     Clarification,
     InterviewSession,
@@ -60,6 +69,9 @@ __all__ = [
     "Baseline",
     "BaselineMember",
     "Clarification",
+    "ComplianceGap",
+    "ComplianceMapping",
+    "ComplianceMappingEvidence",
     "Conflict",
     "Control",
     "Evidence",
@@ -79,6 +91,8 @@ __all__ = [
     "RequirementClassification",
     "RequirementVersion",
     "ReviewItem",
+    "SecurityPrivacyFinding",
+    "SecurityPrivacyFindingEvidence",
     "SourceAllowlist",
     "SourceChunk",
     "SourceDocument",

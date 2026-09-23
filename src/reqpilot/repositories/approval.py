@@ -23,9 +23,15 @@ class ApprovalTaskRepository(ProjectScopedRepository[ApprovalTask]):
 
     resource_type = ResourceType.APPROVAL_TASK
 
-    def add(self, task: ApprovalTask) -> ApprovalTask:
-        # Raising a task is part of submitting, not of deciding.
-        self.authorize(Action.REQUIREMENT_SUBMIT, ProjectId(task.project_id))
+    def add(
+        self, task: ApprovalTask, *, action: Action = Action.REQUIREMENT_SUBMIT
+    ) -> ApprovalTask:
+        # Raising a task is part of submitting, not of deciding. From P6 the
+        # pipeline also raises G2/G3 tasks from persisted, deterministically
+        # evaluated values (GATE_TASK_RAISE); only those two actions raise tasks.
+        if action not in (Action.REQUIREMENT_SUBMIT, Action.GATE_TASK_RAISE):
+            raise ValueError(f"{action} does not raise approval tasks")
+        self.authorize(action, ProjectId(task.project_id))
         self._session.add(task)
         self._session.flush()
         return task

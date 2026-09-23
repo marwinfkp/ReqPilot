@@ -1,0 +1,14 @@
+{"requirement": "PR-01", "family": "authentication", "expect_g3": true}
+{"requirement": "PR-02", "family": "authorisation", "expect_g3": true}
+{"requirement": "PR-03", "family": "audit_logging", "expect_g3": true}
+{"requirement": "PR-04", "family": "cryptography", "expect_g3": true}
+{"requirement": "PR-05", "family": "audit_logging", "expect_g3": true}
+{"requirement": "PR-06", "family": "retention", "expect_g3": true}
+{"requirement": "PR-07", "family": "data_minimisation", "expect_g3": false}
+{"requirement": "PR-08", "family": "consent", "expect_g3": true}
+{"requirement": "PR-09", "family": "transaction_integrity", "expect_g3": true}
+{"requirement": "PR-10", "family": "transaction_integrity", "expect_g3": true}
+{"requirement": "PR-14", "family": "session_management", "expect_g3": false}
+{"requirement": "PR-15", "family": "fraud_controls", "expect_g3": false}
+{"requirement": "PR-16", "family": "data_minimisation", "expect_g3": false}
+{"requirement": "PR-16", "family": "retention", "expect_g3": true}

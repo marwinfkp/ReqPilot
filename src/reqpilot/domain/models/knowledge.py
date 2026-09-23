@@ -325,6 +325,9 @@ class Evidence(Base):
     __tablename__ = "evidence"
     __table_args__ = (
         UniqueConstraint("retrieval_id", "knowledge_chunk_id", name="uq_evidence_retrieval_chunk"),
+        # P6: referenceable with its project, so a mapping or finding can cite
+        # evidence *of its own project* through a composite foreign key.
+        UniqueConstraint("id", "project_id", name="id_project"),
         CheckConstraint("char_start >= 0 AND char_end > char_start", name="span_ordered"),
         CheckConstraint(
             "kind <> 'KNOWLEDGE_ITEM' OR knowledge_chunk_id IS NOT NULL",

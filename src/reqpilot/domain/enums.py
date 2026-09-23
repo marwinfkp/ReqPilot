@@ -444,6 +444,21 @@ class AuditEventType(StrEnum):
     CONFLICT_DISMISSED = "CONFLICT_DISMISSED"
     GLOSSARY_TERM_ADDED = "GLOSSARY_TERM_ADDED"
 
+    # Compliance and security analysis (added by the compliance phase, P6). The
+    # grounded-analysis events are named in architecture O.2 and E #7 / E #8; the
+    # rest follow the P1-P5 precedent of a phase adding the events it raises.
+    COMPLIANCE_RETRIEVED = "COMPLIANCE_RETRIEVED"
+    COMPLIANCE_PROPOSED = "COMPLIANCE_PROPOSED"
+    COMPLIANCE_MAPPING_ACCEPTED = "COMPLIANCE_MAPPING_ACCEPTED"
+    COMPLIANCE_CLAIM_DROPPED = "COMPLIANCE_CLAIM_DROPPED"
+    COMPLIANCE_GAP_FOUND = "COMPLIANCE_GAP_FOUND"
+    COMPLIANCE_MAPPING_REVIEWED = "COMPLIANCE_MAPPING_REVIEWED"
+    SECURITY_REQUIREMENT_DERIVED = "SECURITY_REQUIREMENT_DERIVED"
+    PRIVACY_REQUIREMENT_DERIVED = "PRIVACY_REQUIREMENT_DERIVED"
+    SECURITY_FINDING_DROPPED = "SECURITY_FINDING_DROPPED"
+    SECURITY_RISK_EVALUATED = "SECURITY_RISK_EVALUATED"
+    SECURITY_FINDING_REVIEWED = "SECURITY_FINDING_REVIEWED"
+
 
 class Action(StrEnum):
     """Actions the policy can authorise (architecture ADR-009).
@@ -546,6 +561,21 @@ class Action(StrEnum):
     GLOSSARY_READ = "glossary.read"
     GLOSSARY_MANAGE = "glossary.manage"
 
+    # Compliance and security analysis (P6)
+    #: Recording what the compliance pipeline produced - validated candidate
+    #: mappings and rule-engine gaps. The pipeline does this on the analyst's
+    #: behalf; none of it is a legal determination or an approval.
+    COMPLIANCE_ANALYSE = "compliance.analyse"
+    COMPLIANCE_READ = "compliance.read"
+    #: Recording derived security/privacy requirements with their
+    #: deterministically evaluated risk level (architecture I.7).
+    SECURITY_ANALYSE = "security.analyse"
+    SECURITY_READ = "security.read"
+    #: Raising a G2 or G3 approval task from a persisted, deterministically
+    #: evaluated value (architecture C.3 ``gate_fanout``). Raising is not deciding:
+    #: only a human holding the gate's role decides (``APPROVAL_DECIDE``).
+    GATE_TASK_RAISE = "gate_task.raise"
+
 
 class ResourceType(StrEnum):
     """Resource types the policy can authorise against."""
@@ -575,6 +605,9 @@ class ResourceType(StrEnum):
     CLARIFICATION = "clarification"
     CONFLICT = "conflict"
     GLOSSARY_TERM = "glossary_term"
+    COMPLIANCE_MAPPING = "compliance_mapping"
+    COMPLIANCE_GAP = "compliance_gap"
+    SECURITY_PRIVACY_FINDING = "security_privacy_finding"
 
 
 # ---------------------------------------------------------------------------
@@ -668,6 +701,12 @@ class ReviewReason(StrEnum):
     POSSIBLE_DUPLICATE = "possible_duplicate"
     #: Proposed acceptance criteria failed validation and were not stored.
     ACCEPTANCE_CRITERIA_INVALID = "acceptance_criteria_invalid"
+    #: P6: retrieval found no allowlisted evidence for a requirement, so no
+    #: compliance mapping was attempted (``FR-RAG-005``); a human must look.
+    EVIDENCE_UNAVAILABLE = "evidence_unavailable"
+    #: P6: a compliance or security/privacy claim was dropped by deterministic
+    #: validation (unsupported citation, prohibited language, authority claim).
+    CLAIM_DROPPED = "claim_dropped"
 
 
 class ReviewStatus(StrEnum):
@@ -896,3 +935,121 @@ class ReviewPriority(StrEnum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
+
+
+# ---------------------------------------------------------------------------
+# Compliance and security analysis (roadmap phase P6)
+# ---------------------------------------------------------------------------
+
+
+class ComplianceRelationship(StrEnum):
+    """How a requirement relates to a potentially applicable control (E #7).
+
+    Candidate language only: none of these says a requirement *complies*.
+    """
+
+    #: The requirement, as written, appears to address the control.
+    ADDRESSES = "addresses"
+    #: The requirement addresses part of the control; the rest is not covered.
+    PARTIALLY_ADDRESSES = "partially_addresses"
+    #: The control is relevant context for the requirement, which does not address it.
+    RELEVANT_CONTEXT = "relevant_context"
+
+
+#: Relationships that count a checklist control as *covered* for gap detection
+#: (K.2). ``relevant_context`` never covers a control.
+COVERING_RELATIONSHIPS: frozenset[ComplianceRelationship] = frozenset(
+    {ComplianceRelationship.ADDRESSES, ComplianceRelationship.PARTIALLY_ADDRESSES}
+)
+
+
+class ObligationKind(StrEnum):
+    """What kind of expectation a checklist entry is (``FR-CMP-003``)."""
+
+    CONTROL = "control"
+    APPROVAL_CHECKPOINT = "approval_checkpoint"
+    AUDIT_CHECKPOINT = "audit_checkpoint"
+    RETENTION_OBLIGATION = "retention_obligation"
+    REPORTING_OBLIGATION = "reporting_obligation"
+
+
+class ComplianceMappingStatus(StrEnum):
+    """A validated candidate mapping's review status.
+
+    ``CANDIDATE`` - accepted by deterministic validation and not a high-impact
+    interpretation. ``PENDING_REVIEW`` - a high-impact interpretation awaiting
+    G2; it blocks ``ANALYZED -> VALIDATED``. ``APPROVED`` / ``REJECTED`` - the
+    Compliance Officer's G2 decision. A high-impact mapping can never be
+    ``CANDIDATE`` (a database check).
+    """
+
+    CANDIDATE = "candidate"
+    PENDING_REVIEW = "pending_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class ComplianceGapOrigin(StrEnum):
+    """Why a gap row exists. Neither origin is a model's judgement."""
+
+    #: The rule engine: an expected control with no covering mapping (K.2).
+    RULE_ENGINE = "rule_engine"
+    #: The Compliance Officer rejected, at G2, the mapping that covered it (M.3).
+    G2_REJECTION = "g2_rejection"
+
+
+class SecurityPrivacyCategory(StrEnum):
+    SECURITY = "security"
+    PRIVACY = "privacy"
+
+
+class SecurityControlFamily(StrEnum):
+    """Security and privacy control families (``FR-SEC-001``, ``FR-SEC-002``; I.7)."""
+
+    AUTHENTICATION = "authentication"
+    AUTHORISATION = "authorisation"
+    CRYPTOGRAPHY = "cryptography"
+    AUDIT_LOGGING = "audit_logging"
+    SESSION_MANAGEMENT = "session_management"
+    TRANSACTION_INTEGRITY = "transaction_integrity"
+    FRAUD_CONTROLS = "fraud_controls"
+    DATA_MINIMISATION = "data_minimisation"
+    CONSENT = "consent"
+    RETENTION = "retention"
+    SUBJECT_RIGHTS = "subject_rights"
+
+
+class SecurityRiskLevel(StrEnum):
+    """The security/privacy risk level of a derived requirement (I.7).
+
+    Project/requirement risk only: never a borrower's credit risk, and not the
+    P7 risk register's severity.
+    """
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class SecurityFindingStatus(StrEnum):
+    """A derived security/privacy requirement's review status.
+
+    ``PROPOSED`` - persisted with an authoritative level below ``high``.
+    ``PENDING_REVIEW`` - authoritative level ``high``: G3 is required, and it
+    blocks ``ANALYZED -> VALIDATED``. A ``high`` finding can never be
+    ``PROPOSED`` (a database check). ``APPROVED`` / ``REJECTED`` - the Security
+    Reviewer's G3 decision.
+    """
+
+    PROPOSED = "proposed"
+    PENDING_REVIEW = "pending_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class EvidenceStatus(StrEnum):
+    """Whether a derived security/privacy requirement cites curated evidence."""
+
+    SUPPORTED = "supported"
+    #: No supplied evidence supports it. Stated as such, never filled from memory.
+    UNAVAILABLE = "unavailable"

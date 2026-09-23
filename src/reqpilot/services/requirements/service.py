@@ -45,6 +45,10 @@ from reqpilot.domain.requirement_ids import (
 )
 from reqpilot.domain.versioning import compute_version_hash
 from reqpilot.repositories.approval import ApprovalTaskRepository
+from reqpilot.repositories.compliance import (
+    ComplianceMappingRepository,
+    SecurityFindingRepository,
+)
 from reqpilot.repositories.elicitation import ClarificationRepository, QualityFindingRepository
 from reqpilot.repositories.extraction import ClassificationRepository
 from reqpilot.repositories.quality import ConflictRepository
@@ -120,6 +124,8 @@ class RequirementService:
         self._findings = QualityFindingRepository(session, actor)
         self._clarifications = ClarificationRepository(session, actor)
         self._conflicts = ConflictRepository(session, actor)
+        self._mappings = ComplianceMappingRepository(session, actor)
+        self._security = SecurityFindingRepository(session, actor)
         self._audit = AuditService(session)
 
     # -- creation ---------------------------------------------------------
@@ -294,8 +300,12 @@ class RequirementService:
 
         Fields whose producers belong to later roadmap phases stay at their
         defaults - zero open problems - which is accurate rather than permissive.
-        From P4 open quality findings count; from P5 open conflicts do too. Risk
-        (P7) and the G2/G3/G5 gate fan-out beyond P1's tasks are still later.
+        From P4 open quality findings count; from P5 open conflicts do too. From
+        P6 every high-impact interpretation (G2) and every high-risk derived
+        security/privacy requirement (G3) of this version that is still pending
+        counts as a blocking gate - read from the persisted P6 status, so a
+        pending row blocks even if its task were somehow missing (fail closed).
+        Risk (P7) and G5 are still later.
         """
         blocking = [
             task
@@ -315,11 +325,16 @@ class RequirementService:
             c.status is ClarificationStatus.ANSWERED and c.answer_utterance_id is not None
             for c in self._clarifications.for_version(project_id, version.id)
         )
+        # P6: G2 and G3 subjects are the mapping and the finding, not the version,
+        # so they are counted from the P6 rows bound to this exact version.
+        pending_gates = self._mappings.pending_count(
+            project_id, version.id
+        ) + self._security.pending_count(project_id, version.id)
         return TransitionContext(
             source_ref_count=len(version.source_refs or []),
             label_count=labels or (1 if version.category is not None else 0),
             has_current_validation=version.state is RequirementState.VALIDATED,
-            blocking_gate_task_count=len(blocking),
+            blocking_gate_task_count=len(blocking) + pending_gates,
             is_baselined=version.state is RequirementState.BASELINED,
             open_defect_count=open_findings,
             # P5: an open or under-review conflict on either side blocks

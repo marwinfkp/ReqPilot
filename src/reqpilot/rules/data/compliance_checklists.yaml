@@ -1,0 +1,168 @@
+# Expected-control checklists (roadmap phase P6; architecture M7, K.2, FR-CMP-002,
+# FR-CMP-003).
+#
+# Per (domain x jurisdiction), the controls and obligations a system of that kind
+# is normally expected to address. Gap detection is a RULE-ENGINE output:
+#
+#     compliance_gaps = expected controls (this checklist) - covered controls
+#
+# A model can propose that a requirement addresses one of these controls, citing
+# evidence; it cannot remove a control from this list, and it cannot add one.
+#
+# PROVENANCE AND STATUS. Written by the project team (AI-assisted) for the
+# synthetic retail-loan-origination case study. It is an ENGINEERING CHECKLIST,
+# not a statement of what any law or regulator requires, and it is not complete:
+# checklist v1 is deliberately scoped to information-security, privacy,
+# record-keeping and governance-checkpoint controls (FR-SEC-001/002, FR-CMP-003).
+# Conduct and customer-communication controls (disclosure, grievance handling)
+# are OUT of v1's scope; that limitation is reported by the E5 evaluation rather
+# than hidden. Changing any entry is a new version (DQ-03).
+#
+# Field meanings:
+#   key             stable checklist identifier; what a mapping names
+#   obligation_kind control | approval_checkpoint | audit_checkpoint |
+#                   retention_obligation | reporting_obligation   (FR-CMP-003)
+#   high_impact     true: interpreting a requirement against this control is a
+#                   high-impact regulatory interpretation -> always G2 (FR-CMP-004)
+#   evidence_tags   knowledge-item applicability tags that can ground a mapping
+#                   to this control; a citation sharing none of them does not
+#                   support the control and the claim is dropped
+#   categories /    deterministic applicability: a requirement with one of these
+#   keywords        classification categories, or one of these words, is
+#                   indicated for this control (a prompt hint and a retrieval
+#                   narrowing - never a coverage decision)
+
+name: compliance_checklists
+version: "1.0.0"
+description: >
+  Expected-control checklists per domain and jurisdiction for deterministic
+  compliance gap detection, the source types whose interpretation is always
+  high-impact, and the compliance pipeline's bounds.
+
+rules:
+  # A mapping citing a source of one of these C.1 types is a high-impact
+  # interpretation whatever else is true of it (binding instruments; FR-CMP-004).
+  high_impact_source_types: [statute, regulatory_direction]
+  # Evidence chunks retrieved per requirement (architecture K.1: k = 8).
+  retrieval_top_k: 8
+  # Architecture D3 batching.
+  max_versions_per_run: 50
+  # A model may propose at most this many mappings per requirement.
+  max_mappings_per_requirement: 12
+
+  checklists:
+    - domain: loan_origination
+      jurisdiction: IN
+      controls:
+        - key: LO-AC-LEAST-PRIVILEGE
+          title: Least-privilege access to borrower personal data
+          family: authorisation
+          obligation_kind: control
+          high_impact: false
+          evidence_tags: [access_control]
+          categories: [security, privacy]
+          keywords: [access, role, permission, privilege, authoris, authoriz]
+        - key: LO-AC-ACCESS-REVIEW
+          title: Periodic review and revocation of access rights
+          family: authorisation
+          obligation_kind: audit_checkpoint
+          high_impact: false
+          evidence_tags: [access_control]
+          categories: [security, audit_reporting]
+          keywords: [access review, recertif, revoke, revocation]
+        - key: LO-AUTH-MFA-PRIVILEGED
+          title: Multi-factor authentication for privileged and staff access
+          family: authentication
+          obligation_kind: control
+          high_impact: false
+          evidence_tags: [access_control, authentication]
+          categories: [security]
+          keywords: [log in, login, sign in, password, multi-factor, mfa, one-time, otp, authenticat]
+        - key: LO-LOG-PRIVILEGED-SESSIONS
+          title: Logging of privileged sessions
+          family: audit_logging
+          obligation_kind: audit_checkpoint
+          high_impact: false
+          evidence_tags: [access_control, audit, logging]
+          categories: [security, audit_reporting]
+          keywords: [log, logged, logging, audit trail, session]
+        - key: LO-AUD-STATUS-TRAIL
+          title: Audit trail of loan application status changes
+          family: audit_logging
+          obligation_kind: audit_checkpoint
+          high_impact: false
+          evidence_tags: [audit, loan_origination]
+          categories: [audit_reporting]
+          keywords: [audit trail, status change, history, recorded with]
+        - key: LO-APR-SANCTION-CHECKPOINT
+          title: Documented approval checkpoint before loan sanction
+          family: transaction_integrity
+          obligation_kind: approval_checkpoint
+          high_impact: false
+          evidence_tags: [loan_origination, approval]
+          categories: [business, functional]
+          keywords: [sanction, approve the loan, approval, maker-checker, second approver]
+        - key: LO-TXN-DISBURSEMENT-INTEGRITY
+          title: Integrity of disbursement instructions
+          family: transaction_integrity
+          obligation_kind: control
+          high_impact: false
+          evidence_tags: [transaction_integrity, loan_origination]
+          categories: [security, functional]
+          keywords: [disburse, transfer, payment instruction, bank account, tamper]
+        - key: LO-CRY-DATA-PROTECTION
+          title: Encryption of borrower personal data in transit and at rest
+          family: cryptography
+          obligation_kind: control
+          high_impact: false
+          evidence_tags: [security, cryptography]
+          categories: [security, privacy, data_management]
+          keywords: [encrypt, tls, at rest, in transit, key management]
+        - key: LO-RET-APPLICATION-RECORDS
+          title: Retention period for loan application records
+          family: retention
+          obligation_kind: retention_obligation
+          high_impact: true
+          evidence_tags: [data_management, retention]
+          categories: [data_management, privacy, regulatory]
+          keywords: [retain, retention, kept for, years, archive]
+        - key: LO-RET-DISPOSAL
+          title: Deletion or anonymisation after the retention period
+          family: retention
+          obligation_kind: retention_obligation
+          high_impact: true
+          evidence_tags: [data_management, retention]
+          categories: [data_management, privacy]
+          keywords: [delete, deletion, anonymis, anonymiz, purge, dispose]
+        - key: LO-PRV-MINIMISATION
+          title: Collection limited to data needed for the application
+          family: data_minimisation
+          obligation_kind: control
+          high_impact: false
+          evidence_tags: [privacy, data_management]
+          categories: [privacy, data_management]
+          keywords: [collect, only the, minimis, minimiz, necessary]
+        - key: LO-PRV-CONSENT
+          title: Recorded consent for processing borrower personal data
+          family: consent
+          obligation_kind: control
+          high_impact: true
+          evidence_tags: [privacy, consent]
+          categories: [privacy]
+          keywords: [consent, agree, permission to process]
+        - key: LO-PRV-SUBJECT-RIGHTS
+          title: Borrower requests to access or correct personal data
+          family: subject_rights
+          obligation_kind: control
+          high_impact: true
+          evidence_tags: [privacy, subject_rights]
+          categories: [privacy]
+          keywords: [access request, correct, correction, rectif, copy of their data]
+        - key: LO-REP-INCIDENT-REPORTING
+          title: Internal reporting of security incidents
+          family: audit_logging
+          obligation_kind: reporting_obligation
+          high_impact: true
+          evidence_tags: [security, audit, incident]
+          categories: [security, audit_reporting, operational]
+          keywords: [incident, breach, report, notify, escalat]

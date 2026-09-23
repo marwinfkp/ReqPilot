@@ -1,0 +1,10 @@
+{"requirement": "PR-01", "control_key": "LO-AUTH-MFA-PRIVILEGED", "clause": "FAB-SEC-2"}
+{"requirement": "PR-02", "control_key": "LO-AC-LEAST-PRIVILEGE", "clause": "FAB-SEC-1"}
+{"requirement": "PR-03", "control_key": "LO-LOG-PRIVILEGED-SESSIONS", "clause": "FAB-SEC-3"}
+{"requirement": "PR-04", "control_key": "LO-CRY-DATA-PROTECTION", "clause": "FAB-SEC-4"}
+{"requirement": "PR-05", "control_key": "LO-AUD-STATUS-TRAIL", "clause": "FAB-REC-1"}
+{"requirement": "PR-06", "control_key": "LO-RET-APPLICATION-RECORDS", "clause": "FAB-REC-1"}
+{"requirement": "PR-07", "control_key": "LO-PRV-MINIMISATION", "clause": "FAB-PRV-1"}
+{"requirement": "PR-08", "control_key": "LO-PRV-CONSENT", "clause": "FAB-PRV-2"}
+{"requirement": "PR-09", "control_key": "LO-APR-SANCTION-CHECKPOINT", "clause": "FAB-OPS-1"}
+{"requirement": "PR-10", "control_key": "LO-TXN-DISBURSEMENT-INTEGRITY", "clause": "FAB-OPS-2"}

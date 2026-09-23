@@ -83,7 +83,7 @@ def test_only_current_phase_endpoints_are_exposed() -> None:
         "/api/v1/analysis-runs",
         "/api/v1/interviews",
         # "/api/v1/conflicts" arrived with P5 (quality and conflict detection).
-        "/api/v1/compliance",
+        # "/api/v1/compliance-mappings" arrived with P6 (compliance and security).
         "/api/v1/risks",
         "/api/v1/sdlc-runs",
         "/api/v1/artifacts",
@@ -121,3 +121,19 @@ def test_current_phase_endpoints_are_present() -> None:
     assert "/api/v1/projects/{project_id}/conflicts" in paths
     assert "/api/v1/conflicts/{conflict_id}/resolve" in paths
     assert "/api/v1/projects/{project_id}/glossary" in paths
+
+
+def test_p6_endpoints_are_present_and_p7_is_not() -> None:
+    """P6 exposes compliance mappings, gaps, security/privacy findings and the report;
+    risk (P7) is still absent, and there is still no endpoint that writes a gate
+    decision other than the one approval path."""
+    paths = collect_paths(create_app())
+    assert "/api/v1/compliance-mappings/{mapping_id}" in paths
+    assert "/api/v1/projects/{project_id}/compliance-runs" in paths
+    assert "/api/v1/projects/{project_id}/compliance-gaps" in paths
+    assert "/api/v1/projects/{project_id}/security-privacy-findings" in paths
+    assert "/api/v1/projects/{project_id}/compliance-report" in paths
+    assert not [p for p in paths if "risk" in p and "security" not in p]
+    assert [p for p in paths if p.endswith("/decide")] == [
+        "/api/v1/approval-tasks/{task_id}/decide"
+    ]

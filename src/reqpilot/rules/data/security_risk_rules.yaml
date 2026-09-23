@@ -1,0 +1,134 @@
+# Security and privacy control catalogue and risk floors (roadmap phase P6;
+# architecture I.7 "rules/data/security_risk_rules.yaml", E #8, FR-SEC-001..003).
+#
+# The deterministic authority G3 depends on (I.7):
+#
+#   1. normalise the model's proposed_risk_level; missing / malformed /
+#      unrecognised -> medium, never low
+#   2. floor from this catalogue: a high-impact family -> high; any other
+#      privacy family -> privacy_floor; any other security family -> default_floor
+#   3. authoritative risk_level = max(normalised proposal, floor)
+#
+# Every derived finding records this file's version as risk_rules_version.
+# The eight high-impact families named in architecture I.7 are ALSO fixed in code
+# (domain/compliance/risk.py) and in a database check constraint: this file can
+# add a high-impact family, never remove one. Changing any value is a new version.
+#
+# Triggers (categories / keywords / P5 signals) decide which families a
+# requirement is deterministically indicated for. An indicated family ALWAYS
+# yields a finding - from the model if it proposed one that passed validation,
+# otherwise from the catalogue baseline below - so omitting a family in model
+# output cannot suppress a high-impact finding or its G3 gate.
+#
+# Baseline statements are team-written generic engineering requirements, not
+# quotations of any standard or law. Risk here is project/requirement risk: never
+# a borrower's credit risk.
+
+name: security_risk_rules
+version: "1.0.0"
+description: >
+  Security and privacy control families, their deterministic triggers, the
+  catalogue risk floors of architecture I.7, and the baseline derived
+  requirement used when no validated model proposal covers an indicated family.
+
+rules:
+  high_impact_families:
+    - authentication
+    - authorisation
+    - cryptography
+    - audit_logging
+    - transaction_integrity
+    - consent
+    - retention
+    - subject_rights
+  # I.7: "other privacy findings have a floor of medium".
+  privacy_floor: medium
+  # Other security families: no floor beyond low.
+  default_floor: low
+  # A model may propose at most this many findings per requirement and category.
+  max_findings_per_call: 8
+
+  # P5 quality signals (FR-QAL-008 delegated to FR-SEC-001 / FR-CMP-002): an
+  # open signal on a version indicates these families.
+  signals:
+    SEC-DATA-UNPROTECTED: [cryptography, authorisation]
+    PRV-DATA-UNPROTECTED: [data_minimisation, retention]
+
+  families:
+    - family: authentication
+      category: security
+      title: Authentication
+      keywords: [log in, login, logs in, sign in, signs in, password, passcode, multi-factor, mfa, one-time password, otp, authenticat, credential]
+      baseline_requirement: >-
+        The system shall authenticate every user before granting access, and shall
+        require multi-factor authentication for staff and privileged accounts.
+    - family: authorisation
+      category: security
+      title: Authorisation and access control
+      keywords: [access to, role-based, permission, privilege, authoris, authoriz, only the assigned, restricted to]
+      baseline_requirement: >-
+        The system shall restrict access to each function and record to the roles
+        that need it, on a least-privilege basis.
+    - family: cryptography
+      category: security
+      title: Encryption and key handling
+      keywords: [encrypt, decrypt, tls, cipher, key management, at rest, in transit]
+      baseline_requirement: >-
+        The system shall encrypt borrower personal data in transit and at rest, with
+        keys managed separately from the data they protect.
+    - family: audit_logging
+      category: security
+      title: Security audit logging
+      keywords: [audit log, audit trail, logged, log every, logging, tamper-evident]
+      baseline_requirement: >-
+        The system shall record security-relevant events with the actor, time and
+        affected record, in a log protected against modification.
+    - family: session_management
+      category: security
+      title: Session management
+      keywords: [session, time out, timeout, inactivity, idle, lock after, signed out]
+      baseline_requirement: >-
+        The system shall end an authenticated session after a defined period of
+        inactivity and on sign-out.
+    - family: transaction_integrity
+      category: security
+      title: Transaction integrity
+      keywords: [disburse, disbursement, transfer, payment instruction, sanction, tamper, bank account details]
+      baseline_requirement: >-
+        The system shall protect disbursement and sanction instructions against
+        unauthorised change between approval and execution.
+    - family: fraud_controls
+      category: security
+      title: Fraud controls
+      keywords: [fraud, forged, impersonat, synthetic identity, mule, suspicious]
+      baseline_requirement: >-
+        The system shall flag applications showing defined fraud indicators for
+        manual review before sanction.
+    - family: data_minimisation
+      category: privacy
+      title: Data minimisation
+      keywords: [collect, capture, store the, personal data, identity document, date of birth, address, phone number]
+      baseline_requirement: >-
+        The system shall collect and store only the personal data needed for the
+        stated purpose of the loan application.
+    - family: consent
+      category: privacy
+      title: Consent
+      keywords: [consent, agree to, opt in, opt-in, permission to process, share with]
+      baseline_requirement: >-
+        The system shall record the borrower's consent, with its scope and time,
+        before processing personal data for a purpose that requires consent.
+    - family: retention
+      category: privacy
+      title: Retention and deletion
+      keywords: [retain, retention, kept for, keep the, archive, delete, deletion, purge, anonymis, anonymiz]
+      baseline_requirement: >-
+        The system shall retain each class of personal data only for its defined
+        retention period, then delete or anonymise it and log the action.
+    - family: subject_rights
+      category: privacy
+      title: Data-subject rights
+      keywords: [access request, copy of their data, correct their, correction, rectif, erasure, withdraw consent]
+      baseline_requirement: >-
+        The system shall let a borrower request access to, and correction of, their
+        personal data, and shall track each request to completion.

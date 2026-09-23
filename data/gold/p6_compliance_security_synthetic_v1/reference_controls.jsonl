@@ -1,0 +1,16 @@
+{"id": "R-01", "title": "Access to applicant records limited to the roles that need it", "clause": "FAB-SEC-1", "checklist_key": "LO-AC-LEAST-PRIVILEGE", "high_impact": false}
+{"id": "R-02", "title": "Quarterly review and removal of access rights", "clause": "FAB-SEC-1", "checklist_key": "LO-AC-ACCESS-REVIEW", "high_impact": false}
+{"id": "R-03", "title": "Two-step verification for staff and administrators", "clause": "FAB-SEC-2", "checklist_key": "LO-AUTH-MFA-PRIVILEGED", "high_impact": false}
+{"id": "R-04", "title": "Administrative sessions recorded", "clause": "FAB-SEC-3", "checklist_key": "LO-LOG-PRIVILEGED-SESSIONS", "high_impact": false}
+{"id": "R-05", "title": "Applicant personal data encrypted at rest and in transit", "clause": "FAB-SEC-4", "checklist_key": "LO-CRY-DATA-PROTECTION", "high_impact": false}
+{"id": "R-06", "title": "Security incidents reported within one hour and tracked", "clause": "FAB-SEC-5", "checklist_key": "LO-REP-INCIDENT-REPORTING", "high_impact": true}
+{"id": "R-07", "title": "Application history of status changes and who made them", "clause": "FAB-REC-1", "checklist_key": "LO-AUD-STATUS-TRAIL", "high_impact": false}
+{"id": "R-08", "title": "Application records kept for seven years after closure", "clause": "FAB-REC-1", "checklist_key": "LO-RET-APPLICATION-RECORDS", "high_impact": true}
+{"id": "R-09", "title": "Secure erasure or anonymisation at the end of retention, logged", "clause": "FAB-REC-2", "checklist_key": "LO-RET-DISPOSAL", "high_impact": true}
+{"id": "R-10", "title": "Only data needed for the application collected", "clause": "FAB-PRV-1", "checklist_key": "LO-PRV-MINIMISATION", "high_impact": false}
+{"id": "R-11", "title": "Consent recorded before marketing use or partner sharing", "clause": "FAB-PRV-2", "checklist_key": "LO-PRV-CONSENT", "high_impact": true}
+{"id": "R-12", "title": "Copies and corrections of applicant data on request", "clause": "FAB-PRV-3", "checklist_key": "LO-PRV-SUBJECT-RIGHTS", "high_impact": true}
+{"id": "R-13", "title": "Two sign-offs before a loan is sanctioned", "clause": "FAB-OPS-1", "checklist_key": "LO-APR-SANCTION-CHECKPOINT", "high_impact": false}
+{"id": "R-14", "title": "Disbursement details locked after approval", "clause": "FAB-OPS-2", "checklist_key": "LO-TXN-DISBURSEMENT-INTEGRITY", "high_impact": false}
+{"id": "R-15", "title": "Key facts statement with every fee and the APR before acceptance", "clause": "FAB-OPS-3", "checklist_key": null, "high_impact": false}
+{"id": "R-16", "title": "Complaints acknowledged and resolved within set periods", "clause": "FAB-OPS-4", "checklist_key": null, "high_impact": false}

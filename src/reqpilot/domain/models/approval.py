@@ -16,7 +16,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, Index, String, Text
+from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
@@ -33,6 +33,9 @@ class ApprovalTask(Base):
         Index("ix_approval_task_project_status", "project_id", "status"),
         Index("ix_approval_task_group", "task_group_id"),
         Index("ix_approval_task_subject", "project_id", "subject_type", "subject_id"),
+        # P6: referenceable with its project, so a G2/G3 subject links only to a
+        # task of its own project (composite foreign key).
+        UniqueConstraint("id", "project_id", name="id_project"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()

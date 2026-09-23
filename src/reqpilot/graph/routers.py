@@ -85,7 +85,9 @@ def assert_is_deterministic_router(func: object) -> None:
 # Routers are annotated with the full state type: LangGraph reads the
 # annotation as the router's input schema, and a narrower type would hide the
 # fields the route depends on.
-AfterScope = Literal["extract_requirements", "classify", "quality_analysis", "error_handler"]
+AfterScope = Literal[
+    "extract_requirements", "classify", "quality_analysis", "compliance_retrieve", "error_handler"
+]
 AfterExtraction = Literal["validate_extraction", "error_handler"]
 AfterValidation = Literal["persist_candidates", "persist_revision", "error_handler"]
 
@@ -95,6 +97,8 @@ def route_after_scope(state: AnalysisState) -> AfterScope:
     extract; versions only -> classify; a bad scope -> fail."""
     if state.get("errors"):
         return "error_handler"
+    if state.get("compliance_mode"):
+        return "compliance_retrieve"
     if state.get("quality_mode"):
         return "quality_analysis"
     if (
@@ -152,6 +156,41 @@ def route_after_quality(state: AnalysisState) -> AfterQuality:
 def route_conflict_shortlist(state: AnalysisState) -> AfterShortlist:
     """Shortlisted pairs -> adjudicate; none -> end (``gate_fanout`` is a later phase)."""
     return "conflict_adjudicate" if state.get("conflict_pairs") else "__end__"
+
+
+# --- P6: compliance and security analysis (C.3 nodes 12-17, 20) -------------
+
+AfterRetrieve = Literal["compliance_map", "error_handler"]
+AfterComplianceValidate = Literal["compliance_gaps", "error_handler"]
+AfterSecurityEvaluate = Literal["gate_fanout", "error_handler", "__end__"]
+
+
+def route_after_retrieve(state: AnalysisState) -> AfterRetrieve:
+    """Evidence recorded (or its absence escalated) -> the grounded mapping step."""
+    return "error_handler" if state.get("errors") else "compliance_map"
+
+
+def route_compliance(state: AnalysisState) -> AfterComplianceValidate:
+    """C.3 ``route_compliance``: validated claims recorded, uncited ones dropped and
+    flagged, high-impact ones marked for G2 -> the rule-engine gap step.
+
+    Gap detection runs whatever the model produced: it is not the model's call.
+    """
+    return "error_handler" if state.get("errors") else "compliance_gaps"
+
+
+def route_security_privacy(state: AnalysisState) -> AfterSecurityEvaluate:
+    """C.3 ``route_security_privacy``: any persisted high-impact interpretation (G2)
+    or authoritative HIGH finding (G3) -> ``gate_fanout``; else end.
+
+    Both flags were set by deterministic nodes from persisted columns. The
+    fan-out re-reads those columns itself, so a flag can only cause a check.
+    """
+    if state.get("errors"):
+        return "error_handler"
+    if state.get("has_high_impact_interpretation") or state.get("has_high_security_risk"):
+        return "gate_fanout"
+    return "__end__"
 
 
 # ---------------------------------------------------------------------------

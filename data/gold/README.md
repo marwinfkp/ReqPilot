@@ -126,10 +126,33 @@ protocol. `services/evaluation/quality_eval.py` and `scripts/run_p5_eval.py`
 verify the manifest and compute E2/E3. The results are in
 `docs/evaluation/p5-qc-synthetic-v1/` and `docs/08` §17. A correction is `_v2`.
 
+## P6-CS-SYNTHETIC-v1 - the P6 exit slot (E5)
+
+**Frozen on 2026-09-22 as `p6_compliance_security_synthetic_v1/`.** It holds a
+fictional knowledge base (four "Fabrikam Finance (fictional)" policies, 16
+clauses and one injected-instruction note), 20 retail-loan requirements, the 16
+reference controls that are E5's denominator, the expected mappings, gaps and
+security/privacy families, 18 replayed attacks and 30 labelled language cases.
+Like the others it is a **synthetic reference benchmark**, and it is weaker than
+P5's in one respect stated up front: it was written **after** the P6 pipeline,
+checklist and language detector existed, by the same AI assistant. The project
+author reviewed it on 2026-09-23, after the evaluation runs, and identified no
+substantive label corrections, so no `_v2` was created and v1 stays frozen. It
+is therefore a synthetic, **project-author-reviewed** benchmark - not
+independently validated, not an expert list, and carrying no regulatory or legal
+validation. Its frozen `manifest.json`, `BENCHMARK.md` and `REVIEW_SHEET.md`
+still say "review pending" because they record the state at freeze time; editing
+them would change the manifest hash. Its `BENCHMARK.md` fixes the protocol and
+lists the threats to validity. `services/evaluation/compliance_eval.py` and
+`scripts/run_p6_eval.py` verify the manifest and compute E5 and the
+supplementary figures (PostgreSQL required: P2 hybrid retrieval). The results
+are in `docs/evaluation/p6-cs-synthetic-v1/` and `docs/09` (§28 records the
+review status and a read-only integrity verification). A correction is `_v2`.
+
 ## Roadmap note
 
 Empty in P0. Gold datasets are produced alongside the phases they evaluate, and
 each is frozen before use (`docs/01-analysis.md` §O, §P). After P3 this directory
 holds `e1_synthetic_v1/`, frozen before ReqPilot was run on it; after P5 also
-`p5_quality_conflict_synthetic_v1/`. Neither is ever edited; a correction is a new
-`_v2`.
+`p5_quality_conflict_synthetic_v1/`, and after P6 `p6_compliance_security_synthetic_v1/`.
+None is ever edited; a correction is a new `_v2`.

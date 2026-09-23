@@ -15,6 +15,12 @@ enforces the gate.</p>
   <legend class="mono">{{ row.task.gate.value }} &middot; needs
     {{ row.this_role.value }} &middot; {{ row.task.status.value }}</legend>
 
+  {% if not row.version %}
+  <p class="muted">subject: <span class="mono">{{ row.task.subject_type }} {{ row.task.subject_id }}</span>
+     &mdash; the interpretation, its cited evidence with full provenance and the advisory notice
+     are on the <a href="/ui/projects/{{ project_id }}/compliance">compliance &amp; security</a>
+     page (bound to hash <code>{{ row.task.subject_version_hash[:16] }}&hellip;</code>)</p>
+  {% endif %}
   {% if row.version %}
   <p><span class="mono">v{{ row.version.version_no }}</span> &mdash; {{ row.version.statement }}</p>
   <p class="muted">state <span class="state">{{ row.version.state.value }}</span> &middot;

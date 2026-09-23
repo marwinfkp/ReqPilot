@@ -220,8 +220,13 @@ class RunLog:
         output_refs: dict[str, Any] | None = None,
         error_code: str | None = None,
         review_signal: float | None = None,
+        evidence_ids: list[str] | None = None,
     ) -> AgentRun:
-        """Record one role invocation, with its prompt and model provenance."""
+        """Record one role invocation, with its prompt and model provenance.
+
+        ``evidence_ids`` (P6): the evidence supplied to the invocation - the run's
+        citable set for that call (architecture G.7 ``agent_run.evidence_ids``).
+        """
         prompt_id: str | None = None
         model_id: str | None = None
         output_refs = dict(output_refs or {})
@@ -241,7 +246,7 @@ class RunLog:
             model_version_id=model_id,
             input_refs=input_refs or {},
             output_refs=output_refs,
-            evidence_ids=[],
+            evidence_ids=list(evidence_ids or []),
             tokens_in=meta.tokens_in if meta else None,
             tokens_out=meta.tokens_out if meta else None,
             latency_ms=meta.latency_ms if meta else None,

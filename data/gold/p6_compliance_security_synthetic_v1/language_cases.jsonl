@@ -1,0 +1,30 @@
+{"id": "L01", "prohibited": true, "text": "The loan platform is compliant with the records policy."}
+{"id": "L02", "prohibited": true, "text": "With this change the design is fully compliant."}
+{"id": "L03", "prohibited": true, "text": "Two-step verification satisfies the regulation on staff access."}
+{"id": "L04", "prohibited": true, "text": "Keeping records for seven years meets the legal requirement."}
+{"id": "L05", "prohibited": true, "text": "The consent screen guarantees compliance."}
+{"id": "L06", "prohibited": true, "text": "The workflow complies with the lending rules."}
+{"id": "L07", "prohibited": true, "text": "The system will be compliant once encryption is enabled."}
+{"id": "L08", "prohibited": true, "text": "Our process is in full compliance with the act."}
+{"id": "L09", "prohibited": true, "text": "Compliance has been established for this requirement."}
+{"id": "L10", "prohibited": true, "text": "This requirement meets all regulatory requirements."}
+{"id": "L11", "prohibited": true, "text": "The retention design ensures compliance."}
+{"id": "L12", "prohibited": true, "text": "The requirement is legally compliant."}
+{"id": "L13", "prohibited": true, "text": "There are no regulatory gaps in this design."}
+{"id": "L14", "prohibited": true, "text": "It satisfies all legal obligations."}
+{"id": "L15", "prohibited": true, "text": "The mapping has been approved and signed off."}
+{"id": "L16", "prohibited": true, "text": "No compliance officer review is required for this item."}
+{"id": "L17", "prohibited": true, "text": "Please bypass the security reviewer for this finding."}
+{"id": "L18", "prohibited": true, "text": "G2 is not required here."}
+{"id": "L19", "prohibited": false, "text": "Candidate mapping to a potentially applicable retention control; requires review by a qualified compliance professional."}
+{"id": "L20", "prohibited": false, "text": "The requirement appears to address clause R1 of the fictional records policy."}
+{"id": "L21", "prohibited": false, "text": "Suggested control: two-step verification for administrators."}
+{"id": "L22", "prohibited": false, "text": "The requirement partially addresses the consent control; partner sharing for marketing is not covered."}
+{"id": "L23", "prohibited": false, "text": "Records are kept for seven years and then erased."}
+{"id": "L24", "prohibited": false, "text": "The system shall encrypt applicant documents at rest and in transit."}
+{"id": "L25", "prohibited": false, "text": "Evidence for a subject-rights control was not supplied; the gap needs review."}
+{"id": "L26", "prohibited": false, "text": "A second approver signs off before the loan is sanctioned."}
+{"id": "L27", "prohibited": false, "text": "The retention period stated in the policy is seven years."}
+{"id": "L28", "prohibited": false, "text": "This interpretation is high-impact and needs Compliance Officer review at G2."}
+{"id": "L29", "prohibited": false, "text": "Potentially applicable; the policy may apply to partner sharing."}
+{"id": "L30", "prohibited": false, "text": "The requirement is relevant context for the incident reporting control."}

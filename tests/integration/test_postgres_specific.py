@@ -131,6 +131,9 @@ def test_migrations_create_nothing_beyond_the_current_phase(pg_engine) -> None:
         "stakeholder", "interview_session", "utterance", "quality_finding", "clarification",
         # P5
         "conflict", "glossary_term",
+        # P6
+        "compliance_mapping", "compliance_mapping_evidence", "compliance_gap",
+        "security_privacy_finding", "security_privacy_finding_evidence",
         # The LangGraph checkpoint store, in the same database (architecture C.7);
         # created by the elicitation graph's durable checkpointer on first use.
         "checkpoint_migrations", "checkpoints", "checkpoint_blobs", "checkpoint_writes",

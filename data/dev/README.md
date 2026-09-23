@@ -45,6 +45,16 @@ implementation they are meant to judge. A CI check enforces the direction.
   the P5 benchmark (`../gold/p5_quality_conflict_synthetic_v1`), and its wording
   deliberately differs from it.
 
+- [`compliance/`](compliance/) (P6) - a **fictional** knowledge base (Acme Bank
+  information-security, retention and privacy-notice policies, with one
+  deliberately injected instruction) and 7 fictional retail-loan requirements:
+  a supported high-impact retention mapping, an authentication requirement whose
+  model proposal is "low", consent, a plain functional requirement, a P5 privacy
+  signal, an injected instruction and a dual-control disbursement. It drives the
+  P6 tests and the demonstration. It is not the P6 benchmark
+  (`../gold/p6_compliance_security_synthetic_v1`), and its wording deliberately
+  differs from it.
+
 ## Roadmap note
 
 Fixtures arrive with the roadmap phases that need something to process

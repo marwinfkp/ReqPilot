@@ -22,7 +22,7 @@ hold.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
@@ -40,9 +40,17 @@ from reqpilot.llm.gateway import LLMGateway, build_gateway
 from reqpilot.repositories.database import get_session_factory
 from reqpilot.retrieval.embeddings import EmbeddingProvider, provider_for
 from reqpilot.retrieval.rules import RetrievalRules, load_retrieval_rules
+from reqpilot.rules.compliance import (
+    ComplianceRules,
+    SecurityRules,
+    load_compliance_rules,
+    load_security_rules,
+)
 from reqpilot.rules.elicitation import ElicitationRules, load_elicitation_rules
 from reqpilot.rules.extraction import ExtractionRules, load_extraction_rules
 from reqpilot.rules.quality import QualityRules, load_quality_rules
+from reqpilot.services.compliance import Retriever
+from reqpilot.services.knowledge.retrieval import RetrievalService
 
 
 def get_db() -> Iterator[Session]:
@@ -179,6 +187,30 @@ def get_quality_rules(
     return _quality_rules(str(settings.rules_dir))
 
 
+@lru_cache(maxsize=4)
+def _compliance_rules(rules_dir: str) -> ComplianceRules:
+    return load_compliance_rules(Path(rules_dir))
+
+
+def get_compliance_rules(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ComplianceRules:
+    """The versioned expected-control checklists (P6, K.2), validated once per process."""
+    return _compliance_rules(str(settings.rules_dir))
+
+
+@lru_cache(maxsize=4)
+def _security_rules(rules_dir: str) -> SecurityRules:
+    return load_security_rules(Path(rules_dir))
+
+
+def get_security_rules(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> SecurityRules:
+    """The versioned security/privacy catalogue and risk floors (P6, I.7), loaded once."""
+    return _security_rules(str(settings.rules_dir))
+
+
 def get_llm_gateway(settings: Annotated[Settings, Depends(get_settings)]) -> LLMGateway:
     """The one model access boundary (ADR-006), built from configuration.
 
@@ -197,3 +229,29 @@ Gateway = Annotated[LLMGateway, Depends(get_llm_gateway)]
 ExtractionRulesDep = Annotated[ExtractionRules, Depends(get_extraction_rules)]
 ElicitationRulesDep = Annotated[ElicitationRules, Depends(get_elicitation_rules)]
 QualityRulesDep = Annotated[QualityRules, Depends(get_quality_rules)]
+ComplianceRulesDep = Annotated[ComplianceRules, Depends(get_compliance_rules)]
+SecurityRulesDep = Annotated[SecurityRules, Depends(get_security_rules)]
+
+#: Builds the P2 allowlisted retrieval boundary for one request's session and actor.
+RetrieverFactory = Callable[[Session, Actor], Retriever]
+
+
+def get_retriever_factory(
+    embedder: Embedder, rules: Rules, compliance_rules: ComplianceRulesDep
+) -> RetrieverFactory:
+    """P6 retrieval: the P2 hybrid ``RetrievalService`` - allowlist join, jurisdiction
+    scope, KB pin - with the checklist's k. The only way a compliance run retrieves."""
+
+    def build(session: Session, actor: Actor) -> Retriever:
+        return RetrievalService(
+            session,
+            actor,
+            embedder=embedder,
+            rules=rules,
+            default_top_k=compliance_rules.retrieval_top_k,
+        ).retrieve
+
+    return build
+
+
+RetrieverFactoryDep = Annotated[RetrieverFactory, Depends(get_retriever_factory)]

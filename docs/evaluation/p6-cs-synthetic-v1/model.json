@@ -1,0 +1,161 @@
+{
+  "benchmark": "P6-CS-SYNTHETIC-v1",
+  "manifest_sha256": "2120466972db56da32ee3990033bdc0eefc080519f1e888feb5168bc9a7c3277",
+  "mode": "model",
+  "e5": {
+    "value": 0.875,
+    "covered": 14,
+    "reference_controls": 16,
+    "covered_by_mapping": 10,
+    "covered_by_gap_only": 4,
+    "missed_reference_ids": [
+      "R-15",
+      "R-16"
+    ],
+    "bar": 0.75,
+    "meets_bar": true
+  },
+  "supplementary": {
+    "citation_resolution": {
+      "resolved": 21,
+      "total": 21,
+      "rate": 1.0
+    },
+    "mappings": {
+      "tp": 10,
+      "fp": 4,
+      "fn": 0,
+      "precision": 0.7143,
+      "recall": 1.0,
+      "f1": 0.8333,
+      "recorded": 21,
+      "false_positives": [
+        "PR-05 LO-RET-APPLICATION-RECORDS",
+        "PR-11 LO-APR-SANCTION-CHECKPOINT",
+        "PR-16 LO-CRY-DATA-PROTECTION",
+        "PR-16 LO-PRV-MINIMISATION"
+      ],
+      "false_negatives": []
+    },
+    "gaps": {
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "recorded": 4,
+      "false_positives": [],
+      "false_negatives": []
+    },
+    "g2_routing": {
+      "correct": 21,
+      "mappings": 21,
+      "rate": 1.0,
+      "expected_high_impact_mappings": 2,
+      "expected_high_impact_routed": 2
+    },
+    "g3_routing": {
+      "correct": 60,
+      "findings": 60,
+      "rate": 1.0,
+      "expected_g3_pairs": 10,
+      "expected_g3_routed": 10,
+      "recall": 1.0
+    },
+    "families": {
+      "tp": 14,
+      "fp": 46,
+      "fn": 0,
+      "precision": 0.2333,
+      "recall": 1.0,
+      "f1": 0.3784,
+      "recorded": 60,
+      "false_positives": [
+        "PR-01 data_minimisation",
+        "PR-01 retention",
+        "PR-02 retention",
+        "PR-03 retention",
+        "PR-04 retention",
+        "PR-05 authorisation",
+        "PR-05 cryptography",
+        "PR-05 retention",
+        "PR-06 audit_logging",
+        "PR-06 cryptography",
+        "PR-07 authorisation",
+        "PR-07 cryptography",
+        "PR-08 audit_logging",
+        "PR-08 authorisation",
+        "PR-08 cryptography",
+        "PR-08 data_minimisation",
+        "PR-08 retention",
+        "PR-08 subject_rights",
+        "PR-09 retention",
+        "PR-10 retention",
+        "PR-11 transaction_integrity",
+        "PR-12 retention",
+        "PR-12 transaction_integrity",
+        "PR-13 audit_logging",
+        "PR-13 authorisation",
+        "PR-13 retention",
+        "PR-13 transaction_integrity",
+        "PR-15 data_minimisation",
+        "PR-16 audit_logging",
+        "PR-16 authentication",
+        "PR-16 authorisation",
+        "PR-16 cryptography",
+        "PR-17 audit_logging",
+        "PR-17 authentication",
+        "PR-17 authorisation",
+        "PR-17 retention",
+        "PR-17 transaction_integrity",
+        "PR-18 audit_logging",
+        "PR-18 authentication",
+        "PR-18 authorisation",
+        "PR-18 cryptography",
+        "PR-18 retention",
+        "PR-18 transaction_integrity",
+        "PR-19 authorisation",
+        "PR-19 data_minimisation",
+        "PR-20 authorisation"
+      ],
+      "false_negatives": []
+    },
+    "claims_dropped": 1,
+    "drop_reasons": {
+      "unsupported_citation": 1
+    },
+    "gate_tasks": 74,
+    "retrieval": {
+      "supporting_clause_supplied": 10,
+      "expected_mappings": 10,
+      "rate": 1.0,
+      "requirements_with_no_evidence": []
+    }
+  },
+  "language_detector": {
+    "tp": 18,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "tn": 12,
+    "accuracy": 1.0,
+    "errors": []
+  },
+  "adversarial": null,
+  "model_calls": {
+    "compliance_map:compliance": 20,
+    "security_privacy_derive:security_privacy": 40
+  },
+  "all_calls_real_model": true,
+  "notes": [
+    "P5 quality run (deterministic): status=completed",
+    "P6 run: status=completed, errors=0, semantic_failures=0, provider_calls=60, tokens_in=123287, tokens_out=34718, evidence=83, evidence_unavailable=0",
+    "embedder: BAAI/bge-small-en-v1.5",
+    "gateway provider: openai; model: gpt-5.6-luna",
+    "checklist: compliance_checklists@1.0.0; risk rules: security_risk_rules@1.0.0"
+  ],
+  "caveat": "Synthetic benchmark written after the implementation by the same AI author, not reviewed by the project author, not independently validated. E5 is structurally favourable (gaps are expected - covered). No real-world regulatory accuracy is claimed."
+}

@@ -35,8 +35,15 @@ from reqpilot.graph.state import AnalysisState
 from reqpilot.llm.accounting import UsageLedger
 from reqpilot.llm.gateway import LLMGateway
 from reqpilot.retrieval.embeddings import EmbeddingProvider
+from reqpilot.rules.compliance import (
+    ComplianceRules,
+    SecurityRules,
+    packaged_compliance_rules,
+    packaged_security_rules,
+)
 from reqpilot.rules.extraction import ExtractionRules
 from reqpilot.rules.quality import QualityRules, packaged_quality_rules
+from reqpilot.services.compliance import Retriever
 from reqpilot.services.extraction import RunLog, RunRecorder
 
 #: Architecture D3: a run processes a bounded batch.
@@ -65,6 +72,14 @@ class RunSummary:
     conflict_ids: tuple[uuid.UUID, ...] = ()
     #: Semantic (LLM) calls that failed or were refused; the rules still ran.
     semantic_failures: int = 0
+    #: P6: what compliance and security analysis recorded in this run.
+    evidence_ids: tuple[uuid.UUID, ...] = ()
+    evidence_unavailable_ids: tuple[uuid.UUID, ...] = ()
+    compliance_mapping_ids: tuple[uuid.UUID, ...] = ()
+    compliance_gap_ids: tuple[uuid.UUID, ...] = ()
+    security_finding_ids: tuple[uuid.UUID, ...] = ()
+    claims_dropped: int = 0
+    gate_task_ids: tuple[uuid.UUID, ...] = ()
 
 
 class AnalysisRunner:
@@ -77,6 +92,9 @@ class AnalysisRunner:
         settings: Settings | None = None,
         quality_rules: QualityRules | None = None,
         embedder: EmbeddingProvider | None = None,
+        compliance_rules: ComplianceRules | None = None,
+        security_rules: SecurityRules | None = None,
+        retriever: Retriever | None = None,
     ) -> None:
         self._session = session
         self._gateway = gateway
@@ -86,6 +104,11 @@ class AnalysisRunner:
         #: The conflict shortlist's embedding provider (ADR-005, local). ``None``
         #: shortlists on lexical and structural signals only.
         self._embedder = embedder
+        #: P6: the versioned checklist and security catalogue, and the P2
+        #: allowlisted retrieval boundary (``RetrievalService.retrieve``).
+        self._compliance_rules = compliance_rules or packaged_compliance_rules()
+        self._security_rules = security_rules or packaged_security_rules()
+        self._retriever = retriever
 
     def semantic_default(self) -> bool:
         """The LLM semantic layer runs unless the gateway is the offline stub."""
@@ -208,6 +231,54 @@ class AnalysisRunner:
             },
         )
 
+    def analyse_compliance(
+        self,
+        *,
+        actor: Actor,
+        project_id: ProjectId,
+        version_ids: Sequence[uuid.UUID] = (),
+        semantic: bool | None = None,
+    ) -> RunSummary:
+        """Compliance and security/privacy analysis of the project's requirements (P6).
+
+        Architecture C.3 nodes 12-17 and the G2/G3 part of 20. With no
+        ``version_ids`` every current version is analysed. Evidence comes only
+        from the P2 allowlisted retrieval; gaps come only from the versioned
+        checklist; the authoritative security/privacy risk level comes only from
+        the deterministic evaluator; G2/G3 tasks are raised from persisted
+        values. ``semantic`` defaults to on unless the gateway is the offline stub.
+        """
+        if len(version_ids) > self._compliance_rules.max_versions_per_run:
+            raise ReqPilotError(
+                "a compliance run takes at most "
+                f"{self._compliance_rules.max_versions_per_run} versions"
+            )
+        if self._retriever is None:
+            raise ReqPilotError(
+                "compliance analysis needs the allowlisted retrieval service (P2); none is "
+                "configured for this runner"
+            )
+        use_semantic = self.semantic_default() if semantic is None else semantic
+        return self._run(
+            actor,
+            project_id,
+            {
+                "domain": "",
+                "scope_source_ids": [],
+                "scope_version_ids": [],
+                "compliance_mode": True,
+                "compliance_version_ids": [str(v) for v in dict.fromkeys(version_ids)],
+                "semantic": use_semantic,
+            },
+            scope={
+                "mode": "compliance",
+                "versions": len(set(version_ids)) or "all_current",
+                "semantic": use_semantic,
+                "checklist": self._compliance_rules.ruleset_ref,
+                "risk_rules": self._security_rules.ruleset_ref,
+            },
+        )
+
     def classify(
         self, *, actor: Actor, project_id: ProjectId, version_ids: Sequence[uuid.UUID]
     ) -> RunSummary:
@@ -249,6 +320,9 @@ class AnalysisRunner:
             rules=self._rules,
             quality_rules=self._quality_rules,
             embedder=self._embedder,
+            compliance_rules=self._compliance_rules,
+            security_rules=self._security_rules,
+            retriever=self._retriever,
         )
         state: AnalysisState = {
             "run_id": str(run.id),
@@ -280,6 +354,11 @@ class AnalysisRunner:
             quality_findings=len(final.get("quality_finding_ids", [])),
             conflicts=len(final.get("conflict_ids", [])),
             semantic_failures=final.get("semantic_failures", 0),
+            compliance_mappings=len(final.get("compliance_mapping_ids", [])),
+            compliance_gaps=len(final.get("compliance_gap_ids", [])),
+            security_findings=len(final.get("security_finding_ids", [])),
+            claims_dropped=final.get("claims_dropped", 0),
+            gate_tasks=len(final.get("pending_gate_tasks", [])),
             provider_calls=ledger.calls,
             tokens_in=ledger.tokens_in,
             tokens_out=ledger.tokens_out,
@@ -307,4 +386,17 @@ class AnalysisRunner:
             quality_finding_ids=tuple(uuid.UUID(v) for v in final.get("quality_finding_ids", [])),
             conflict_ids=tuple(uuid.UUID(v) for v in final.get("conflict_ids", [])),
             semantic_failures=final.get("semantic_failures", 0),
+            evidence_ids=tuple(uuid.UUID(v) for v in final.get("evidence_ids", [])),
+            evidence_unavailable_ids=tuple(
+                uuid.UUID(v) for v in final.get("evidence_unavailable_ids", [])
+            ),
+            compliance_mapping_ids=tuple(
+                uuid.UUID(v) for v in final.get("compliance_mapping_ids", [])
+            ),
+            compliance_gap_ids=tuple(uuid.UUID(v) for v in final.get("compliance_gap_ids", [])),
+            security_finding_ids=tuple(uuid.UUID(v) for v in final.get("security_finding_ids", [])),
+            claims_dropped=final.get("claims_dropped", 0),
+            gate_task_ids=tuple(
+                uuid.UUID(ref["task_id"]) for ref in final.get("pending_gate_tasks", [])
+            ),
         )

@@ -56,10 +56,11 @@ P1_TABLES = {
 #: The knowledge-base tables arrived with P2 and are no longer "future". The
 #: project corpus and the glossary are deliberately still absent after P2.
 #: ``glossary_term`` and ``conflict`` arrived with P5 (quality and conflict
-#: detection) and left this list then; everything below is still later.
+#: detection) and left this list then; ``compliance_mapping`` arrived with P6
+#: (compliance and security analysis) and left it then. Everything below is
+#: still later.
 FUTURE_PHASE_TABLES = {
     "traceability_link",
-    "compliance_mapping",
     "risk",
     "risk_mitigation",
     "sdlc_run",

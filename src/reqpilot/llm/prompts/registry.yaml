@@ -12,6 +12,9 @@ active:
   clarification_question: "1.0.0"
   requirement_quality_review: "1.0.0"
   conflict_adjudication: "1.0.0"
+  compliance_mapping: "1.0.0"
+  security_requirement_analysis: "1.0.0"
+  privacy_requirement_analysis: "1.0.0"
 locked:
   requirement_extraction@1.0.0: "6ed48601cc05add136aa5984128d95f4df449da99ce359e38f1b973ff492098e"
   requirement_classification@1.0.0: "5fa3028a730f15e422959bc1ad9a7e3489878090f61757d983bd26b99c5ab37a"
@@ -20,3 +23,6 @@ locked:
   clarification_question@1.0.0: "c24e0f1f42ecdb30a870d47c0e9e9143563bad4163af7512aa47c9d4f0e63d0b"
   requirement_quality_review@1.0.0: "ec40da6210de66041d04d85050f23a00a99dc40a0c944bf106ae9cce9264f0b3"
   conflict_adjudication@1.0.0: "c2bbda09be647f19584460d24f9c61967c19ebe28e704817b52ae304f6318e11"
+  compliance_mapping@1.0.0: "648a4920c9c21fbd1284dedd8a2c414224c08ff0fdc46c3067e47ad8f7498c9f"
+  security_requirement_analysis@1.0.0: "43d14ca3ffc2bf7d464f314203ed1c5a80eb66efa1ab8fd2f39b6e3afb7c368d"
+  privacy_requirement_analysis@1.0.0: "cf7f5a3ce87b1122748fc9b131dfa39a5111be468d629dac92c2f9e607ba1bf7"

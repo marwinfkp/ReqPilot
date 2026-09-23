@@ -41,6 +41,14 @@ The design rules enforced here rather than trusted to callers:
    or dismiss a finding, take a conflict under review, resolve or dismiss a
    conflict, or edit the project glossary - whatever roles it carries
    (architecture E #6, M.3 G4; ``FR-CNF-005``).
+9. **A compliance mapping or a derived security requirement is a proposal; G2
+   and G3 are human decisions.** From P6 the analysis pipeline records validated
+   candidate mappings, rule-engine gaps and deterministically evaluated
+   security/privacy findings (``COMPLIANCE_ANALYSE``, ``SECURITY_ANALYSE``), and
+   raises the G2/G3 tasks those persisted values require (``GATE_TASK_RAISE``).
+   Raising is not deciding: ``APPROVAL_DECIDE`` stays human-only (rule 3), and only
+   the gate's own role - Compliance Officer for G2, Security Reviewer for G3 -
+   may decide it (architecture M.3, I.8; ``FR-CMP-004``, ``FR-SEC-003``).
 """
 
 from __future__ import annotations
@@ -345,6 +353,31 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
         }
     ),
     Action.GLOSSARY_MANAGE: frozenset({Role.ANALYST}),
+    # --- compliance and security analysis (P6) ----------------------------
+    # The pipeline records in the analyst's name; nobody records a legal
+    # determination, and the gate decisions are authorised per gate (rule 4).
+    # Compliance and security views are read by everyone who reviews the set.
+    Action.COMPLIANCE_ANALYSE: frozenset({Role.ANALYST}),
+    Action.COMPLIANCE_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.SECURITY_ANALYSE: frozenset({Role.ANALYST}),
+    Action.SECURITY_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.GATE_TASK_RAISE: frozenset({Role.ANALYST}),
 }
 
 #: Actions an actor may perform without belonging to a project. For these the
@@ -375,6 +408,8 @@ _AUDITOR_READ_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.CLARIFICATION_READ,
         Action.CONFLICT_READ,
         Action.GLOSSARY_READ,
+        Action.COMPLIANCE_READ,
+        Action.SECURITY_READ,
     }
 )
 

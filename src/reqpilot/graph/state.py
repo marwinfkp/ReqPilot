@@ -150,6 +150,26 @@ class AnalysisState(BaseGraphState, total=False):
     has_open_conflicts: bool
     #: Semantic calls that failed or were refused (recorded; rules still ran).
     semantic_failures: Annotated[int, operator.add]
+    # ---- P6: compliance and security analysis (C.3 nodes 12-17, 20) ---------
+    #: A compliance run: ``load_scope`` goes straight to ``compliance_retrieve``.
+    compliance_mode: bool
+    #: The versions to analyse (empty = every current, analysed version).
+    compliance_version_ids: list[str]
+    #: D.2 ``evidence_ids``: every evidence id this run supplied to a model -
+    #: resolved citations; text is re-fetched by id, never carried here.
+    evidence_ids: Annotated[list[str], operator.add]
+    #: Versions whose retrieval was ``RETRIEVAL_EMPTY`` (escalated, not mapped).
+    evidence_unavailable_ids: Annotated[list[str], operator.add]
+    compliance_mapping_ids: Annotated[list[str], operator.add]
+    compliance_gap_ids: Annotated[list[str], operator.add]
+    security_finding_ids: Annotated[list[str], operator.add]
+    #: Claims dropped by deterministic validation (audited one by one).
+    claims_dropped: Annotated[int, operator.add]
+    #: D.2 routing flags, set only by deterministic nodes from persisted values.
+    has_high_impact_interpretation: bool
+    has_high_security_risk: bool
+    #: D.2 ``pending_gate_tasks``: (gate, task id, blocking) of raised G2/G3 tasks.
+    pending_gate_tasks: Annotated[list[dict], operator.add]
 
 
 class ElicitationState(BaseGraphState, total=False):

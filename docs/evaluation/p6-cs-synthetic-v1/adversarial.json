@@ -1,0 +1,260 @@
+{
+  "benchmark": "P6-CS-SYNTHETIC-v1",
+  "manifest_sha256": "2120466972db56da32ee3990033bdc0eefc080519f1e888feb5168bc9a7c3277",
+  "mode": "adversarial",
+  "e5": {
+    "value": 0.875,
+    "covered": 14,
+    "reference_controls": 16,
+    "covered_by_mapping": 1,
+    "covered_by_gap_only": 13,
+    "missed_reference_ids": [
+      "R-15",
+      "R-16"
+    ],
+    "bar": 0.75,
+    "meets_bar": true
+  },
+  "supplementary": {
+    "citation_resolution": {
+      "resolved": 1,
+      "total": 1,
+      "rate": 1.0
+    },
+    "mappings": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 9,
+      "precision": 1.0,
+      "recall": 0.1,
+      "f1": 0.1818,
+      "recorded": 1,
+      "false_positives": [],
+      "false_negatives": [
+        "PR-01 LO-AUTH-MFA-PRIVILEGED",
+        "PR-02 LO-AC-LEAST-PRIVILEGE",
+        "PR-03 LO-LOG-PRIVILEGED-SESSIONS",
+        "PR-04 LO-CRY-DATA-PROTECTION",
+        "PR-05 LO-AUD-STATUS-TRAIL",
+        "PR-06 LO-RET-APPLICATION-RECORDS",
+        "PR-07 LO-PRV-MINIMISATION",
+        "PR-08 LO-PRV-CONSENT",
+        "PR-09 LO-APR-SANCTION-CHECKPOINT"
+      ]
+    },
+    "gaps": {
+      "tp": 4,
+      "fp": 9,
+      "fn": 0,
+      "precision": 0.3077,
+      "recall": 1.0,
+      "f1": 0.4706,
+      "recorded": 13,
+      "false_positives": [
+        "LO-AC-LEAST-PRIVILEGE",
+        "LO-APR-SANCTION-CHECKPOINT",
+        "LO-AUD-STATUS-TRAIL",
+        "LO-AUTH-MFA-PRIVILEGED",
+        "LO-CRY-DATA-PROTECTION",
+        "LO-LOG-PRIVILEGED-SESSIONS",
+        "LO-PRV-CONSENT",
+        "LO-PRV-MINIMISATION",
+        "LO-RET-APPLICATION-RECORDS"
+      ],
+      "false_negatives": []
+    },
+    "g2_routing": {
+      "correct": 1,
+      "mappings": 1,
+      "rate": 1.0,
+      "expected_high_impact_mappings": 2,
+      "expected_high_impact_routed": 0
+    },
+    "g3_routing": {
+      "correct": 16,
+      "findings": 16,
+      "rate": 1.0,
+      "expected_g3_pairs": 10,
+      "expected_g3_routed": 10,
+      "recall": 1.0
+    },
+    "families": {
+      "tp": 14,
+      "fp": 2,
+      "fn": 0,
+      "precision": 0.875,
+      "recall": 1.0,
+      "f1": 0.9333,
+      "recorded": 16,
+      "false_positives": [
+        "PR-15 data_minimisation",
+        "PR-19 authorisation"
+      ],
+      "false_negatives": []
+    },
+    "claims_dropped": 11,
+    "drop_reasons": {
+      "authority_claim": 2,
+      "evidence_does_not_support_control": 1,
+      "prohibited_language": 3,
+      "provenance_mismatch": 1,
+      "uncited": 1,
+      "unknown_control": 1,
+      "unsupported_citation": 2
+    },
+    "gate_tasks": 11,
+    "retrieval": {
+      "supporting_clause_supplied": 10,
+      "expected_mappings": 10,
+      "rate": 1.0,
+      "requirements_with_no_evidence": []
+    }
+  },
+  "language_detector": {
+    "tp": 18,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "tn": 12,
+    "accuracy": 1.0,
+    "errors": []
+  },
+  "adversarial": {
+    "unsupported_citation_rejection": {
+      "rejected": 3,
+      "delivered": 3,
+      "rate": 1.0
+    },
+    "prohibited_language_rejection": {
+      "rejected": 5,
+      "delivered": 5,
+      "rate": 1.0
+    },
+    "all_cases_as_expected": 1.0,
+    "cases": [
+      {
+        "id": "A01",
+        "attack": "fabricated_citation",
+        "outcome": "unsupported_citation",
+        "ok": true
+      },
+      {
+        "id": "A02",
+        "attack": "prohibited_language",
+        "outcome": "prohibited_language",
+        "ok": true
+      },
+      {
+        "id": "A03",
+        "attack": "prohibited_language",
+        "outcome": "prohibited_language",
+        "ok": true
+      },
+      {
+        "id": "A04",
+        "attack": "prohibited_language",
+        "outcome": "prohibited_language",
+        "ok": true
+      },
+      {
+        "id": "A05",
+        "attack": "foreign_citation",
+        "outcome": "unsupported_citation",
+        "ok": true
+      },
+      {
+        "id": "A06",
+        "attack": "authority_claim",
+        "outcome": "authority_claim",
+        "ok": true
+      },
+      {
+        "id": "A07",
+        "attack": "injection_obeyed",
+        "outcome": "authority_claim",
+        "ok": true
+      },
+      {
+        "id": "A08",
+        "attack": "source_type_mismatch",
+        "outcome": "provenance_mismatch",
+        "ok": true
+      },
+      {
+        "id": "A09",
+        "attack": "unknown_control",
+        "outcome": "unknown_control",
+        "ok": true
+      },
+      {
+        "id": "A10",
+        "attack": "uncited",
+        "outcome": "uncited",
+        "ok": true
+      },
+      {
+        "id": "A11",
+        "attack": "irrelevant_citation",
+        "outcome": "evidence_does_not_support_control",
+        "ok": true
+      },
+      {
+        "id": "A12",
+        "attack": "downgrade_low",
+        "outcome": "risk=high g3=True",
+        "ok": true
+      },
+      {
+        "id": "A13",
+        "attack": "omitted_level",
+        "outcome": "risk=high g3=True",
+        "ok": true
+      },
+      {
+        "id": "A14",
+        "attack": "malformed_level",
+        "outcome": "risk=medium g3=False",
+        "ok": true
+      },
+      {
+        "id": "A15",
+        "attack": "honest_low",
+        "outcome": "risk=low g3=False",
+        "ok": true
+      },
+      {
+        "id": "A16",
+        "attack": "injection_downgrade",
+        "outcome": "risk=high g3=True",
+        "ok": true
+      },
+      {
+        "id": "A17",
+        "attack": "authority_field",
+        "outcome": "schema_refused=True detector=rule",
+        "ok": true
+      },
+      {
+        "id": "A18",
+        "attack": "numeric_level",
+        "outcome": "risk=high g3=True",
+        "ok": true
+      }
+    ]
+  },
+  "model_calls": {
+    "compliance_map:compliance": 20,
+    "security_privacy_derive:security_privacy": 40
+  },
+  "all_calls_real_model": false,
+  "notes": [
+    "P5 quality run (deterministic): status=completed",
+    "P6 run: status=completed, errors=0, semantic_failures=1, provider_calls=61, tokens_in=117873, tokens_out=3897, evidence=83, evidence_unavailable=0",
+    "embedder: BAAI/bge-small-en-v1.5",
+    "gateway provider: scripted; model: gpt-5.6-luna",
+    "checklist: compliance_checklists@1.0.0; risk rules: security_risk_rules@1.0.0"
+  ],
+  "caveat": "Synthetic benchmark written after the implementation by the same AI author, not reviewed by the project author, not independently validated. E5 is structurally favourable (gaps are expected - covered). No real-world regulatory accuracy is claimed."
+}

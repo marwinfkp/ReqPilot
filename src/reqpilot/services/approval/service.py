@@ -19,12 +19,21 @@ deterministic:
 
 Only after all five does a decision row exist, and only a decision row can move
 a version to APPROVED.
+
+**From P6, G2 and G3.** Their subjects are a compliance mapping and a derived
+security/privacy finding, not a requirement version. The same five checks apply;
+the binding is the subject's content hash (which includes its requirement
+version's hash), recomputed at decision time, and a decision about a version that
+is no longer current is refused as stale. Settling a G2/G3 decision records the
+outcome on the mapping or finding and **never** moves a requirement's lifecycle
+state: approving an interpretation is not approving a requirement (that is G1).
 """
 
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
@@ -53,6 +62,9 @@ from reqpilot.domain.versioning import hashes_match
 from reqpilot.repositories.approval import ApprovalDecisionRepository, ApprovalTaskRepository
 from reqpilot.repositories.requirements import RequirementVersionRepository
 from reqpilot.services.audit import AuditService
+
+if TYPE_CHECKING:  # pragma: no cover
+    from reqpilot.services.compliance.gates import AnalysisGateService
 
 
 @dataclass(frozen=True)
@@ -109,6 +121,39 @@ class ApprovalService:
         self._audit = AuditService(session)
 
     # -- raising tasks ----------------------------------------------------
+    def raise_analysis_gate(
+        self,
+        *,
+        project_id: ProjectId,
+        gate: Gate,
+        subject_type: str,
+        subject_id: uuid.UUID,
+        subject_version: str | None,
+        subject_version_hash: str,
+    ) -> ApprovalTask:
+        """Raise the G2 or G3 task a persisted P6 value requires (C.3 gate_fanout).
+
+        Only G2 for a compliance mapping and G3 for a security/privacy finding.
+        The pipeline may raise these (GATE_TASK_RAISE); nobody but a human in the
+        gate's role can decide them. Blocking, always (M.3).
+        """
+        from reqpilot.services.compliance.gates import GATED_ANALYSIS_SUBJECTS
+
+        if GATED_ANALYSIS_SUBJECTS.get(subject_type) is not gate:
+            raise ReqPilotError(f"{gate} is not raised for a {subject_type} subject")
+        (role,) = tasks_required_for(gate)
+        return self.create_task(
+            project_id=project_id,
+            gate=gate,
+            subject_type=subject_type,
+            subject_id=subject_id,
+            subject_version=subject_version,
+            subject_version_hash=subject_version_hash,
+            required_role=role,
+            blocking=True,
+            _action=Action.GATE_TASK_RAISE,
+        )
+
     def create_task(
         self,
         *,
@@ -121,6 +166,7 @@ class ApprovalService:
         required_role: Role,
         task_group_id: uuid.UUID | None = None,
         blocking: bool = True,
+        _action: Action = Action.REQUIREMENT_SUBMIT,
     ) -> ApprovalTask:
         """Raise one approval task for one role, bound to an exact subject version."""
         if required_role not in required_roles(gate):
@@ -138,7 +184,7 @@ class ApprovalService:
             blocking=blocking,
             created_by=self._actor.actor_id,
         )
-        self._tasks.add(task)
+        self._tasks.add(task, action=_action)
 
         self._audit.append(
             event_type=AuditEventType.APPROVAL_TASK_CREATED,
@@ -313,6 +359,8 @@ class ApprovalService:
             )
 
     def _subject_hash(self, project_id: ProjectId, task: ApprovalTask) -> str:
+        if self._is_analysis_gate(task):
+            return self._analysis_gates().subject(project_id, task).current_hash
         if task.subject_type != "requirement_version":
             raise ReqPilotError(
                 f"approval subject type {task.subject_type!r} is not supported in this phase"
@@ -331,6 +379,16 @@ class ApprovalService:
             )
 
     def _check_not_self_approval(self, project_id: ProjectId, task: ApprovalTask) -> None:
+        if self._is_analysis_gate(task):
+            # The interpretation was proposed by the pipeline; the person who
+            # authored the requirement it interprets may not approve it.
+            interpreted = self._analysis_gates().subject(project_id, task).version
+            if interpreted.created_by == self._actor.actor_id:
+                raise SelfApprovalError(
+                    "an actor may not decide a gate on an interpretation of a requirement "
+                    "version they authored"
+                )
+            return
         version = self._versions.get(project_id, task.subject_id)
         if version is not None and version.created_by == self._actor.actor_id:
             raise SelfApprovalError("an actor may not approve a requirement version they authored")
@@ -345,6 +403,8 @@ class ApprovalService:
         baseline_label: str | None,
     ) -> GateOutcome:
         """Apply a decision's effect to the task, the subject and the group."""
+        if self._is_analysis_gate(task):
+            return self._settle_analysis_gate(project_id, task, decision, record)
         if decision is ApprovalDecisionType.REJECT:
             task.status = ApprovalTaskStatus.REJECTED
             self._session.flush()
@@ -398,6 +458,52 @@ class ApprovalService:
             group_complete=group_complete,
             baseline_id=baseline_id,
         )
+
+    # -- G2 / G3 (P6) ------------------------------------------------------
+    @staticmethod
+    def _is_analysis_gate(task: ApprovalTask) -> bool:
+        from reqpilot.services.compliance.gates import GATED_ANALYSIS_SUBJECTS
+
+        return task.subject_type in GATED_ANALYSIS_SUBJECTS
+
+    def _analysis_gates(self) -> AnalysisGateService:
+        from reqpilot.services.compliance.gates import AnalysisGateService
+
+        return AnalysisGateService(self._session, self._actor)
+
+    def _settle_analysis_gate(
+        self,
+        project_id: ProjectId,
+        task: ApprovalTask,
+        decision: ApprovalDecisionType,
+        record: ApprovalDecision,
+    ) -> GateOutcome:
+        """Settle G2/G3: the mapping or finding moves; the requirement never does."""
+        if decision is ApprovalDecisionType.MODIFY:
+            self._session.flush()
+            return GateOutcome(task=task, decision=record, task_closed=False, group_complete=False)
+        task.status = (
+            ApprovalTaskStatus.APPROVED
+            if decision is ApprovalDecisionType.APPROVE
+            else ApprovalTaskStatus.REJECTED
+        )
+        self._session.flush()
+        self._analysis_gates().settle(project_id, task, decision, record)
+        if decision is ApprovalDecisionType.APPROVE:
+            self._audit.append(
+                event_type=AuditEventType.GATE_PASSED,
+                actor_kind=self._actor.kind,
+                actor_ref=str(self._actor.actor_id),
+                project_id=project_id,
+                subject_type=task.subject_type,
+                subject_id=str(task.subject_id),
+                subject_version=task.subject_version,
+                payload={
+                    "gate": str(task.gate),
+                    "approving_roles": sorted(str(r) for r in required_roles(task.gate)),
+                },
+            )
+        return GateOutcome(task=task, decision=record, task_closed=True, group_complete=True)
 
     def _sibling_tasks(self, project_id: ProjectId, task: ApprovalTask) -> list[ApprovalTask]:
         """Every task in the group that governs the same subject."""

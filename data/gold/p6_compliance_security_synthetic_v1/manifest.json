@@ -1,0 +1,47 @@
+{
+  "name": "p6_compliance_security_synthetic",
+  "version": "1",
+  "benchmark_id": "P6-CS-SYNTHETIC-v1",
+  "kind": "synthetic_reference_benchmark",
+  "metrics": [
+    "E5"
+  ],
+  "supplementary": [
+    "citation_resolution",
+    "mapping_precision_recall",
+    "gap_precision_recall",
+    "unsupported_citation_rejection",
+    "prohibited_language_rejection",
+    "language_detector",
+    "g2_routing",
+    "g3_routing",
+    "family_precision_recall"
+  ],
+  "case_study": "retail loan origination (fictional Fabrikam Finance), jurisdiction IN",
+  "counts": {
+    "requirements": 20,
+    "reference_controls": 16,
+    "expected_mappings": 10,
+    "expected_gaps": 4,
+    "security_privacy_pairs": 14,
+    "adversarial_cases": 18,
+    "language_cases": 30
+  },
+  "reference_generation": "written by the AI coding assistant (Claude, Anthropic) on 2026-09-22, AFTER the P6 implementation (checklist, catalogue, detector) and BEFORE any evaluation run over it",
+  "review": "not reviewed by the project author before evaluation (autonomous P6 instruction); author review pending (REVIEW_SHEET.md)",
+  "harness": "services/evaluation/compliance_eval.py (protocol in BENCHMARK.md)",
+  "frozen_at": "2026-09-22",
+  "frozen_by": "Claude (AI coding assistant), on the project author's autonomous P6 instruction",
+  "files": {
+    "adversarial.jsonl": "a15c8ea3ace227c7e2c754ea1db25baea5bd3d0d84fef1675bfdd3eb7847f1b7",
+    "BENCHMARK.md": "e19caf4c20c2d2a5e7ec7b009d66d99220ab00dc8483ad9598b791d554bd7476",
+    "expected_gaps.jsonl": "926ea5d6595ffe0749df49e41d0e85f07cbbdff0396a829de8ea42f952c6cb43",
+    "expected_mappings.jsonl": "b469d1b0eadb4a5893dc335619f5f916f74dfaa7aa1063e0ce8fd0351288f9c5",
+    "kb_manifest.yaml": "a656e79b56970b392dcd8d8ddce91dc58fcb8c619b54fcee2ff746a60566bba1",
+    "language_cases.jsonl": "5f6353d7b305908dbe9b4a8406fc07423fa7214e56130e2686d3aa1eb49cd3d0",
+    "reference_controls.jsonl": "ae44ba45f2804730c5714526918c0cc20b03406b0b0f1d8f784cc12a914733f1",
+    "requirements.jsonl": "b3955f7fba7309fc58ef35bfc034aa3fdfb778a0af276db2908ef9c694e6f451",
+    "REVIEW_SHEET.md": "ddca239024db6f0166a39a4d20cf3b514d1b8d8aa405587af03769d9888367f6",
+    "security_privacy.jsonl": "53d641daa77aaf39c412fb5cb05738e0b3240808658c1e28528f3d5b8bf0ce1a"
+  }
+}

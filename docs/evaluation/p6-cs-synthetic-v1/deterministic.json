@@ -1,0 +1,130 @@
+{
+  "benchmark": "P6-CS-SYNTHETIC-v1",
+  "manifest_sha256": "2120466972db56da32ee3990033bdc0eefc080519f1e888feb5168bc9a7c3277",
+  "mode": "deterministic",
+  "e5": {
+    "value": 0.875,
+    "covered": 14,
+    "reference_controls": 16,
+    "covered_by_mapping": 0,
+    "covered_by_gap_only": 14,
+    "missed_reference_ids": [
+      "R-15",
+      "R-16"
+    ],
+    "bar": 0.75,
+    "meets_bar": true
+  },
+  "supplementary": {
+    "citation_resolution": {
+      "resolved": 0,
+      "total": 0,
+      "rate": null
+    },
+    "mappings": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 10,
+      "precision": null,
+      "recall": 0.0,
+      "f1": null,
+      "recorded": 0,
+      "false_positives": [],
+      "false_negatives": [
+        "PR-01 LO-AUTH-MFA-PRIVILEGED",
+        "PR-02 LO-AC-LEAST-PRIVILEGE",
+        "PR-03 LO-LOG-PRIVILEGED-SESSIONS",
+        "PR-04 LO-CRY-DATA-PROTECTION",
+        "PR-05 LO-AUD-STATUS-TRAIL",
+        "PR-06 LO-RET-APPLICATION-RECORDS",
+        "PR-07 LO-PRV-MINIMISATION",
+        "PR-08 LO-PRV-CONSENT",
+        "PR-09 LO-APR-SANCTION-CHECKPOINT",
+        "PR-10 LO-TXN-DISBURSEMENT-INTEGRITY"
+      ]
+    },
+    "gaps": {
+      "tp": 4,
+      "fp": 10,
+      "fn": 0,
+      "precision": 0.2857,
+      "recall": 1.0,
+      "f1": 0.4444,
+      "recorded": 14,
+      "false_positives": [
+        "LO-AC-LEAST-PRIVILEGE",
+        "LO-APR-SANCTION-CHECKPOINT",
+        "LO-AUD-STATUS-TRAIL",
+        "LO-AUTH-MFA-PRIVILEGED",
+        "LO-CRY-DATA-PROTECTION",
+        "LO-LOG-PRIVILEGED-SESSIONS",
+        "LO-PRV-CONSENT",
+        "LO-PRV-MINIMISATION",
+        "LO-RET-APPLICATION-RECORDS",
+        "LO-TXN-DISBURSEMENT-INTEGRITY"
+      ],
+      "false_negatives": []
+    },
+    "g2_routing": {
+      "correct": 0,
+      "mappings": 0,
+      "rate": null,
+      "expected_high_impact_mappings": 2,
+      "expected_high_impact_routed": 0
+    },
+    "g3_routing": {
+      "correct": 14,
+      "findings": 14,
+      "rate": 1.0,
+      "expected_g3_pairs": 10,
+      "expected_g3_routed": 9,
+      "recall": 0.9
+    },
+    "families": {
+      "tp": 13,
+      "fp": 1,
+      "fn": 1,
+      "precision": 0.9286,
+      "recall": 0.9286,
+      "f1": 0.9286,
+      "recorded": 14,
+      "false_positives": [
+        "PR-15 data_minimisation"
+      ],
+      "false_negatives": [
+        "PR-05 audit_logging"
+      ]
+    },
+    "claims_dropped": 0,
+    "drop_reasons": {},
+    "gate_tasks": 9,
+    "retrieval": {
+      "supporting_clause_supplied": 10,
+      "expected_mappings": 10,
+      "rate": 1.0,
+      "requirements_with_no_evidence": []
+    }
+  },
+  "language_detector": {
+    "tp": 18,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "tn": 12,
+    "accuracy": 1.0,
+    "errors": []
+  },
+  "adversarial": null,
+  "model_calls": {},
+  "all_calls_real_model": false,
+  "notes": [
+    "P5 quality run (deterministic): status=completed",
+    "P6 run: status=completed, errors=0, semantic_failures=0, provider_calls=0, tokens_in=0, tokens_out=0, evidence=83, evidence_unavailable=0",
+    "embedder: BAAI/bge-small-en-v1.5",
+    "gateway provider: openai; model: gpt-5.6-luna",
+    "checklist: compliance_checklists@1.0.0; risk rules: security_risk_rules@1.0.0"
+  ],
+  "caveat": "Synthetic benchmark written after the implementation by the same AI author, not reviewed by the project author, not independently validated. E5 is structurally favourable (gaps are expected - covered). No real-world regulatory accuracy is claimed."
+}

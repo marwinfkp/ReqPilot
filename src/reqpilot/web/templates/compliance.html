@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Compliance &amp; security - {{ project.name }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/tasks">approval queue (G2 / G3)</a>
+  <a href="/ui/projects/{{ project.id }}/review">review queue</a>
+  <a href="/api/v1/projects/{{ project.id }}/compliance-report">compliance report (Markdown)</a>
+{% endblock %}
+{% block content %}
+<h1>Compliance &amp; security analysis</h1>
+<p class="note warn"><b>Advisory notice.</b> {{ advisory_notice }}</p>
+<p class="muted">{{ gate_notice }} Mappings are <i>candidate</i> mappings to <i>potentially
+applicable</i> sources: every citation resolved to evidence supplied to the run, and a claim
+with a prohibited assertion or an unsupported citation was dropped, never rewritten. Gaps are
+computed by the rule engine from the versioned checklist. Review signals are heuristic
+review-prioritisation signals, not probabilities.</p>
+
+{% if may_run %}
+<form method="post" action="/ui/projects/{{ project.id }}/compliance-runs">
+  <button type="submit" class="primary">Run compliance &amp; security analysis</button>
+</form>
+{% endif %}
+
+<h2>Candidate mappings</h2>
+{% if mappings %}
+<table>
+  <tr><th>Requirement</th><th>Control</th><th>Candidate relationship</th><th>Source</th><th>Evidence</th><th>Status</th></tr>
+  {% for m in mappings %}
+  <tr>
+    <td class="mono">{{ m.requirement_label }}</td>
+    <td><span class="mono">{{ m.control_key }}</span><br>{{ m.control_title }}
+      <div class="muted">{{ m.obligation_kind.value }} &middot; {{ m.checklist_ref }}</div></td>
+    <td>{{ m.relationship.value }}<div class="muted">{{ m.rationale }}</div>
+      {% if m.candidate_text %}<div>{{ m.candidate_text }}</div>{% endif %}</td>
+    <td>{{ m.jurisdiction }} &middot; {{ m.source_type.value }}<div class="muted">{{ m.source_type_binding }}</div></td>
+    <td>{% for c in m.citations %}
+      <div class="muted">{{ c.source_title }} ({{ c.issuing_body }}), version {{ c.source_version }},
+        effective {{ c.effective_date or "n/a" }}, curated {{ c.curated_on }};
+        item <span class="mono">{{ c.item_key }}</span> clause {{ c.clause_ref or "-" }},
+        chars {{ c.char_start }}-{{ c.char_end }}, KB v{{ c.kb_version }}</div>
+      {% endfor %}</td>
+    <td><span class="state">{{ m.status.value }}</span>
+      {% if m.is_high_impact %}<div class="note">high-impact interpretation: G2 (Compliance Officer)</div>
+      <div class="muted">{{ m.high_impact_reasons|join("; ") }}</div>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">No validated candidate mapping yet.</p>{% endif %}
+
+<h2>Implied checkpoints and obligations</h2>
+{% if implied %}
+<ul>{% for m in implied %}
+  <li>{{ m.obligation_kind.value.replace("_", " ") }}: {{ m.control_title }}
+    (<span class="mono">{{ m.control_key }}</span>){% if m.implied_obligation %} &mdash; {{ m.implied_obligation }}{% endif %}</li>
+{% endfor %}</ul>
+{% else %}<p class="muted">None from the recorded mappings.</p>{% endif %}
+
+<h2>Gaps against the expected-control checklist</h2>
+{% if gap_run_id is none %}<p class="muted">No gap analysis has been run.</p>
+{% elif gaps %}
+<table>
+  <tr><th>Control</th><th>Kind</th><th>Checklist</th><th>Origin</th><th>Reason</th></tr>
+  {% for g in gaps %}
+  <tr><td><span class="mono">{{ g.control_key }}</span><br>{{ g.control_title }}
+        {% if g.is_high_impact %}<div class="muted">high-impact</div>{% endif %}</td>
+      <td>{{ g.obligation_kind.value }}</td>
+      <td class="mono">{{ g.checklist_domain }} &times; {{ g.checklist_jurisdiction }}<br>{{ g.checklist_ref }}</td>
+      <td>{{ g.origin.value }}</td><td>{{ g.reason }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">Every expected control has a candidate mapping awaiting or past review.</p>{% endif %}
+
+<h2>Derived security and privacy requirements (proposals)</h2>
+{% if findings %}
+<table>
+  <tr><th>Requirement</th><th>Family</th><th>Derived requirement</th><th>Proposed (model)</th><th>Authoritative</th><th>Status</th></tr>
+  {% for f in findings %}
+  <tr>
+    <td class="mono">{{ f.requirement_label }}</td>
+    <td>{{ f.category.value }}<br><span class="mono">{{ f.family.value }}</span>
+      <div class="muted">by {{ f.detected_by.value }} &middot; evidence {{ f.evidence_status.value }}</div></td>
+    <td>{{ f.derived_requirement }}</td>
+    <td class="mono">{{ f.proposed_risk_level or "-" }}</td>
+    <td><span class="state">{{ f.risk_level.value }}</span>
+      <div class="muted">floor {{ f.catalogue_floor.value }} &middot; {{ f.risk_rules_version }}<br>{{ f.escalation_reason }}</div></td>
+    <td><span class="state">{{ f.status.value }}</span>
+      {% if f.risk_level.value == "high" %}<div class="note">G3 (Security Reviewer)</div>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">None recorded.</p>{% endif %}
+
+<p class="note warn"><b>Advisory notice.</b> {{ advisory_notice }}</p>
+{% endblock %}

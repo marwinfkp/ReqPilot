@@ -51,6 +51,10 @@ ALLOWED_RESOLUTIONS: dict[ReviewReason, frozenset[ReviewResolution]] = {
     ReviewReason.UNKNOWN_LABEL: frozenset({R.ACKNOWLEDGED, R.OVERRIDDEN}),
     ReviewReason.CLASSIFICATION_FAILED: frozenset({R.ACKNOWLEDGED, R.OVERRIDDEN}),
     ReviewReason.POSSIBLE_DUPLICATE: frozenset({R.KEPT_DISTINCT, R.MERGED}),
+    # P6: seen and recorded. Neither changes a requirement; a mapping is never
+    # created by resolving a review item, and a dropped claim is never restored.
+    ReviewReason.EVIDENCE_UNAVAILABLE: frozenset({R.ACKNOWLEDGED}),
+    ReviewReason.CLAIM_DROPPED: frozenset({R.ACKNOWLEDGED}),
 }
 
 #: Resolutions that change a requirement, and so need the reason recorded.

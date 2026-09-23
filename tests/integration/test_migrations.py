@@ -127,6 +127,17 @@ ELICITATION_TABLES = {
 #: and the project glossary.
 QUALITY_TABLES = {"conflict", "glossary_term"}
 
+#: Tables the compliance-and-security phase adds (architecture G.6): candidate
+#: compliance mappings and their evidence links, rule-engine gaps, and derived
+#: security/privacy findings and their evidence links.
+COMPLIANCE_TABLES = {
+    "compliance_mapping",
+    "compliance_mapping_evidence",
+    "compliance_gap",
+    "security_privacy_finding",
+    "security_privacy_finding_evidence",
+}
+
 
 def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None:
     """The schema must not run ahead of the roadmap.
@@ -142,6 +153,7 @@ def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None
         | EXTRACTION_TABLES
         | ELICITATION_TABLES
         | QUALITY_TABLES
+        | COMPLIANCE_TABLES
     )
     unexpected = present - permitted
     assert not unexpected, f"migrations created out-of-scope tables: {sorted(unexpected)}"
@@ -280,6 +292,30 @@ def test_downgrading_p5_removes_exactly_the_quality_tables(
         assert present >= ELICITATION_TABLES
         finding_columns = {c["name"] for c in inspector.get_columns("quality_finding")}
         assert not {"rule_id", "evidence", "resolution_reason"} & finding_columns
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
+    command.upgrade(config, "head")
+
+
+def test_downgrading_p6_removes_exactly_the_compliance_tables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rolling P6 back leaves P0-P5 intact, without the P6 composite keys."""
+    url = sqlite_url(tmp_path / "p6-down.db")
+    monkeypatch.setenv("DATABASE_URL", url)
+    get_settings.cache_clear()
+    config = alembic_config(url)
+    command.upgrade(config, "head")
+    command.downgrade(config, "0007_p5_quality_conflict")
+    engine = create_engine(url, future=True)
+    try:
+        inspector = inspect(engine)
+        present = set(inspector.get_table_names())
+        assert not present & COMPLIANCE_TABLES, "downgrade left P6 tables behind"
+        assert present >= QUALITY_TABLES | KNOWLEDGE_BASE_TABLES
+        evidence_indexes = {i["name"] for i in inspector.get_indexes("evidence")}
+        assert "uq_evidence_id" not in evidence_indexes
     finally:
         engine.dispose()
         get_settings.cache_clear()

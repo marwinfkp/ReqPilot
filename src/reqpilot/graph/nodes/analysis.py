@@ -70,10 +70,12 @@ from reqpilot.repositories.elicitation import (
 from reqpilot.repositories.extraction import CandidateRepository, SourceDocumentRepository
 from reqpilot.repositories.requirements import RequirementVersionRepository
 from reqpilot.retrieval.embeddings import EmbeddingProvider
+from reqpilot.rules.compliance import ComplianceRules, SecurityRules
 from reqpilot.rules.extraction import ExtractionRules
 from reqpilot.rules.quality import QualityRules
 from reqpilot.services.audit import AuditService
 from reqpilot.services.classification import ClassificationService
+from reqpilot.services.compliance import AnalysisView, Retriever, VersionEvidence
 from reqpilot.services.elicitation import source_facts
 from reqpilot.services.extraction import ExtractionService, RunLog
 from reqpilot.services.quality import VersionView
@@ -106,6 +108,18 @@ class RunContext:
     #: The versions a quality run reads, and those it records findings for.
     quality_pool: dict[str, VersionView] = field(default_factory=dict)
     quality_scope: list[str] = field(default_factory=list)
+    # --- P6: compliance and security analysis --------------------------------
+    compliance_rules: ComplianceRules | None = None
+    security_rules: SecurityRules | None = None
+    #: The P2 allowlisted retrieval boundary (``RetrievalService.retrieve``).
+    retriever: Retriever | None = None
+    #: The versions a compliance run analyses, and the evidence each was given.
+    compliance_pool: dict[str, AnalysisView] = field(default_factory=dict)
+    version_evidence: dict[str, VersionEvidence] = field(default_factory=dict)
+    #: Model proposals awaiting their validating node (consumed there, D.4).
+    compliance_results: dict[str, Any] = field(default_factory=dict)
+    security_results: dict[tuple[str, str], Any] = field(default_factory=dict)
+    indicated_families: dict[str, dict[Any, Any]] = field(default_factory=dict)
 
     @property
     def project_id(self) -> ProjectId:
@@ -123,6 +137,10 @@ class AnalysisNodes:
         self.ctx = ctx
         #: C.3 nodes 6-8 (P5), sharing this run's context and recording helpers.
         self.quality = QualityNodes(self)
+        #: C.3 nodes 12-17 and 20 (P6).
+        from reqpilot.graph.nodes.compliance import ComplianceNodes
+
+        self.compliance = ComplianceNodes(self)
 
     # ------------------------------------------------------------------
     # 1. load_scope
