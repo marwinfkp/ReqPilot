@@ -120,6 +120,15 @@ class RunContext:
     compliance_results: dict[str, Any] = field(default_factory=dict)
     security_results: dict[tuple[str, str], Any] = field(default_factory=dict)
     indicated_families: dict[str, dict[Any, Any]] = field(default_factory=dict)
+    # --- P7: risk analysis ---------------------------------------------------
+    risk_rules: Any = None
+    #: The versions a risk run analyses, what each is indicated for, and the
+    #: persisted P5/P6 signals that inform it.
+    risk_pool: dict[str, AnalysisView] = field(default_factory=dict)
+    risk_indicated: dict[str, tuple[Any, ...]] = field(default_factory=dict)
+    risk_signals: dict[str, tuple[Any, ...]] = field(default_factory=dict)
+    #: Model proposals awaiting ``risk_compute_severity`` (consumed there, D.4).
+    risk_results: dict[str, Any] = field(default_factory=dict)
 
     @property
     def project_id(self) -> ProjectId:
@@ -139,8 +148,11 @@ class AnalysisNodes:
         self.quality = QualityNodes(self)
         #: C.3 nodes 12-17 and 20 (P6).
         from reqpilot.graph.nodes.compliance import ComplianceNodes
+        from reqpilot.graph.nodes.risk import RiskNodes
 
         self.compliance = ComplianceNodes(self)
+        #: C.3 nodes 18-19 and the G8 half of 20 (P7).
+        self.risk = RiskNodes(self)
 
     # ------------------------------------------------------------------
     # 1. load_scope

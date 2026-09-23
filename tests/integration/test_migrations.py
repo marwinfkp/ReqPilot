@@ -138,6 +138,10 @@ COMPLIANCE_TABLES = {
     "security_privacy_finding_evidence",
 }
 
+#: Tables the risk-analysis phase adds (architecture G.6, I.3): the versioned
+#: severity matrix, risk items, their evidence links, and mitigation suggestions.
+RISK_TABLES = {"risk_matrix", "risk", "risk_evidence", "risk_mitigation"}
+
 
 def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None:
     """The schema must not run ahead of the roadmap.
@@ -154,6 +158,7 @@ def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None
         | ELICITATION_TABLES
         | QUALITY_TABLES
         | COMPLIANCE_TABLES
+        | RISK_TABLES
     )
     unexpected = present - permitted
     assert not unexpected, f"migrations created out-of-scope tables: {sorted(unexpected)}"

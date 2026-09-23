@@ -11,10 +11,11 @@ provenance. The elicitation phase adds stakeholders, interview sessions,
 utterances, quality findings and clarifications. The quality phase adds
 conflicts and the project glossary. The compliance phase adds compliance
 mappings and their evidence links, compliance gaps, and security/privacy
-findings and their evidence links.
+findings and their evidence links. The risk phase adds the versioned severity
+matrix, risk items and their evidence links, and mitigation suggestions.
 
-Tables belonging to later roadmap phases - risk, SDLC, artefacts, evaluation -
-are still deliberately absent. A test
+Tables belonging to later roadmap phases - SDLC, artefacts, evaluation - are
+still deliberately absent. A test
 asserts that the migrations create nothing beyond the tables named here.
 """
 
@@ -57,6 +58,12 @@ from reqpilot.domain.models.knowledge import (
 )
 from reqpilot.domain.models.quality import Conflict, GlossaryTerm
 from reqpilot.domain.models.requirements import Requirement, RequirementVersion
+from reqpilot.domain.models.risk import (
+    Risk,
+    RiskEvidence,
+    RiskMatrixCell,
+    RiskMitigation,
+)
 from reqpilot.domain.models.runs import AgentRun, GraphRun
 
 __all__ = [
@@ -91,6 +98,10 @@ __all__ = [
     "RequirementClassification",
     "RequirementVersion",
     "ReviewItem",
+    "Risk",
+    "RiskEvidence",
+    "RiskMatrixCell",
+    "RiskMitigation",
     "SecurityPrivacyFinding",
     "SecurityPrivacyFindingEvidence",
     "SourceAllowlist",

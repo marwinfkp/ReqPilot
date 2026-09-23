@@ -55,6 +55,11 @@ ALLOWED_RESOLUTIONS: dict[ReviewReason, frozenset[ReviewResolution]] = {
     # created by resolving a review item, and a dropped claim is never restored.
     ReviewReason.EVIDENCE_UNAVAILABLE: frozenset({R.ACKNOWLEDGED}),
     ReviewReason.CLAIM_DROPPED: frozenset({R.ACKNOWLEDGED}),
+    # P7: seen and recorded. Resolving one never creates a risk, never restores
+    # a dropped proposal, and never re-admits a proposal the FR-RSK-011 scope
+    # guard refused - that boundary is not a review decision.
+    ReviewReason.RISK_DROPPED: frozenset({R.ACKNOWLEDGED}),
+    ReviewReason.RISK_OUT_OF_SCOPE: frozenset({R.ACKNOWLEDGED}),
 }
 
 #: Resolutions that change a requirement, and so need the reason recorded.

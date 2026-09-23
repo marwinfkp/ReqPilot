@@ -1,4 +1,4 @@
-"""``analysis_graph`` - the P3-P5 subset of architecture C.3.
+"""``analysis_graph`` - the P3-P7 subset of architecture C.3.
 
 The nodes batch extraction, classification and (P5) quality and conflict
 detection need::
@@ -14,14 +14,16 @@ detection need::
                          +-> compliance_retrieve -> compliance_map
                          |        -> compliance_validate -> compliance_gaps
                          |        -> security_privacy_derive -> security_privacy_evaluate
-                         |        -+-> gate_fanout -> END (G2/G3 raised)  (P6 compliance run)
-                         |         +-> END
+                         |        -> risk_identify -> risk_compute_severity
+                         |        -+-> gate_fanout -> END (G2/G3/G8 raised)
+                         |         +-> END                  (P6/P7 analysis run)
+                         +-> risk_identify -> ...        (P7 risk-only run)
                          +-> error_handler -> END       (a failure at any step)
 
-Nodes 9-11 and 18-24 of C.3 - the clarification router, risk, the rest of the gate
-fan-out (G4/G5/G8), validation, G1 - belong to other or later roadmap phases and
+Nodes 9-11 and 21-24 of C.3 - the clarification router, the rest of the gate
+fan-out (G4/G5), validation, G1 - belong to other or later roadmap phases and
 are deliberately absent (the clarification loop itself is P4's runner). Nothing
-here reaches an approval: ``gate_fanout`` *raises* blocking G2/G3 tasks and a
+here reaches an approval: ``gate_fanout`` *raises* blocking G2/G3/G8 tasks and a
 human decides them; no version moves past ``CLASSIFIED``.
 
 Every edge is deterministic. The conditional edges call the routers in
@@ -43,6 +45,7 @@ from reqpilot.graph.routers import (
     route_compliance,
     route_conflict_shortlist,
     route_extraction,
+    route_risk,
     route_security_privacy,
     route_validation,
 )
@@ -64,6 +67,8 @@ NODE_NAMES = (
     "compliance_gaps",
     "security_privacy_derive",
     "security_privacy_evaluate",
+    "risk_identify",
+    "risk_compute_severity",
     "gate_fanout",
     "error_handler",
 )
@@ -86,6 +91,8 @@ def build_analysis_graph(nodes: AnalysisNodes, checkpointer: Any | None = None) 
     graph.add_node("compliance_gaps", nodes.compliance.compliance_gaps)
     graph.add_node("security_privacy_derive", nodes.compliance.security_privacy_derive)
     graph.add_node("security_privacy_evaluate", nodes.compliance.security_privacy_evaluate)
+    graph.add_node("risk_identify", nodes.risk.risk_identify)
+    graph.add_node("risk_compute_severity", nodes.risk.risk_compute_severity)
     graph.add_node("gate_fanout", nodes.compliance.gate_fanout)
     graph.add_node("error_handler", nodes.error_handler)
 
@@ -98,6 +105,7 @@ def build_analysis_graph(nodes: AnalysisNodes, checkpointer: Any | None = None) 
             "classify": "classify",
             "quality_analysis": "quality_analysis",
             "compliance_retrieve": "compliance_retrieve",
+            "risk_identify": "risk_identify",
             "error_handler": "error_handler",
         },
     )
@@ -152,6 +160,13 @@ def build_analysis_graph(nodes: AnalysisNodes, checkpointer: Any | None = None) 
     graph.add_conditional_edges(
         "security_privacy_evaluate",
         route_security_privacy,
+        {"risk_identify": "risk_identify", "error_handler": "error_handler"},
+    )
+    # P7: C.3 nodes 18-19 and the G8 part of node 20.
+    graph.add_edge("risk_identify", "risk_compute_severity")
+    graph.add_conditional_edges(
+        "risk_compute_severity",
+        route_risk,
         {"gate_fanout": "gate_fanout", "error_handler": "error_handler", "__end__": END},
     )
     graph.add_edge("gate_fanout", END)

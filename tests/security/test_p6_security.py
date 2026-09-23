@@ -84,9 +84,20 @@ def test_injected_requirement_text_is_fenced_data_never_instructions(world: P6Wo
     assert requests
     for request in requests:
         assert "Ignore previous instructions" not in request.instructions
-        block = request.untrusted_content["requirement"]
-        assert block.startswith(f"<<<UNTRUSTED class={TrustClass.PROJECT_CONTENT}")
-        assert "Ignore previous instructions" in block
+        # Whichever block carries it - the single requirement (P6 roles #7/#8 and
+        # P7 role #9) or the requirement-set summary the P7 project-level pass is
+        # given - it must be fenced as untrusted PROJECT_CONTENT. Asserting it of
+        # *every* carrying block rather than of one named block is deliberate: a
+        # later phase that adds another way to show project text to a model is
+        # then covered by this test rather than slipping past it.
+        carrying = [
+            block
+            for block in request.untrusted_content.values()
+            if "Ignore previous instructions" in block
+        ]
+        assert carrying, "the injected text reached the model outside any content block"
+        for block in carrying:
+            assert block.startswith(f"<<<UNTRUSTED class={TrustClass.PROJECT_CONTENT}")
 
 
 def test_a_model_obeying_mark_compliant_and_approve_is_overruled(world: P6World) -> None:

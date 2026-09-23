@@ -15,6 +15,8 @@ active:
   compliance_mapping: "1.0.0"
   security_requirement_analysis: "1.0.0"
   privacy_requirement_analysis: "1.0.0"
+  risk_identification: "1.0.0"
+  project_risk_identification: "1.0.0"
 locked:
   requirement_extraction@1.0.0: "6ed48601cc05add136aa5984128d95f4df449da99ce359e38f1b973ff492098e"
   requirement_classification@1.0.0: "5fa3028a730f15e422959bc1ad9a7e3489878090f61757d983bd26b99c5ab37a"
@@ -26,3 +28,5 @@ locked:
   compliance_mapping@1.0.0: "648a4920c9c21fbd1284dedd8a2c414224c08ff0fdc46c3067e47ad8f7498c9f"
   security_requirement_analysis@1.0.0: "43d14ca3ffc2bf7d464f314203ed1c5a80eb66efa1ab8fd2f39b6e3afb7c368d"
   privacy_requirement_analysis@1.0.0: "cf7f5a3ce87b1122748fc9b131dfa39a5111be468d629dac92c2f9e607ba1bf7"
+  risk_identification@1.0.0: "7092603388175fb90af9864f294c4320dc74d32e5e9aed132fe66fc9820c6165"
+  project_risk_identification@1.0.0: "e2ffb9d71783305887df1d28fd978b1677971c3e7dbe4cf30841ebfeaf9ad679"

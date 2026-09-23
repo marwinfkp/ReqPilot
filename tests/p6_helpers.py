@@ -349,7 +349,18 @@ class ScriptedComplianceModel:
             return self.derive(request, "privacy")
         if kind == "requirement_quality_review":
             return json.dumps({"findings": []})
+        if kind in ("risk_identification", "project_risk_identification"):
+            # From P7 a compliance run continues into risk analysis. The P6
+            # tests are about compliance, so the base model proposes no risks;
+            # tests/p7_helpers.py subclasses this and scripts them.
+            return json.dumps({"requirement_version_id": self.risk_subject(request), "risks": []})
         raise AssertionError(f"unexpected prompt {kind}")
+
+    @staticmethod
+    def risk_subject(request: LLMRequest) -> str:
+        """The version a risk call is about; empty for the project-level pass."""
+        match = _VERSION.search(request.instructions)
+        return match.group(1) if match else ""
 
     def map(self, request: LLMRequest) -> str:
         text = requirement_text(request).lower()
@@ -479,7 +490,11 @@ def seed_requirements(
     return versions
 
 
-def make_world(session: Session, name: str = "P6 retail loan origination (synthetic)") -> P6World:
+def make_world(
+    session: Session,
+    name: str = "P6 retail loan origination (synthetic)",
+    model: ScriptedComplianceModel | None = None,
+) -> P6World:
     from tests.workflow.test_p1_exit_test import make_project
 
     project = make_project(session, name)
@@ -493,7 +508,7 @@ def make_world(session: Session, name: str = "P6 retail loan origination (synthe
     project_id = ProjectId(project.id)
     seed_kb(session, kb_admin, project_id)
     versions = seed_requirements(session, analyst, project_id, fixture()["requirements"])
-    gateway, model, provider = scripted_gateway()
+    gateway, model, provider = scripted_gateway(model)
     return P6World(
         session=session,
         project_id=project_id,

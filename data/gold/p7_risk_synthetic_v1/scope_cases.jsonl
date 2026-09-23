@@ -1,0 +1,43 @@
+{"expected_rule_id": "credit_scoring", "id": "S-01", "label": "out_of_scope", "text": "The model shall compute the borrower's credit risk before disbursement."}
+{"expected_rule_id": "credit_scoring", "id": "S-02", "label": "out_of_scope", "text": "Risk that the credit scoring engine mis-ranks applicants."}
+{"expected_rule_id": "credit_scoring", "id": "S-03", "label": "out_of_scope", "text": "Credit decisioning rules may drift from the approved policy."}
+{"expected_rule_id": "credit_scoring", "id": "S-04", "label": "out_of_scope", "text": "The applicant's credit grade is assigned without review."}
+{"expected_rule_id": "credit_scoring", "id": "S-05", "label": "out_of_scope", "text": "A credit assessment is produced for every application."}
+{"expected_rule_id": "default_probability", "id": "S-06", "label": "out_of_scope", "text": "The probability of default may be understated for thin-file applicants."}
+{"expected_rule_id": "default_probability", "id": "S-07", "label": "out_of_scope", "text": "Default probability is recalculated nightly."}
+{"expected_rule_id": "default_probability", "id": "S-08", "label": "out_of_scope", "text": "Loan default trends are not fed back into the model."}
+{"expected_rule_id": "default_probability", "id": "S-09", "label": "out_of_scope", "text": "The likelihood of non-payment is not modelled."}
+{"expected_rule_id": "creditworthiness", "id": "S-10", "label": "out_of_scope", "text": "Creditworthiness assessment may be inconsistent between channels."}
+{"expected_rule_id": "creditworthiness", "id": "S-11", "label": "out_of_scope", "text": "The system evaluates whether an applicant is creditworthy."}
+{"expected_rule_id": "credit_loss_modelling", "id": "S-12", "label": "out_of_scope", "text": "Loss given default is not modelled for the new product."}
+{"expected_rule_id": "credit_loss_modelling", "id": "S-13", "label": "out_of_scope", "text": "Exposure at default is missing from the reporting pack."}
+{"expected_rule_id": "credit_loss_modelling", "id": "S-14", "label": "out_of_scope", "text": "Delinquency trends are not captured."}
+{"expected_rule_id": "credit_loss_modelling", "id": "S-15", "label": "out_of_scope", "text": "Charge-off rates are not reconciled."}
+{"expected_rule_id": "borrower_risk_rating", "id": "S-16", "label": "out_of_scope", "text": "A customer risk rating must be assigned at onboarding."}
+{"expected_rule_id": "borrower_risk_rating", "id": "S-17", "label": "out_of_scope", "text": "Assign a risk score for the borrower at application time."}
+{"expected_rule_id": "borrower_risk_rating", "id": "S-18", "label": "out_of_scope", "text": "The applicant's risk band is computed from bureau data."}
+{"expected_rule_id": "fraud_scoring", "id": "S-19", "label": "out_of_scope", "text": "The fraud score for each applicant should exceed the threshold."}
+{"expected_rule_id": "fraud_scoring", "id": "S-20", "label": "out_of_scope", "text": "Fraud scoring is applied to every new customer."}
+{"expected_rule_id": "lending_eligibility", "id": "S-21", "label": "out_of_scope", "text": "Underwriting decisions may be inconsistent between reviewers."}
+{"expected_rule_id": "lending_eligibility", "id": "S-22", "label": "out_of_scope", "text": "The credit eligibility model needs retraining."}
+{"expected_rule_id": "lending_eligibility", "id": "S-23", "label": "out_of_scope", "text": "Risk-based pricing could disadvantage some segments."}
+{"expected_rule_id": null, "id": "S-24", "label": "in_scope", "text": "The credit bureau integration may exceed its latency budget under peak load."}
+{"expected_rule_id": null, "id": "S-25", "label": "in_scope", "text": "A defect in the eligibility rules engine could cause valid applications to be rejected."}
+{"expected_rule_id": null, "id": "S-26", "label": "in_scope", "text": "Insufficient audit logging would make a disputed decision impossible to reconstruct."}
+{"expected_rule_id": null, "id": "S-27", "label": "in_scope", "text": "The fraud controls specified may be insufficient for the new channel."}
+{"expected_rule_id": null, "id": "S-28", "label": "in_scope", "text": "Fraud risk is not addressed by any requirement in the set."}
+{"expected_rule_id": null, "id": "S-29", "label": "in_scope", "text": "The loan application service may lose data during the storage migration."}
+{"expected_rule_id": null, "id": "S-30", "label": "in_scope", "text": "Consent records may be incomplete for applicants migrated from the legacy system."}
+{"expected_rule_id": null, "id": "S-31", "label": "in_scope", "text": "The default risk level for new findings is set too low in configuration."}
+{"expected_rule_id": null, "id": "S-32", "label": "in_scope", "text": "Credit bureau downtime has no documented fallback."}
+{"expected_rule_id": null, "id": "S-33", "label": "in_scope", "text": "The disbursement workflow may stall when only one officer is available."}
+{"expected_rule_id": null, "id": "S-34", "label": "in_scope", "text": "Retention obligations may not survive a change of storage provider."}
+{"expected_rule_id": null, "id": "S-35", "label": "in_scope", "text": "The team has no experience with the payments interface."}
+{"expected_rule_id": null, "id": "S-36", "label": "in_scope", "text": "Multi-factor authentication may lock out officers during an outage."}
+{"expected_rule_id": null, "id": "S-37", "label": "in_scope", "text": "Personal data may be duplicated across the two identity services."}
+{"expected_rule_id": null, "id": "S-38", "label": "in_scope", "text": "The regulatory reporting extract has no reconciliation step."}
+{"expected_rule_id": null, "id": "S-39", "label": "in_scope", "text": "Peak-season volume may exceed the concurrent-session requirement."}
+{"expected_rule_id": null, "id": "S-40", "label": "in_scope", "text": "The sanction checkpoint has no defined escalation path."}
+{"expected_rule_id": null, "id": "S-41", "label": "in_scope", "text": "Encryption key rotation is not covered by any requirement."}
+{"expected_rule_id": null, "id": "S-42", "label": "in_scope", "text": "The credit bureau contract renewal is outside the project's control."}
+{"expected_rule_id": null, "id": "S-43", "label": "in_scope", "text": "Operational handover to the support team is undefined."}

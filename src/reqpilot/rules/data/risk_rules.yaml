@@ -1,0 +1,155 @@
+# The risk matrix and the risk-register rules (roadmap phase P7; architecture
+# I.2-I.6, FR-RSK-002..009).
+#
+# Versioned data, not code (DQ-03). Every risk row records `matrix_version`, so
+# a change here never silently re-rates a risk that was judged under an earlier
+# matrix, and the register can always say which matrix produced a severity.
+#
+# THE MATRIX IS ALSO ENFORCED IN TWO OTHER PLACES, and all three must agree:
+#   * `domain/risk/matrix.APPROVED_CELLS` - the approved I.3 table as a literal,
+#     asserted against this file by a test, so a data edit cannot quietly change
+#     the approved matrix;
+#   * the `risk_matrix` database table, seeded from this file, to which every
+#     stored severity is pinned by a composite foreign key. A row whose severity
+#     is not this matrix's value for its (likelihood, impact) cell cannot exist.
+#
+# Risk here is project / requirement / security / privacy / compliance /
+# operational risk. It is NEVER a borrower's credit risk, a customer risk
+# rating, a probability of default or a fraud score (FR-RSK-011, Phase 0 D.1);
+# that boundary is enforced in code by `domain/risk/scope.py`, not here, so it
+# cannot be switched off by editing data.
+
+name: risk_rules
+version: "1.0.0"
+description: >
+  The approved 3x3 likelihood x impact severity matrix (architecture I.3), the
+  default risk owner role per category (I.4), the deterministic indicators that
+  say which categories a requirement is examined for, and the SDLC factor
+  aggregation formulas of I.6.
+
+rules:
+  matrix_version: "1.0.0"
+
+  # Architecture I.3, exactly. Nine cells, all of them stated: the lookup is
+  # total, so there is no default branch and no "unrated" outcome.
+  #
+  #          I1 Minor   I2 Moderate   I3 Major
+  #   L3     medium     high          high
+  #   L2     low        medium        high
+  #   L1     low        low           medium
+  matrix:
+    - {likelihood: L1, impact: I1, severity: low}
+    - {likelihood: L1, impact: I2, severity: low}
+    - {likelihood: L1, impact: I3, severity: medium}
+    - {likelihood: L2, impact: I1, severity: low}
+    - {likelihood: L2, impact: I2, severity: medium}
+    - {likelihood: L2, impact: I3, severity: high}
+    - {likelihood: L3, impact: I1, severity: medium}
+    - {likelihood: L3, impact: I2, severity: high}
+    - {likelihood: L3, impact: I3, severity: high}
+
+  # I.4: "Assignment is a rule, not a model decision." The owner role is who
+  # owns the register entry; it is NOT who decides G8 (that is fixed by
+  # GATE_REQUIRED_ROLES: the Security Reviewer, per Phase 0 F.1's G8 row).
+  owner_roles:
+    security: security_reviewer
+    privacy: security_reviewer
+    compliance: compliance_officer
+    business: project_manager
+    technical: project_manager
+    operational: project_manager
+
+  # A model may propose at most this many risks per requirement, and this many
+  # project-level risks per run. A proposal beyond the limit is dropped with
+  # `over_limit`, never truncated silently.
+  max_risks_per_requirement: 6
+  max_project_risks_per_run: 6
+  max_mitigations_per_risk: 4
+  # How many current versions one risk run examines.
+  max_versions_per_run: 60
+
+  # Deterministic indicators. They say which categories a requirement is
+  # *examined* for and which prior-phase signals are handed to the model as
+  # context; they never decide a rating or a severity. Keywords match at a word
+  # start, case-insensitively.
+  indicators:
+    - category: security
+      keywords: [authenticat, authoris, authoriz, encrypt, credential, password,
+                 session, token, access control, audit log, tamper, signature]
+      requirement_categories: [security, audit_reporting]
+    - category: privacy
+      keywords: [personal data, consent, retention, erasure, pii, kyc document,
+                 identity document, data subject, minimis, minimiz]
+      requirement_categories: [privacy, data_management]
+    - category: compliance
+      keywords: [regulat, statutor, rbi, prescribed, mandat, disclosure, grievance,
+                 record keeping, reporting obligation]
+      requirement_categories: [regulatory]
+    - category: technical
+      keywords: [integrat, api, latency, throughput, concurrent, timeout, migrat,
+                 real time, real-time, availability, scal, interface]
+      requirement_categories: [performance, availability, integration]
+    - category: operational
+      keywords: [support, manual, operator, runbook, monitor, backup, restore,
+                 rollout, training, escalation, batch]
+      requirement_categories: [operational]
+    - category: business
+      keywords: [revenue, cost, customer experience, time to market, competitor,
+                 adoption, volume, business case]
+      requirement_categories: [business, stakeholder, usability]
+
+  # Which prior-phase signals are surfaced to risk analysis as input context
+  # (FR-RSK-001 "takes compliance and security results as input"; section 12 of
+  # the P7 brief). The mapping states which category each signal indicates; the
+  # signals themselves are read from the database, never re-derived here.
+  prior_signals:
+    open_quality_finding: technical
+    open_conflict: business
+    compliance_gap: compliance
+    high_impact_mapping: compliance
+    security_finding_security: security
+    security_finding_privacy: privacy
+
+  # I.6: aggregate risk measures exposed as SDLC factor inputs (FR-RSK-009).
+  # Computed deterministically from the register; each carries the risk ids that
+  # produced it, so a factor can always be traced back to rows.
+  sdlc_factors:
+    security_risk:
+      description: >
+        5 if >=1 high security risk; 4 if >=3 medium; 3 if >=1 medium; 2 if only
+        low; 1 if none.
+      categories: [security]
+      thresholds:
+        - {value: 5, min_high: 1}
+        - {value: 4, min_medium: 3}
+        - {value: 3, min_medium: 1}
+        - {value: 2, min_low: 1}
+        - {value: 1}
+    consequences_of_failure:
+      description: >
+        Maximum impact across security, compliance and operational risks:
+        I3 -> 5, I2 -> 3, I1 -> 2, none -> 1.
+      categories: [security, compliance, operational]
+      impact_scores: {I3: 5, I2: 3, I1: 2}
+    regulatory_criticality:
+      description: >
+        Blend of high compliance risks and open compliance gaps; the normative
+        sources mapped are contributed by P6 and combined in P9.
+      categories: [compliance]
+      thresholds:
+        - {value: 5, min_high: 1}
+        - {value: 4, min_medium: 2}
+        - {value: 3, min_medium: 1}
+        - {value: 2, min_low: 1}
+        - {value: 1}
+    project_complexity:
+      description: >
+        Partly from the technical risk count; P9 blends it with requirement and
+        integration counts.
+      categories: [technical]
+      thresholds:
+        - {value: 5, min_high: 2}
+        - {value: 4, min_high: 1}
+        - {value: 3, min_medium: 2}
+        - {value: 2, min_low: 1}
+        - {value: 1}

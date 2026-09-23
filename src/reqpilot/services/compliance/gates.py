@@ -117,6 +117,15 @@ class GatedSubject:
     version: RequirementVersion
     current_hash: str
 
+    @property
+    def authored_by(self) -> uuid.UUID:
+        """Whom the no-self-approval check compares the decider against.
+
+        For an interpretation of a requirement, that is the author of the
+        requirement version being interpreted.
+        """
+        return self.version.created_by or uuid.UUID(int=0)
+
 
 class AnalysisGateService:
     """Binding and settlement of G2/G3 decisions. Called only by the approval service."""

@@ -56,6 +56,7 @@ from reqpilot.repositories.requirements import (
     RequirementRepository,
     RequirementVersionRepository,
 )
+from reqpilot.repositories.risk import RiskRepository
 from reqpilot.services.audit import AuditService
 
 
@@ -126,6 +127,7 @@ class RequirementService:
         self._conflicts = ConflictRepository(session, actor)
         self._mappings = ComplianceMappingRepository(session, actor)
         self._security = SecurityFindingRepository(session, actor)
+        self._risks = RiskRepository(session, actor)
         self._audit = AuditService(session)
 
     # -- creation ---------------------------------------------------------
@@ -330,6 +332,11 @@ class RequirementService:
         pending_gates = self._mappings.pending_count(
             project_id, version.id
         ) + self._security.pending_count(project_id, version.id)
+        # P7: a HIGH risk that no human has decided. FR-RSK-007's "a
+        # high-severity risk blocks baseline approval until reviewed", enforced
+        # here in deterministic application code - not in the UI, not in a
+        # prompt, and not as a warning. The transition itself fails.
+        unreviewed_high_risks = self._risks.unreviewed_high_count(project_id, version.id)
         return TransitionContext(
             source_ref_count=len(version.source_refs or []),
             label_count=labels or (1 if version.category is not None else 0),
@@ -340,6 +347,7 @@ class RequirementService:
             # P5: an open or under-review conflict on either side blocks
             # VALIDATED and PENDING_APPROVAL ([DESIGN] D12: a guard, not a state).
             open_conflict_count=self._conflicts.blocking_count(project_id, version.id),
+            unreviewed_high_risk_count=unreviewed_high_risks,
             clarification_answer_present=answered,
         )
 

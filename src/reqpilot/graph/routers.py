@@ -86,7 +86,12 @@ def assert_is_deterministic_router(func: object) -> None:
 # annotation as the router's input schema, and a narrower type would hide the
 # fields the route depends on.
 AfterScope = Literal[
-    "extract_requirements", "classify", "quality_analysis", "compliance_retrieve", "error_handler"
+    "extract_requirements",
+    "classify",
+    "quality_analysis",
+    "compliance_retrieve",
+    "risk_identify",
+    "error_handler",
 ]
 AfterExtraction = Literal["validate_extraction", "error_handler"]
 AfterValidation = Literal["persist_candidates", "persist_revision", "error_handler"]
@@ -99,6 +104,8 @@ def route_after_scope(state: AnalysisState) -> AfterScope:
         return "error_handler"
     if state.get("compliance_mode"):
         return "compliance_retrieve"
+    if state.get("risk_mode"):
+        return "risk_identify"
     if state.get("quality_mode"):
         return "quality_analysis"
     if (
@@ -162,7 +169,7 @@ def route_conflict_shortlist(state: AnalysisState) -> AfterShortlist:
 
 AfterRetrieve = Literal["compliance_map", "error_handler"]
 AfterComplianceValidate = Literal["compliance_gaps", "error_handler"]
-AfterSecurityEvaluate = Literal["gate_fanout", "error_handler", "__end__"]
+AfterSecurityEvaluate = Literal["risk_identify", "error_handler"]
 
 
 def route_after_retrieve(state: AnalysisState) -> AfterRetrieve:
@@ -180,15 +187,41 @@ def route_compliance(state: AnalysisState) -> AfterComplianceValidate:
 
 
 def route_security_privacy(state: AnalysisState) -> AfterSecurityEvaluate:
-    """C.3 ``route_security_privacy``: any persisted high-impact interpretation (G2)
-    or authoritative HIGH finding (G3) -> ``gate_fanout``; else end.
+    """C.3 ``route_security_privacy``: security and privacy evaluated -> risk analysis.
 
-    Both flags were set by deterministic nodes from persisted columns. The
-    fan-out re-reads those columns itself, so a flag can only cause a check.
+    In P6 this router ended the run or went straight to the fan-out. From P7 the
+    compliance run continues into C.3 nodes 18-19, because risk analysis takes
+    the compliance and security results as input (``FR-RSK-001``); the fan-out
+    then raises G2, G3 and G8 together from persisted columns.
+    """
+    return "error_handler" if state.get("errors") else "risk_identify"
+
+
+# --- P7: risk analysis (C.3 nodes 18-19, and the G8 part of 20) -------------
+
+AfterRiskSeverity = Literal["gate_fanout", "error_handler", "__end__"]
+
+
+def route_risk(state: AnalysisState) -> AfterRiskSeverity:
+    """C.3 ``route_risk``: "any High -> mark for G8; else continue".
+
+    Reads flags a deterministic node set from **persisted** columns - the
+    authoritative severity the matrix computed, the high-impact interpretation,
+    the authoritative security level. A model's proposal is not consulted here
+    and could not be: the flags are written after the rows are.
+
+    The fan-out re-reads those columns itself, so a flag can only cause a check,
+    never a gate: a wrong ``True`` raises nothing extra, and a wrong ``False``
+    cannot suppress a gate that a later run's fan-out will still raise from the
+    row (and the baseline guard counts the row, not the flag, in any case).
     """
     if state.get("errors"):
         return "error_handler"
-    if state.get("has_high_impact_interpretation") or state.get("has_high_security_risk"):
+    if (
+        state.get("has_high_severity_risk")
+        or state.get("has_high_impact_interpretation")
+        or state.get("has_high_security_risk")
+    ):
         return "gate_fanout"
     return "__end__"
 

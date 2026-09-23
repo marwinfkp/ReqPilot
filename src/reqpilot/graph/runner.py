@@ -43,6 +43,7 @@ from reqpilot.rules.compliance import (
 )
 from reqpilot.rules.extraction import ExtractionRules
 from reqpilot.rules.quality import QualityRules, packaged_quality_rules
+from reqpilot.rules.risk import RiskRules, packaged_risk_rules
 from reqpilot.services.compliance import Retriever
 from reqpilot.services.extraction import RunLog, RunRecorder
 
@@ -80,6 +81,10 @@ class RunSummary:
     security_finding_ids: tuple[uuid.UUID, ...] = ()
     claims_dropped: int = 0
     gate_task_ids: tuple[uuid.UUID, ...] = ()
+    #: P7: the risks this run identified, and how many proposals the FR-RSK-011
+    #: scope guard refused.
+    risk_ids: tuple[uuid.UUID, ...] = ()
+    risks_out_of_scope: int = 0
 
 
 class AnalysisRunner:
@@ -95,6 +100,7 @@ class AnalysisRunner:
         compliance_rules: ComplianceRules | None = None,
         security_rules: SecurityRules | None = None,
         retriever: Retriever | None = None,
+        risk_rules: RiskRules | None = None,
     ) -> None:
         self._session = session
         self._gateway = gateway
@@ -109,6 +115,8 @@ class AnalysisRunner:
         self._compliance_rules = compliance_rules or packaged_compliance_rules()
         self._security_rules = security_rules or packaged_security_rules()
         self._retriever = retriever
+        #: P7: the versioned severity matrix and register rules (architecture I.3).
+        self._risk_rules = risk_rules or packaged_risk_rules()
 
     def semantic_default(self) -> bool:
         """The LLM semantic layer runs unless the gateway is the offline stub."""
@@ -276,6 +284,54 @@ class AnalysisRunner:
                 "semantic": use_semantic,
                 "checklist": self._compliance_rules.ruleset_ref,
                 "risk_rules": self._security_rules.ruleset_ref,
+                "risk_matrix": self._risk_rules.matrix.version,
+            },
+        )
+
+    def analyse_risk(
+        self,
+        *,
+        actor: Actor,
+        project_id: ProjectId,
+        version_ids: Sequence[uuid.UUID] = (),
+        semantic: bool | None = None,
+    ) -> RunSummary:
+        """Risk analysis of requirements already analysed by P5/P6 (P7).
+
+        Architecture C.3 nodes 18-19 and the G8 part of 20. With no
+        ``version_ids`` every current version is analysed. Risks are grounded in
+        the evidence this project's allowlisted retrieval recorded, the severity
+        of each comes only from the versioned 3x3 matrix, and G8 tasks are
+        raised from the persisted severity. ``semantic`` defaults to on unless
+        the gateway is the offline stub.
+
+        A risk-only run reuses the evidence a compliance run already recorded
+        for the project; it does not retrieve again. Running risk analysis on a
+        project that has never had a compliance run therefore records no risks
+        (nothing to cite), which the run's counters show.
+        """
+        if len(version_ids) > self._risk_rules.max_versions_per_run:
+            raise ReqPilotError(
+                f"a risk run takes at most {self._risk_rules.max_versions_per_run} versions"
+            )
+        use_semantic = self.semantic_default() if semantic is None else semantic
+        return self._run(
+            actor,
+            project_id,
+            {
+                "domain": "",
+                "scope_source_ids": [],
+                "scope_version_ids": [],
+                "risk_mode": True,
+                "risk_version_ids": [str(v) for v in dict.fromkeys(version_ids)],
+                "semantic": use_semantic,
+            },
+            scope={
+                "mode": "risk",
+                "versions": len(set(version_ids)) or "all_current",
+                "semantic": use_semantic,
+                "risk_rules": self._risk_rules.ruleset_ref,
+                "risk_matrix": self._risk_rules.matrix.version,
             },
         )
 
@@ -323,6 +379,7 @@ class AnalysisRunner:
             compliance_rules=self._compliance_rules,
             security_rules=self._security_rules,
             retriever=self._retriever,
+            risk_rules=self._risk_rules,
         )
         state: AnalysisState = {
             "run_id": str(run.id),
@@ -358,6 +415,8 @@ class AnalysisRunner:
             compliance_gaps=len(final.get("compliance_gap_ids", [])),
             security_findings=len(final.get("security_finding_ids", [])),
             claims_dropped=final.get("claims_dropped", 0),
+            risks=len(final.get("risk_ids", [])),
+            risks_out_of_scope=final.get("risks_out_of_scope", 0),
             gate_tasks=len(final.get("pending_gate_tasks", [])),
             provider_calls=ledger.calls,
             tokens_in=ledger.tokens_in,
@@ -396,6 +455,8 @@ class AnalysisRunner:
             compliance_gap_ids=tuple(uuid.UUID(v) for v in final.get("compliance_gap_ids", [])),
             security_finding_ids=tuple(uuid.UUID(v) for v in final.get("security_finding_ids", [])),
             claims_dropped=final.get("claims_dropped", 0),
+            risk_ids=tuple(uuid.UUID(v) for v in final.get("risk_ids", [])),
+            risks_out_of_scope=final.get("risks_out_of_scope", 0),
             gate_task_ids=tuple(
                 uuid.UUID(ref["task_id"]) for ref in final.get("pending_gate_tasks", [])
             ),

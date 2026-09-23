@@ -1,0 +1,86 @@
+{
+  "benchmark": "P7-RISK-SYNTHETIC-v1",
+  "manifest_sha256": "4c93e887b1359e7d6a351255bf06ba85d0181124a95e86c861c3deaf0715ea94",
+  "mode": "model",
+  "targets": {},
+  "targets_note": "No approved numeric target exists for risk analysis (Phase 0 O.1 defines none, and the P7 roadmap exit criteria are behavioural). These are first measurements, to be used by the project author to set a target - not thresholds that were met.",
+  "matrix": {
+    "cells": 9,
+    "severity_agreement": 1.0,
+    "gate_agreement": 1.0,
+    "matrix_version": "1.0.0",
+    "disagreements": [],
+    "correct": true,
+    "note": "a correctness check against architecture I.3; 1.00 is the only acceptable value"
+  },
+  "scope_guard": {
+    "out_of_scope_cases": 23,
+    "in_scope_cases": 20,
+    "tp": 23,
+    "fn": 0,
+    "fp": 0,
+    "tn": 20,
+    "precision": 1.0,
+    "recall": 1.0,
+    "false_alarm_rate": 0.0,
+    "accuracy": 1.0,
+    "rule_agreement": 1.0,
+    "missed_case_ids": [],
+    "false_alarm_cases": [],
+    "scope_rules_version": "1.0.0"
+  },
+  "adversarial": {},
+  "pipeline": {
+    "risks_recorded": 39,
+    "requirement_level": 35,
+    "project_level": 4,
+    "by_severity": {
+      "high": 15,
+      "medium": 24
+    },
+    "by_category": {
+      "security": 14,
+      "privacy": 11,
+      "business": 3,
+      "compliance": 6,
+      "technical": 1,
+      "operational": 4
+    },
+    "severity_from_matrix": {
+      "correct": 39,
+      "total": 39,
+      "rate": 1.0
+    },
+    "citation_resolution": {
+      "resolved": 51,
+      "total": 51,
+      "rate": 1.0
+    },
+    "every_risk_cites_evidence": true,
+    "g8_routing": {
+      "high_risks": 15,
+      "high_with_gate": 15,
+      "non_high_with_gate": 0,
+      "g8_tasks": 15,
+      "correct": true
+    },
+    "reviewer_load": {
+      "blocking_tasks": 87,
+      "requirements": 20,
+      "blocking_per_requirement": 4.35
+    },
+    "risks_dropped": 0,
+    "scope_guard_refusals": 0,
+    "high_risks_under_review": 15
+  },
+  "model_calls": 81,
+  "all_calls_real_model": true,
+  "notes": [
+    "P5 quality run (deterministic): status=completed",
+    "P6+P7 run: status=completed, errors=0, semantic_failures=0, provider_calls=81, tokens_in=180660, tokens_out=57790, risks=39, out_of_scope=0, gate_tasks=87",
+    "embedder: BAAI/bge-small-en-v1.5",
+    "gateway provider: openai; model: gpt-5.6-luna",
+    "risk rules: risk_rules@1.0.0; matrix: 1.0.0; checklist: compliance_checklists@1.0.0"
+  ],
+  "caveat": "Synthetic benchmark written after the implementation by the same AI author, not reviewed by the project author, not independently validated. No numeric target is set or claimed. The scope-guard figures are optimistic: the cases were written by the author of the patterns they test. Nothing here measures whether the right risks were identified."
+}

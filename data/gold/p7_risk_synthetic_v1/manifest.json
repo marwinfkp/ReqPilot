@@ -1,0 +1,40 @@
+{
+  "name": "p7_risk_synthetic",
+  "version": "1",
+  "benchmark_id": "P7-RISK-SYNTHETIC-v1",
+  "kind": "synthetic_reference_benchmark",
+  "metrics": [],
+  "supplementary": [
+    "matrix_agreement",
+    "gate_agreement",
+    "scope_guard_precision_recall",
+    "scope_guard_false_alarm_rate",
+    "scope_rule_agreement",
+    "adversarial_outcomes",
+    "citation_resolution",
+    "g8_routing",
+    "reviewer_load"
+  ],
+  "targets": {},
+  "targets_note": "No numeric target. Approved Phase 0 O.1 defines no risk-analysis metric, and the P7 roadmap exit criteria are behavioural. Per the O.1 convention, a target for any figure here is to be set by the project author from this first measurement, not guessed in advance.",
+  "case_study": "retail loan origination (the P6 synthetic project), jurisdiction IN",
+  "counts": {
+    "matrix_cases": 9,
+    "scope_cases": 43,
+    "scope_cases_out_of_scope": 23,
+    "scope_cases_in_scope": 20,
+    "adversarial_cases": 20
+  },
+  "reference_generation": "written by the AI coding assistant (Claude, Anthropic) on 2026-09-23, AFTER the P7 implementation (the matrix, the scope guard, the validator) and BEFORE any evaluation run over it",
+  "review": "not reviewed by the project author before evaluation (autonomous P7 instruction); author review pending (REVIEW_SHEET.md)",
+  "harness": "services/evaluation/risk_eval.py (protocol in BENCHMARK.md)",
+  "frozen_at": "2026-09-23",
+  "frozen_by": "Claude (AI coding assistant), on the project author's autonomous P7 instruction",
+  "files": {
+    "BENCHMARK.md": "4ba51921555d7e5866057a813089d7faace71e10374d83643a47d3c6c02d8670",
+    "REVIEW_SHEET.md": "6d216e749136675795c7b0ad077227737597b742e0a8bcc87ac94c6947e5cb2a",
+    "adversarial.jsonl": "b1f3a1d322211a73cdf517a5f5d9221b7160f956fefe16fecb7a33448c5c02c3",
+    "matrix_cases.jsonl": "a5b193dfb1e39ea6ee842f168aac709c1517c60b2a6f9234907c9fab43211c96",
+    "scope_cases.jsonl": "a6be1a9b5567594c75170cd9359f484e195efe087452a6c86c375f5b093d996b"
+  }
+}

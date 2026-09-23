@@ -134,6 +134,8 @@ def test_migrations_create_nothing_beyond_the_current_phase(pg_engine) -> None:
         # P6
         "compliance_mapping", "compliance_mapping_evidence", "compliance_gap",
         "security_privacy_finding", "security_privacy_finding_evidence",
+        # P7
+        "risk_matrix", "risk", "risk_evidence", "risk_mitigation",
         # The LangGraph checkpoint store, in the same database (architecture C.7);
         # created by the elicitation graph's durable checkpointer on first use.
         "checkpoint_migrations", "checkpoints", "checkpoint_blobs", "checkpoint_writes",

@@ -57,12 +57,12 @@ P1_TABLES = {
 #: project corpus and the glossary are deliberately still absent after P2.
 #: ``glossary_term`` and ``conflict`` arrived with P5 (quality and conflict
 #: detection) and left this list then; ``compliance_mapping`` arrived with P6
-#: (compliance and security analysis) and left it then. Everything below is
-#: still later.
+#: (compliance and security analysis) and left it then; ``risk``,
+#: ``risk_matrix``, ``risk_evidence`` and ``risk_mitigation`` arrived with P7
+#: (risk analysis and the register) and left it then. Everything below is still
+#: later.
 FUTURE_PHASE_TABLES = {
     "traceability_link",
-    "risk",
-    "risk_mitigation",
     "sdlc_run",
     "sdlc_factor",
     "workflow",

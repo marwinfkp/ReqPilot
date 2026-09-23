@@ -24,6 +24,7 @@ from reqpilot.api.routes import (
     knowledge,
     quality,
     requirements,
+    risk,
 )
 
 DESCRIPTION = (
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(elicitation.router)
     app.include_router(quality.router)
     app.include_router(compliance.router)
+    app.include_router(risk.router)
     return app
 
 

@@ -34,12 +34,17 @@
     .note { border-left: 3px solid var(--accent); padding: 6px 12px; background: #f4f8fb;
             margin: 12px 0; font-size: 14px; }
     .warn { border-left-color: #a5501e; background: #fdf4ee; }
+    /* Risk severity (P7). Colour is presentation only: the authoritative value
+       is the word, which comes from the versioned matrix. */
+    .sev-high { background: #fdf0ee; }
+    .sev-medium { background: #fdf9ee; }
+    .sev-low { background: #f4f8f4; }
   </style>
 </head>
 <body>
 <header>
   <b>ReqPilot</b>
-  <span class="muted">P5 &middot; repository + knowledge base + extraction + interviews &amp; clarification + quality &amp; conflicts</span>
+  <span class="muted">P7 &middot; repository + knowledge base + extraction + interviews &amp; clarification + quality &amp; conflicts + compliance &amp; security + risk</span>
   <a href="/ui/">projects</a>
   <a href="/ui/kb">knowledge base</a>
   {% block nav %}{% endblock %}

@@ -168,8 +168,20 @@ class AnalysisState(BaseGraphState, total=False):
     #: D.2 routing flags, set only by deterministic nodes from persisted values.
     has_high_impact_interpretation: bool
     has_high_security_risk: bool
-    #: D.2 ``pending_gate_tasks``: (gate, task id, blocking) of raised G2/G3 tasks.
+    #: D.2 ``pending_gate_tasks``: (gate, task id, blocking) of raised G2/G3/G8 tasks.
     pending_gate_tasks: Annotated[list[dict], operator.add]
+    # ---- P7: risk analysis and the register (C.3 nodes 18-19, 20) -----------
+    #: A risk run: ``load_scope`` goes straight to ``risk_identify``.
+    risk_mode: bool
+    #: The versions to analyse for risk (empty = the compliance run's scope, or
+    #: every current analysed version).
+    risk_version_ids: list[str]
+    risk_ids: Annotated[list[str], operator.add]
+    #: Proposals the FR-RSK-011 scope guard refused (counted, never stored).
+    risks_out_of_scope: Annotated[int, operator.add]
+    #: D.2's own routing flag, set only by ``risk_compute_severity`` and only
+    #: from the persisted authoritative severity - never from a proposal.
+    has_high_severity_risk: bool
 
 
 class ElicitationState(BaseGraphState, total=False):

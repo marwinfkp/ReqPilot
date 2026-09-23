@@ -49,6 +49,13 @@ The design rules enforced here rather than trusted to callers:
    Raising is not deciding: ``APPROVAL_DECIDE`` stays human-only (rule 3), and only
    the gate's own role - Compliance Officer for G2, Security Reviewer for G3 -
    may decide it (architecture M.3, I.8; ``FR-CMP-004``, ``FR-SEC-003``).
+10. **A risk is identified by the pipeline and owned by a human.** From P7 the
+    analysis pipeline records identified risks with the severity the
+    deterministic matrix computed (``RISK_ANALYSE``) and raises the G8 task a
+    persisted HIGH severity requires (``GATE_TASK_RAISE``). It can never accept,
+    close, reject or mitigate a risk (``RISK_MANAGE``), and it cannot decide G8:
+    that is the Security Reviewer's, through ``APPROVAL_DECIDE`` (approved Phase
+    0 F.1's G8 row; architecture I.5; ``FR-RSK-007``, ``FR-RSK-010``).
 """
 
 from __future__ import annotations
@@ -378,6 +385,25 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
         }
     ),
     Action.GATE_TASK_RAISE: frozenset({Role.ANALYST}),
+    # --- risk analysis and the risk register (P7) --------------------------
+    # The pipeline records identified risks in the analyst's name; the register
+    # is read by everyone who reviews the set; and adding, accepting, closing or
+    # mitigating a risk is a human decision, held by the roles that own risk
+    # (approved Phase 0 F.1: the Risk Owner may be the Security Reviewer or the
+    # PM in a small team, and the Analyst owns the requirement set).
+    Action.RISK_ANALYSE: frozenset({Role.ANALYST}),
+    Action.RISK_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.RISK_MANAGE: frozenset(
+        {Role.ANALYST, Role.SECURITY_REVIEWER, Role.PROJECT_MANAGER, Role.COMPLIANCE_OFFICER}
+    ),
 }
 
 #: Actions an actor may perform without belonging to a project. For these the
@@ -410,6 +436,7 @@ _AUDITOR_READ_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.GLOSSARY_READ,
         Action.COMPLIANCE_READ,
         Action.SECURITY_READ,
+        Action.RISK_READ,
     }
 )
 
@@ -445,6 +472,8 @@ _HUMAN_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.CONFLICT_RESOLVE,
         Action.CONFLICT_DISMISS,
         Action.GLOSSARY_MANAGE,
+        # Rule 10 (P7): accepting, closing or mitigating a risk is a human's call.
+        Action.RISK_MANAGE,
     }
 )
 

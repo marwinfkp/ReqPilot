@@ -149,10 +149,40 @@ supplementary figures (PostgreSQL required: P2 hybrid retrieval). The results
 are in `docs/evaluation/p6-cs-synthetic-v1/` and `docs/09` (§28 records the
 review status and a read-only integrity verification). A correction is `_v2`.
 
+## P7-RISK-SYNTHETIC-v1 - the P7 first measurement
+
+**Frozen on 2026-09-23 as `p7_risk_synthetic_v1/`.** It holds the nine cells of
+the approved severity matrix (architecture I.3), 43 labelled scope-guard cases
+(23 borrower-credit texts that `FR-RSK-011` must refuse and 20 legitimate project
+risks it must not), and 20 adversarial cases with the outcome the design
+requires for each.
+
+**It sets no target, and none should be read into it.** Approved Phase 0 O.1
+defines no risk-analysis metric, and the P7 roadmap exit criteria are
+behavioural, so the benchmark records a *first measurement* in the O.1 sense
+rather than a threshold. Like the others it is a **synthetic reference
+benchmark**, written after the P7 implementation by the same AI assistant; the
+scope-guard figures in particular are optimistic, because the cases were written
+by the author of the patterns they test. The project author reviewed it on
+2026-09-23, **after** the evaluation runs: the matrix and adversarial cases
+needed no correction, and one scope case (S-21) was identified as a label
+correction. **v1 remains frozen and unedited and the correction is reserved for
+`_v2`**, so it is a synthetic, **project-author-reviewed** benchmark — not an
+independently validated expert gold standard. Its frozen `manifest.json`,
+`BENCHMARK.md` and `REVIEW_SHEET.md` still say "not reviewed" because they record
+the state at freeze time; editing them would change the manifest hash. `docs/10`
+§25 is the later record. Its `BENCHMARK.md` fixes the protocol and states the
+threats to validity.
+`services/evaluation/risk_eval.py` and `scripts/run_p7_eval.py` verify the
+manifest and compute the figures (PostgreSQL required for the pipeline half).
+The results are in `docs/evaluation/p7-risk-synthetic-v1/` and `docs/10` (§25
+records the post-evaluation author review). A correction is `_v2`.
+
 ## Roadmap note
 
 Empty in P0. Gold datasets are produced alongside the phases they evaluate, and
 each is frozen before use (`docs/01-analysis.md` §O, §P). After P3 this directory
 holds `e1_synthetic_v1/`, frozen before ReqPilot was run on it; after P5 also
-`p5_quality_conflict_synthetic_v1/`, and after P6 `p6_compliance_security_synthetic_v1/`.
+`p5_quality_conflict_synthetic_v1/`, after P6 `p6_compliance_security_synthetic_v1/`,
+and after P7 `p7_risk_synthetic_v1/`.
 None is ever edited; a correction is a new `_v2`.

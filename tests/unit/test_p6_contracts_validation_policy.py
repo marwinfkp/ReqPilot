@@ -45,6 +45,7 @@ from reqpilot.graph.routers import (
     route_after_retrieve,
     route_after_scope,
     route_compliance,
+    route_risk,
     route_security_privacy,
 )
 from reqpilot.rules.compliance import load_security_rules
@@ -414,9 +415,19 @@ def test_p6_routers_read_flags_only() -> None:
     assert route_after_retrieve({}) == "compliance_map"
     assert route_after_retrieve({"errors": [1]}) == "error_handler"
     assert route_compliance({}) == "compliance_gaps"
-    assert route_security_privacy({}) == "__end__"
-    assert route_security_privacy({"has_high_impact_interpretation": True}) == "gate_fanout"
-    assert route_security_privacy({"has_high_security_risk": True}) == "gate_fanout"
+    # From P7 the compliance run continues into risk analysis (C.3 nodes 18-19),
+    # which takes the compliance and security results as input (FR-RSK-001); the
+    # G2/G3 fan-out decision moved to ``route_risk``, which is asserted with the
+    # other P7 routers. The property this test guards is unchanged: the router
+    # reads flags and errors only.
+    assert route_security_privacy({}) == "risk_identify"
+    assert route_security_privacy({"has_high_impact_interpretation": True}) == "risk_identify"
+    assert route_security_privacy({"has_high_security_risk": True}) == "risk_identify"
     assert (
         route_security_privacy({"errors": [1], "has_high_security_risk": True}) == "error_handler"
     )
+    # The P6 flags still reach the fan-out - now through route_risk, which is
+    # where the run decides whether any gate is pending.
+    assert route_risk({"has_high_impact_interpretation": True}) == "gate_fanout"
+    assert route_risk({"has_high_security_risk": True}) == "gate_fanout"
+    assert route_risk({}) == "__end__"

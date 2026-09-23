@@ -1,0 +1,9 @@
+{"expected_gate": null, "expected_severity": "low", "id": "M-01", "impact": "I1", "likelihood": "L1", "source": "architecture I.3 (approved)"}
+{"expected_gate": null, "expected_severity": "low", "id": "M-02", "impact": "I2", "likelihood": "L1", "source": "architecture I.3 (approved)"}
+{"expected_gate": null, "expected_severity": "medium", "id": "M-03", "impact": "I3", "likelihood": "L1", "source": "architecture I.3 (approved)"}
+{"expected_gate": null, "expected_severity": "low", "id": "M-04", "impact": "I1", "likelihood": "L2", "source": "architecture I.3 (approved)"}
+{"expected_gate": null, "expected_severity": "medium", "id": "M-05", "impact": "I2", "likelihood": "L2", "source": "architecture I.3 (approved)"}
+{"expected_gate": "G8", "expected_severity": "high", "id": "M-06", "impact": "I3", "likelihood": "L2", "source": "architecture I.3 (approved)"}
+{"expected_gate": null, "expected_severity": "medium", "id": "M-07", "impact": "I1", "likelihood": "L3", "source": "architecture I.3 (approved)"}
+{"expected_gate": "G8", "expected_severity": "high", "id": "M-08", "impact": "I2", "likelihood": "L3", "source": "architecture I.3 (approved)"}
+{"expected_gate": "G8", "expected_severity": "high", "id": "M-09", "impact": "I3", "likelihood": "L3", "source": "architecture I.3 (approved)"}

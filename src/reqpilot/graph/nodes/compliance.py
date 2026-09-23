@@ -9,7 +9,7 @@ Node                        Kind                 Role                        Wri
 ``compliance_gaps``         rules                Compliance (#7)             gaps
 ``security_privacy_derive`` LLM + catalogue      Security & Privacy (#8)     nothing (proposals)
 ``security_privacy_eval``   **deterministic**    Security & Privacy (#8)     findings + risk_level
-``gate_fanout``             deterministic        Coordinator (#1)            G2 / G3 tasks
+``gate_fanout``             deterministic        Coordinator (#1)            G2 / G3 / G8 tasks
 ==========================  ===================  ==========================  ======================
 
 "The LLM proposes; deterministic code disposes." A model sees one requirement
@@ -549,13 +549,18 @@ class ComplianceNodes:
         }
 
     # ------------------------------------------------------------------
-    # 20. gate_fanout (deterministic, Coordinator) - G2 and G3 only in P6
+    # 20. gate_fanout (deterministic, Coordinator) - G2, G3 (P6) and G8 (P7)
     # ------------------------------------------------------------------
     def gate_fanout(self, state: AnalysisState) -> dict[str, Any]:
         node, ctx = "gate_fanout", self.ctx
         ctx.log.node_started(node)
         started = utc_now()
         tasks = self._engine().raise_pending_gates(ctx.project_id, graph_run_id=ctx.log.run.id)
+        # P7: G8 for every persisted HIGH risk of this run. Each fan-out reads
+        # its own phase's persisted columns; neither reads model output, and
+        # neither can suppress the other.
+        if ctx.risk_rules is not None:
+            tasks = [*tasks, *self.base.risk.raise_risk_gates()]
         refs = [{"gate": str(t.gate), "task_id": str(t.id), "blocking": t.blocking} for t in tasks]
         gates = Counter(str(t.gate) for t in tasks)
         self.base._deterministic_run(

@@ -459,6 +459,18 @@ class AuditEventType(StrEnum):
     SECURITY_RISK_EVALUATED = "SECURITY_RISK_EVALUATED"
     SECURITY_FINDING_REVIEWED = "SECURITY_FINDING_REVIEWED"
 
+    # Risk analysis and the risk register (added by P7). The first four are
+    # named in architecture E #9; the rest follow the P1-P6 precedent of a
+    # phase adding the events it raises.
+    RISK_ANALYSIS_STARTED = "RISK_ANALYSIS_STARTED"
+    RISK_PROPOSED = "RISK_PROPOSED"
+    RISK_DROPPED = "RISK_DROPPED"
+    RISK_SEVERITY_COMPUTED = "RISK_SEVERITY_COMPUTED"
+    RISK_RECORDED = "RISK_RECORDED"
+    RISK_ESCALATED = "RISK_ESCALATED"
+    RISK_DECISION_RECORDED = "RISK_DECISION_RECORDED"
+    RISK_MITIGATION_DECIDED = "RISK_MITIGATION_DECIDED"
+
 
 class Action(StrEnum):
     """Actions the policy can authorise (architecture ADR-009).
@@ -576,6 +588,15 @@ class Action(StrEnum):
     #: only a human holding the gate's role decides (``APPROVAL_DECIDE``).
     GATE_TASK_RAISE = "gate_task.raise"
 
+    # Risk analysis and the risk register (P7)
+    #: Recording what the risk pipeline identified: proposals validated, the
+    #: deterministic severity, the register rows. It decides nothing.
+    RISK_ANALYSE = "risk.analyse"
+    RISK_READ = "risk.read"
+    #: A human adding, editing, accepting or closing a risk, or accepting a
+    #: mitigation suggestion, with a recorded rationale (``FR-RSK-010``).
+    RISK_MANAGE = "risk.manage"
+
 
 class ResourceType(StrEnum):
     """Resource types the policy can authorise against."""
@@ -608,6 +629,8 @@ class ResourceType(StrEnum):
     COMPLIANCE_MAPPING = "compliance_mapping"
     COMPLIANCE_GAP = "compliance_gap"
     SECURITY_PRIVACY_FINDING = "security_privacy_finding"
+    RISK = "risk"
+    RISK_MITIGATION = "risk_mitigation"
 
 
 # ---------------------------------------------------------------------------
@@ -707,6 +730,12 @@ class ReviewReason(StrEnum):
     #: P6: a compliance or security/privacy claim was dropped by deterministic
     #: validation (unsupported citation, prohibited language, authority claim).
     CLAIM_DROPPED = "claim_dropped"
+    #: P7: a proposed risk was dropped by deterministic validation (bad category,
+    #: missing rating or rationale, unsupported citation).
+    RISK_DROPPED = "risk_dropped"
+    #: P7: a proposed risk read as borrower credit risk, a customer risk rating
+    #: or a fraud score, and was refused (``FR-RSK-011``; approved Phase 0 D.1).
+    RISK_OUT_OF_SCOPE = "risk_out_of_scope"
 
 
 class ReviewStatus(StrEnum):
@@ -1053,3 +1082,129 @@ class EvidenceStatus(StrEnum):
     SUPPORTED = "supported"
     #: No supplied evidence supports it. Stated as such, never filled from memory.
     UNAVAILABLE = "unavailable"
+
+
+# ---------------------------------------------------------------------------
+# Risk analysis and the risk register (roadmap phase P7)
+# ---------------------------------------------------------------------------
+
+
+class RiskCategory(StrEnum):
+    """The six risk categories (``FR-RSK-002`` ``[PS §4]``; architecture I.4).
+
+    Exactly six, and the list is closed. There is deliberately no ``financial``,
+    ``credit``, ``borrower`` or ``market`` category: a risk in ReqPilot is a
+    risk **to the project or the system being specified**, never a borrower's
+    creditworthiness, a customer risk rating or a fraud score (``FR-RSK-011``;
+    approved Phase 0 D.1). The scope guard in
+    :mod:`reqpilot.domain.risk.scope` enforces the same boundary on free text,
+    and no risk row has a foreign key to any customer or applicant entity -
+    because no such entity exists in the schema.
+    """
+
+    BUSINESS = "business"
+    TECHNICAL = "technical"
+    SECURITY = "security"
+    PRIVACY = "privacy"
+    COMPLIANCE = "compliance"
+    OPERATIONAL = "operational"
+
+
+class RiskLikelihood(StrEnum):
+    """The approved ordinal likelihood scale (architecture I.2; ``FR-RSK-003``).
+
+    Three points, each with a stated meaning, and a written rationale is
+    required alongside the rating. It is an explainable ordinal judgement, not a
+    probability: nothing in P7 calibrates it, and nothing should present it as
+    calibrated (approved Phase 0's confidence rule).
+    """
+
+    #: Would require an unusual combination of circumstances.
+    L1 = "L1"
+    #: Plausible within this project's normal course.
+    L2 = "L2"
+    #: Expected unless specifically prevented.
+    L3 = "L3"
+
+
+class RiskImpact(StrEnum):
+    """The approved ordinal impact scale (architecture I.2; ``FR-RSK-003``)."""
+
+    #: Local rework; no compliance, security or schedule consequence.
+    I1 = "I1"
+    #: Significant rework, schedule slip, or a control weakness needing remediation.
+    I2 = "I2"
+    #: Regulatory exposure, security compromise, or project-level failure.
+    I3 = "I3"
+
+
+class RiskSeverity(StrEnum):
+    """The **authoritative** risk level, computed by the 3x3 matrix (I.3).
+
+    Never proposed, never parsed from model output and never settable through an
+    API payload: ``RiskProposal`` has no severity field, the rule engine is the
+    only writer, and the database pins every stored severity to the row of the
+    versioned ``risk_matrix`` table it claims to come from. ``HIGH`` is what
+    fires G8 (``FR-RSK-007``).
+    """
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class RiskScope(StrEnum):
+    """Whether a risk arises from one requirement or from the set (``FR-RSK-001``).
+
+    A ``REQUIREMENT`` risk names the exact requirement **version** it was
+    analysed from. A ``PROJECT`` risk arises from the requirement set as a whole
+    and names no version - it is not forced into a fake requirement
+    relationship - but it carries the same project, run, evidence, category,
+    ratings, severity, rationale, mitigation and audit trail.
+    """
+
+    REQUIREMENT = "requirement"
+    PROJECT = "project"
+
+
+class RiskStatus(StrEnum):
+    """A risk item's review status (architecture I.4).
+
+    ``PROPOSED -> UNDER_REVIEW -> {ACCEPTED | MITIGATED | REJECTED} -> CLOSED``.
+    Only a human moves a risk out of ``UNDER_REVIEW`` (``FR-RSK-010``), and a
+    ``HIGH`` risk is never ``PROPOSED``: the deterministic severity puts it
+    straight into ``UNDER_REVIEW`` with a blocking G8 task, which a database
+    check makes structural rather than conventional.
+
+    This is the **risk's** status. It is not a requirement lifecycle state:
+    there is no ``CONFLICTED``-style state for risk, and the requirement's own
+    state stays on ``requirement_version`` (``[DESIGN] D12``'s principle).
+    """
+
+    PROPOSED = "proposed"
+    UNDER_REVIEW = "under_review"
+    ACCEPTED = "accepted"
+    MITIGATED = "mitigated"
+    REJECTED = "rejected"
+    CLOSED = "closed"
+
+
+#: Risk statuses that still count as *unreviewed* for the baseline guard
+#: (``FR-RSK-007``; architecture I.5, H.3). A HIGH risk in one of these blocks
+#: ``ANALYZED -> VALIDATED``, so a high risk cannot be baselined around.
+UNREVIEWED_RISK_STATUSES: frozenset[RiskStatus] = frozenset(
+    {RiskStatus.PROPOSED, RiskStatus.UNDER_REVIEW}
+)
+
+
+class MitigationStatus(StrEnum):
+    """A mitigation suggestion's status (``FR-RSK-005``; architecture I.4).
+
+    Stored ``SUGGESTED`` with ``is_ai_generated = true`` until a human accepts
+    it. The UI labels a suggested mitigation as a suggestion requiring
+    validation; accepting one is a human action and is recorded as such.
+    """
+
+    SUGGESTED = "suggested"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"

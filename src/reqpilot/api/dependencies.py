@@ -49,6 +49,7 @@ from reqpilot.rules.compliance import (
 from reqpilot.rules.elicitation import ElicitationRules, load_elicitation_rules
 from reqpilot.rules.extraction import ExtractionRules, load_extraction_rules
 from reqpilot.rules.quality import QualityRules, load_quality_rules
+from reqpilot.rules.risk import RiskRules, load_risk_rules
 from reqpilot.services.compliance import Retriever
 from reqpilot.services.knowledge.retrieval import RetrievalService
 
@@ -192,6 +193,19 @@ def _compliance_rules(rules_dir: str) -> ComplianceRules:
     return load_compliance_rules(Path(rules_dir))
 
 
+@lru_cache(maxsize=4)
+def _risk_rules(rules_dir: str) -> RiskRules:
+    return load_risk_rules(Path(rules_dir))
+
+
+def get_risk_rules(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> RiskRules:
+    """The versioned severity matrix and register rules (P7, I.3), validated once
+    per process. Loading refuses a matrix that differs from the approved I.3 table."""
+    return _risk_rules(str(settings.rules_dir))
+
+
 def get_compliance_rules(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> ComplianceRules:
@@ -231,6 +245,7 @@ ElicitationRulesDep = Annotated[ElicitationRules, Depends(get_elicitation_rules)
 QualityRulesDep = Annotated[QualityRules, Depends(get_quality_rules)]
 ComplianceRulesDep = Annotated[ComplianceRules, Depends(get_compliance_rules)]
 SecurityRulesDep = Annotated[SecurityRules, Depends(get_security_rules)]
+RiskRulesDep = Annotated[RiskRules, Depends(get_risk_rules)]
 
 #: Builds the P2 allowlisted retrieval boundary for one request's session and actor.
 RetrieverFactory = Callable[[Session, Actor], Retriever]

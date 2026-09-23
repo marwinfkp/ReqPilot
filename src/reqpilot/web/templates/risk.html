@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Risk register - {{ project.name }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/tasks">approval queue (G8)</a>
+  <a href="/ui/projects/{{ project.id }}/compliance">compliance &amp; security</a>
+  <a href="/api/v1/projects/{{ project.id }}/risk-register.md">risk register (Markdown)</a>
+{% endblock %}
+{% block content %}
+<h1>Risk register</h1>
+<p class="note warn"><b>How to read this.</b> {{ notice }}</p>
+<p class="note"><b>Scope.</b> {{ scope_notice }}</p>
+<p class="muted">{{ gate_notice }} This page enforces nothing: the severity is computed by the
+matrix below when the risk is recorded, the G8 task is raised from the persisted severity, and
+the baseline transition is refused in the application. Removing this page changes none of that.</p>
+
+{% if may_run %}
+<form method="post" action="/ui/projects/{{ project.id }}/risk-runs">
+  <button type="submit" class="primary">Run risk analysis</button>
+</form>
+{% endif %}
+
+<h2>Severity matrix <span class="muted">(version {{ matrix_version }})</span></h2>
+<p class="muted">Published so that every rating is explainable. Severity is a table lookup from
+the two ordinal ratings - the model proposes the ratings and has no field for a severity.</p>
+<table>
+  <tr><th></th>{% for header in impact_headers %}<th>{{ header }}</th>{% endfor %}</tr>
+  {% for likelihood, severities in matrix_rows %}
+  <tr><th>{{ likelihood }}</th>
+    {% for severity in severities %}<td class="sev-{{ severity }}">{{ severity }}</td>{% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+<p class="muted">
+  {% for key, meaning in likelihood_scale.items() %}<b>{{ key }}</b> {{ meaning }}.
+  {% endfor %}<br>
+  {% for key, meaning in impact_scale.items() %}<b>{{ key }}</b> {{ meaning }}.
+  {% endfor %}
+</p>
+
+<h2>Risks</h2>
+<p class="muted">
+  {{ risks | length }} risk(s):
+  {% for level, count in by_severity.items() %}{{ count }} {{ level }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not by_severity %}none{% endif %}.
+  <b>{{ blocking }}</b> currently block a baseline.
+  Ruleset <span class="mono">{{ rules_version }}</span>.
+</p>
+{% if risks %}
+<table>
+  <tr><th>Risk</th><th>Subject</th><th>Category</th><th>L &times; I</th><th>Severity</th><th>Status</th><th>Owner</th><th>Evidence</th></tr>
+  {% for r in risks %}
+  <tr>
+    <td>{{ r.title }}<div class="muted">{{ r.description }}</div></td>
+    <td class="mono">{{ r.requirement_label or "project-level" }}</td>
+    <td>{{ r.category.value }}</td>
+    <td class="mono">{{ r.likelihood.value }} &times; {{ r.impact.value }}</td>
+    <td class="sev-{{ r.severity.value }}"><b>{{ r.severity.value }}</b>
+      <div class="muted">matrix {{ r.matrix_version }}</div></td>
+    <td>{{ r.status.value }}
+      {% if r.blocking_baseline %}<div class="muted"><b>blocks baseline</b></div>{% endif %}
+      {% if r.approval_task_id %}<div class="muted">G8 task <span class="mono">{{ r.approval_task_id }}</span></div>{% endif %}</td>
+    <td>{{ r.owner_role.value }}<div class="muted">recorded by {{ r.detected_by.value }}</div></td>
+    <td>{{ r.evidence_count }}</td>
+  </tr>
+  <tr>
+    <td colspan="8" class="muted">
+      <b>Likelihood {{ r.likelihood.value }}</b> - {{ r.likelihood_rationale }}<br>
+      <b>Impact {{ r.impact.value }}</b> - {{ r.impact_rationale }}
+      {% if r.decision_rationale %}<br><b>Decision</b> - {{ r.decision_rationale }}{% endif %}
+      {% if r.mitigations %}
+      <ul>
+        {% for m in r.mitigations %}
+        <li>{{ m.suggestion }} <i>({{ m.label }})</i></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if r.citations %}
+      <div>Evidence:
+        {% for c in r.citations %}
+        <span class="mono">{{ c.get("item_key", "") }}{{ " " ~ c.get("clause_ref") if c.get("clause_ref") else "" }}</span>
+        ({{ c.get("source_title", "source") }}){% if not loop.last %}; {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="muted">No risks recorded yet. Risk analysis runs after compliance and security
+analysis, because it takes their results as input, and every risk must cite evidence this
+project's allowlisted retrieval already recorded.</p>
+{% endif %}
+
+<h2>Aggregate measures</h2>
+<p class="muted">Inputs to the SDLC factor profile (FR-RSK-009), computed deterministically from
+the register. These are inputs only: the scoring and the recommendation belong to a later phase.</p>
+<table>
+  <tr><th>Factor</th><th>Value</th><th>From</th><th>Meaning</th></tr>
+  {% for f in factors %}
+  <tr>
+    <td class="mono">{{ f.key }}</td>
+    <td><b>{{ f.value }}</b></td>
+    <td class="muted">{{ f.evidence_risk_ids | length }} risk(s):
+      {% for level, count in f.counts.items() %}{{ count }} {{ level }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+    <td class="muted">{{ f.description }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

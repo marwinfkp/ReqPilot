@@ -224,3 +224,17 @@ class ClarificationError(ReqPilotError):
 
 class QualityError(ReqPilotError):
     """A quality-finding, conflict or glossary operation refused in its state (P5)."""
+
+
+class RiskError(ReqPilotError):
+    """A risk-analysis or risk-register operation was refused (roadmap phase P7)."""
+
+
+class ScopeGuardError(RiskError):
+    """Refused by the ``FR-RSK-011`` scope guard (approved Phase 0 D.1).
+
+    ReqPilot analyses project, engineering, security, privacy, compliance and
+    operational risk. It does not compute borrower credit risk, customer risk
+    ratings, probability of default or fraud scores, and it makes no lending
+    decision. A refusal is audited; it is never downgraded to a warning.
+    """
