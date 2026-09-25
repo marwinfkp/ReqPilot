@@ -1,0 +1,5 @@
+{"case_id": "A01", "expected_fully_traced": 1, "expected_total": 2, "members": ["D01", "D02"], "rationale": "One of two fully traced."}
+{"case_id": "A02", "expected_fully_traced": 3, "expected_total": 4, "members": ["D11", "D13", "D14", "D18"], "rationale": "An unrendered baseline member is the only gap."}
+{"case_id": "A03", "expected_e6": null, "expected_fully_traced": 0, "expected_total": 0, "members": [], "rationale": "An empty scope has no E6 (never a fabricated 1.0)."}
+{"case_id": "A04", "expected_fully_traced": 9, "expected_total": 27, "members": ["D01", "D02", "D03", "D04", "D05", "D06", "D07", "D08", "D09", "D10", "D11", "D12", "D13", "D14", "D15", "D16", "D17", "D18", "D19", "D20", "D21", "D22", "D23", "D24", "D25", "D26", "D27"], "rationale": "All definition cases together."}
+{"case_id": "A05", "expected_fully_traced": 0, "expected_total": 3, "members": ["D21", "D22", "D23"], "rationale": "Nothing traced: E6 is 0.0, not undefined."}

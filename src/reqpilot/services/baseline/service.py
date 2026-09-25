@@ -16,6 +16,7 @@ trigger, *and* a forged decision simultaneously.
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -43,6 +44,9 @@ from reqpilot.repositories.requirements import (
     RequirementVersionRepository,
 )
 from reqpilot.services.audit import AuditService
+
+if TYPE_CHECKING:  # pragma: no cover
+    from reqpilot.services.governance.readiness import GovernanceReadinessService
 
 
 class BaselineService:
@@ -172,6 +176,12 @@ class BaselineService:
                 raise BaselineInvariantError(
                     f"version {version_id} has no approval decision bound to its exact content hash"
                 )
+            # P8 (FR-HIL-004), defence in depth: nothing still blocking the
+            # version - an unsigned G4, a pending G2/G3, an unreviewed G8, a
+            # missing G5/G7 - may enter a baseline, whatever route reached here.
+            self._readiness().require_ready(
+                project_id, version, stage="baseline", label=str(version.requirement_id)
+            )
             versions.append(version)
 
         return versions
@@ -192,6 +202,11 @@ class BaselineService:
                 if hashes_match(decision.subject_version_hash, version.content_hash):
                     return decision
         return None
+
+    def _readiness(self) -> GovernanceReadinessService:
+        from reqpilot.services.governance.readiness import GovernanceReadinessService
+
+        return GovernanceReadinessService(self._session, self._actor)
 
     # -- effects ----------------------------------------------------------
     def _promote_to_baselined(self, project_id: ProjectId, version: RequirementVersion) -> None:

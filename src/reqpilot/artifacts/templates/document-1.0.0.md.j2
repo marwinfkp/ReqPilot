@@ -1,0 +1,17 @@
+{#- ReqPilot artefact layout, Markdown, version 1.0.0 (ADR-007).
+    One layout for every artefact type: the structure decides the content.
+    Every value is data. It reaches this template only through the filters,
+    which escape it; nothing from project content is ever template source. -#}
+# {{ document.title | md }}
+
+{{ document.metadata | fields }}
+{{ document.stamp | fields }}
+
+{% for section in document.sections %}
+{{ section | heading }}
+
+{% if section.citations %}{{ section.citations | traces }}
+
+{% endif %}{% for block in section.blocks %}{{ block | render_block }}
+
+{% endfor %}{% endfor %}

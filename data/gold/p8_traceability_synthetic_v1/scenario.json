@@ -1,0 +1,39 @@
+{
+  "scenario_id": "P8-SCENARIO-LOAN-v1",
+  "fixture": "tests/p8_helpers.py (WORKSHOP L01-L08, fictional speakers; ScriptedP8Model; no network)",
+  "database": "SQLite in memory (the offline test configuration)",
+  "steps": [
+    {
+      "id": "S0",
+      "action": "build the world (P3 extraction and classification, P5 quality and conflicts, P6 compliance and security, P7 risk) and sync the trace graph",
+      "measure": "project scope"
+    },
+    {
+      "id": "S1",
+      "action": "govern and baseline L01, L03, L05, L06, L08 as B1 (G4, G5, G2/G3/G8, VALIDATED, G1 co-approval) and sync; no artefact generated yet",
+      "measure": "baseline scope B1"
+    },
+    {
+      "id": "S2",
+      "action": "generate SRS, RTM and risk register from B1",
+      "measure": "baseline scope B1"
+    },
+    {
+      "id": "S3",
+      "action": "create a successor of L03, decide G7, validate, G1-approve it as B2, sync",
+      "measure": "baseline scope B2 (cumulative: in force as of B2)"
+    },
+    {
+      "id": "S4",
+      "action": "generate SRS, RTM and risk register from B2",
+      "measure": "baseline scope B2, and project scope"
+    }
+  ],
+  "reported": [
+    "E6 (fully traced / versions in scope) per measurement",
+    "per-element counts (with_source, with_classification, with_risk_outcome, approved_with_approved_by, baselined_with_rendered_path)",
+    "the missing N.3 elements of every version that is not fully traced"
+  ],
+  "expected_values": null,
+  "expected_values_note": "None. The scenario is a first measurement of the running system, not a labelled case: O.1 sets no E6 target, and no expected E6 value is frozen for it. Only the definition and aggregate cases carry labels."
+}

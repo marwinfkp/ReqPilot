@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Governance &middot; {{ project.name }}{% endblock %}
+{% block nav %}<a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/tasks">approvals</a>
+  <a href="/ui/projects/{{ project.id }}/traceability">traceability</a>
+  <a href="/ui/projects/{{ project.id }}/artifacts">artefacts</a>{% endblock %}
+{% block content %}
+<h1>Review queue &amp; baseline readiness</h1>
+<p class="note">One queue for everything that waits on a human (FR-HIL-006). Ordering:
+<b>{{ queue.ordering_rule }}</b>. Severity is the authoritative value (the P7 matrix, the
+P6 evaluator, or the P5 severity); confidence is a review signal, not a probability.
+The queue decides nothing: gates are decided in the <a href="/ui/projects/{{ project.id }}/tasks">approval queue</a>.</p>
+
+{% if may_raise %}
+<form method="post" action="/ui/projects/{{ project.id }}/governance/fan-out">
+  <button class="primary" type="submit">Raise the required G4 / G5 / G7 tasks</button>
+  <span class="muted">Raising is not deciding. Only tasks the persisted state requires, and that do not exist yet, are raised.</span>
+</form>
+{% endif %}
+
+<h2>Queue ({{ queue.entries|length }})</h2>
+{% if queue.entries %}
+<table>
+  <tr><th>#</th><th>Kind</th><th>Item</th><th>Subject</th><th>Blocking</th><th>Severity</th><th>Signal</th><th>You can act</th></tr>
+  {% for e in queue.entries %}
+  <tr class="{% if e.severity %}sev-{{ e.severity }}{% endif %}">
+    <td>{{ loop.index }}</td>
+    <td class="mono">{{ e.kind }}{% if e.gate %} {{ e.gate.value }}{% endif %}</td>
+    <td>{% if e.link %}<a href="{{ e.link }}">{{ e.title }}</a>{% else %}{{ e.title }}{% endif %}</td>
+    <td class="mono">{{ e.subject_label or e.subject_id or "" }}</td>
+    <td>{{ "yes" if e.blocking else "no" }}</td>
+    <td>{{ e.severity or "-" }}</td>
+    <td>{{ "%.2f"|format(e.review_signal) if e.review_signal is not none else "-" }}</td>
+    <td>{{ "yes" if e.actionable else "no" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">Nothing is waiting.</p>{% endif %}
+
+<h2>Readiness of current versions</h2>
+<p class="muted">What would stop each current version at G1 submission, evaluated from persisted rows (FR-HIL-004).</p>
+{% if readiness %}
+<table>
+  <tr><th>Requirement</th><th>State</th><th>Blockers</th><th></th></tr>
+  {% for r in readiness %}
+  <tr>
+    <td class="mono">{{ r.human_id }} v{{ r.version.version_no }}</td>
+    <td><span class="state">{{ r.version.state.value }}</span></td>
+    <td>{% if r.blockers %}<ul>{% for b in r.blockers %}<li><span class="mono">{{ b.code }}</span> {{ b.message }}</li>{% endfor %}</ul>{% else %}none{% endif %}</td>
+    <td>{% if may_flag and r.flaggable %}
+      <form method="post" action="/ui/requirement-versions/{{ r.version.id }}/architecture-flag">
+        <input type="text" name="reason" placeholder="why architecture-critical" required>
+        <button type="submit">Flag for G5</button>
+      </form>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">Not shown for your role, or no requirements yet.</p>{% endif %}
+{% endblock %}

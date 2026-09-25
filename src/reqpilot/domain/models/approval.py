@@ -78,6 +78,12 @@ class ApprovalTask(Base):
     #: approved design; the column exists because the architecture names it.
     blocking: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
+    #: P8: the one person who may decide this task, when the gate names a
+    #: specific party rather than a role - the affected stakeholder of a G4
+    #: conflict (architecture M.3: "Analyst + affected stakeholders"). Null for
+    #: every other task, which any holder of ``required_role`` may decide.
+    assignee_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     created_at: Mapped[dt.datetime] = created_at_column()
 

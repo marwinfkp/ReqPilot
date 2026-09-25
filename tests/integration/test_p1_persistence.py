@@ -62,12 +62,10 @@ P1_TABLES = {
 #: (risk analysis and the register) and left it then. Everything below is still
 #: later.
 FUTURE_PHASE_TABLES = {
-    "traceability_link",
+    # traceability_link, artifact and artifact_version arrived with P8.
     "sdlc_run",
     "sdlc_factor",
     "workflow",
-    "artifact",
-    "artifact_version",
     "evaluation_run",
 }
 

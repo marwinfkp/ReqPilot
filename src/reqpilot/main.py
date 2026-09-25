@@ -21,6 +21,7 @@ from reqpilot.web.knowledge import router as knowledge_web_router
 from reqpilot.web.quality import router as quality_web_router
 from reqpilot.web.risk import router as risk_web_router
 from reqpilot.web.router import router as web_router
+from reqpilot.web.traceability import router as traceability_web_router
 
 
 def create_app() -> FastAPI:
@@ -33,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(quality_web_router)
     app.include_router(compliance_web_router)
     app.include_router(risk_web_router)
+    app.include_router(traceability_web_router)
     return app
 
 

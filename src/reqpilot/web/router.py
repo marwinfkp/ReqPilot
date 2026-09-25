@@ -331,7 +331,8 @@ def task_queue(
                 # The author may not approve their own version, so the UI says so
                 # rather than offering a button that will be refused.
                 "is_author": version is not None and version.created_by == actor.actor_id,
-                "can_sign": task.required_role in actor.roles_in(pid),
+                "can_sign": task.required_role in actor.roles_in(pid)
+                and (task.assignee_user_id is None or task.assignee_user_id == actor.actor_id),
             }
         )
 

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Traceability &middot; {{ project.name }}{% endblock %}
+{% block nav %}<a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/governance">governance</a>
+  <a href="/ui/projects/{{ project.id }}/artifacts">artefacts</a>{% endblock %}
+{% block content %}
+<h1>Requirements Traceability Matrix</h1>
+<p class="note">Every cell is read from the persisted, typed trace graph. A relationship
+the graph does not hold is shown as <b>not linked</b> &mdash; nothing is inferred.
+{% if baseline_id %}Scope: the requirement versions in force as of the selected baseline.
+{% else %}Scope: the current version of every live requirement &mdash; a working view in which
+not every version is approved.{% endif %}</p>
+
+<form method="get" action="/ui/projects/{{ project.id }}/traceability">
+  <label>Scope</label>
+  <select name="baseline_id">
+    <option value="">current versions (working view)</option>
+    {% for b in baselines %}<option value="{{ b.id }}" {% if baseline_id and b.id == baseline_id %}selected{% endif %}>baseline {{ b.label }}</option>{% endfor %}
+  </select>
+  <button type="submit">Show</button>
+</form>
+{% if may_sync %}
+<form method="post" action="/ui/projects/{{ project.id }}/traceability/sync">
+  <button class="primary" type="submit">Synchronise the trace graph from persisted records</button>
+</form>
+{% endif %}
+<p><a href="/api/v1/projects/{{ project.id }}/traceability?format=csv{% if baseline_id %}&baseline_id={{ baseline_id }}{% endif %}">CSV</a>
+ &middot; <a href="/api/v1/projects/{{ project.id }}/traceability?format=md{% if baseline_id %}&baseline_id={{ baseline_id }}{% endif %}">Markdown</a></p>
+
+<h2>Coverage (FR-TRC-003) and E6</h2>
+<p>{{ coverage.scope_label }}: <b>{{ coverage.fully_traced }}</b> of <b>{{ coverage.total }}</b> fully traced
+(E6 = {{ "%.3f"|format(coverage.e6) if coverage.e6 is not none else "not computable: empty scope" }};
+definition {{ coverage.definition_version }}; no target is set).</p>
+<table>
+  <tr>{% for k, v in coverage.counts.items() %}<th class="mono">{{ k }}</th>{% endfor %}</tr>
+  <tr>{% for k, v in coverage.counts.items() %}<td>{{ v }}</td>{% endfor %}</tr>
+</table>
+<p class="muted">Orphan requirements: {{ coverage.orphan_requirements|join(", ") or "none" }} &middot;
+Unsourced statements: {{ coverage.unsourced_statements|join(", ") or "none" }} &middot;
+Unlinked risks: {{ coverage.unlinked_risks|join(", ") or "none" }} &middot;
+Project-level risks: {{ coverage.project_level_risks }}</p>
+
+<h2>Matrix</h2>
+{% if rows %}
+<div style="overflow-x:auto"><table>
+  <tr>{% for key, title in columns %}{% if key not in ("version_id", "content_hash") %}<th>{{ title }}</th>{% endif %}{% endfor %}</tr>
+  {% for r in rows %}
+  <tr>{% for key, title in columns %}{% if key not in ("version_id", "content_hash") %}<td>{{ r.get(key) }}</td>{% endif %}{% endfor %}</tr>
+  {% endfor %}
+</table></div>
+{% else %}<p class="muted">No requirement version in this scope.</p>{% endif %}
+{% endblock %}

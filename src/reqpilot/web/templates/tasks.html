@@ -15,7 +15,14 @@ enforces the gate.</p>
   <legend class="mono">{{ row.task.gate.value }} &middot; needs
     {{ row.this_role.value }} &middot; {{ row.task.status.value }}</legend>
 
-  {% if not row.version %}
+  {% if not row.version and row.task.subject_type == "conflict" %}
+  <p class="muted">subject: the recorded resolution of stakeholder conflict
+     <span class="mono">{{ row.task.subject_id }}</span> &mdash; both requirements, both sources and
+     the resolution are on the <a href="/ui/projects/{{ project_id }}/quality">quality &amp; conflicts</a>
+     page (bound to hash <code>{{ row.task.subject_version_hash[:16] }}&hellip;</code>)
+     {% if row.task.assignee_user_id %}&middot; assigned to the affected stakeholder
+     <span class="mono">{{ row.task.assignee_user_id }}</span>{% endif %}</p>
+  {% elif not row.version %}
   <p class="muted">subject: <span class="mono">{{ row.task.subject_type }} {{ row.task.subject_id }}</span>
      &mdash; the interpretation, its cited evidence with full provenance and the advisory notice
      are on the <a href="/ui/projects/{{ project_id }}/compliance">compliance &amp; security</a>
@@ -52,8 +59,8 @@ enforces the gate.</p>
     <p class="muted">This task is {{ row.task.status.value }} and cannot be decided again.</p>
   {% elif not row.can_sign %}
     <p class="muted">This task must be signed as
-    <span class="mono">{{ row.this_role.value }}</span>, which you do not hold in
-    this project.</p>
+    <span class="mono">{{ row.this_role.value }}</span>{% if row.task.assignee_user_id %} by the
+    stakeholder it is assigned to{% endif %}, which you are not in this project.</p>
   {% else %}
     <form method="post" action="/ui/approval-tasks/{{ row.task.id }}/decide">
       <input type="hidden" name="project_id" value="{{ project_id }}">

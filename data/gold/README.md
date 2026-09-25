@@ -178,11 +178,34 @@ manifest and compute the figures (PostgreSQL required for the pipeline half).
 The results are in `docs/evaluation/p7-risk-synthetic-v1/` and `docs/10` (§25
 records the post-evaluation author review). A correction is `_v2`.
 
+## P8-TRACE-SYNTHETIC-v1 - the P8 E6 first measurement
+
+**Frozen on 2026-09-25 as `p8_traceability_synthetic_v1/`, before the harness was
+first run.** It holds 27 labelled definition cases (a version's lifecycle state
+and the trace edges around it, with the architecture N.3 elements it should be
+missing), 5 aggregate cases (expected numerator and denominator, including the
+empty scope, whose E6 is undefined), and an unlabelled scenario protocol over
+the synthetic P8 loan-origination world (`tests/p8_helpers.py`, whose hash the
+manifest also freezes).
+
+**It sets no target.** O.1 defines E6 but sets no target, so the scenario is a
+first measurement. It is a **synthetic reference benchmark**, written after the
+P8 implementation by the same AI assistant. The project author reviewed it on
+2026-09-25, **after** the evaluation run: **no substantive label corrections
+were identified**. **v1 remains frozen and unedited**; any future correction
+would be `_v2`. It is a synthetic, **project-author-reviewed** benchmark — not
+independently reviewed and not an expert-validated gold standard. Its frozen
+`manifest.json`, `BENCHMARK.md` and `REVIEW_SHEET.md` still say "not reviewed"
+because they record the state at freeze time; `docs/11` §25 is the later record.
+`services/evaluation/traceability_eval.py` and `scripts/run_p8_eval.py` verify
+the manifest and compute the figures; the results are in
+`docs/evaluation/p8-trace-synthetic-v1/` and `docs/11` §25. A correction is `_v2`.
+
 ## Roadmap note
 
 Empty in P0. Gold datasets are produced alongside the phases they evaluate, and
 each is frozen before use (`docs/01-analysis.md` §O, §P). After P3 this directory
 holds `e1_synthetic_v1/`, frozen before ReqPilot was run on it; after P5 also
 `p5_quality_conflict_synthetic_v1/`, after P6 `p6_compliance_security_synthetic_v1/`,
-and after P7 `p7_risk_synthetic_v1/`.
+after P7 `p7_risk_synthetic_v1/`, and after P8 `p8_traceability_synthetic_v1/`.
 None is ever edited; a correction is a new `_v2`.

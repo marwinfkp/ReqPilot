@@ -25,6 +25,7 @@ from reqpilot.api.routes import (
     quality,
     requirements,
     risk,
+    traceability,
 )
 
 DESCRIPTION = (
@@ -44,7 +45,13 @@ DESCRIPTION = (
     "candidate mappings whose every citation resolves, rule-engine gap detection, deterministic "
     "mandated-language enforcement and a standing advisory notice, derived security and privacy "
     "requirements with a deterministic authoritative risk level, and blocking G2/G3 gates that "
-    "only the Compliance Officer or Security Reviewer decides). Model calls go to the configured "
+    "only the Compliance Officer or Security Reviewer decides) and P7 (risk analysis: a "
+    "deterministic severity matrix, a risk register, and a blocking G8 gate) and P8 (approval, "
+    "traceability and documents: gates G4, G5 and G7 through the one approval service, baseline "
+    "readiness enforced at G1, a typed append-only trace graph, the RTM and coverage (E6), and "
+    "deterministic, versioned SRS, RTM, risk register, user stories, use cases, compliance "
+    "matrix, assumptions/dependency register and open-issues list, exported as Markdown and "
+    "DOCX, generated only from an approved baseline). Model calls go to the configured "
     "provider: the offline stub by default, "
     "or OpenAI when LLM_PROVIDER=openai."
 )
@@ -67,6 +74,7 @@ def create_app() -> FastAPI:
     app.include_router(quality.router)
     app.include_router(compliance.router)
     app.include_router(risk.router)
+    app.include_router(traceability.router)
     return app
 
 

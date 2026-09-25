@@ -19,8 +19,11 @@ license = { text = "UNLICENSED" }
 # optional extra (below). P3 (extraction & classification) built the gateway,
 # validation and review queue on what exists; at P3 closure the team selected
 # OpenAI as the provider (architecture Y), whose SDK is an optional extra
-# (below), imported only when LLM_PROVIDER=openai. Still deliberately absent:
-# document generation and evaluation tooling.
+# (below), imported only when LLM_PROVIDER=openai. P8 (documents) adds no
+# dependency: artefacts render through Jinja2 (already present for the UI) to
+# Markdown, and to DOCX through python-docx (already present for J.2) - ADR-007's
+# python-docx path, since Pandoc is not assumed. Still deliberately absent:
+# evaluation tooling.
 dependencies = [
     "pydantic>=2.7",              # ADR-002: one type system for API, contracts, graph state
     "pydantic-settings>=2.3",     # ADR-011: typed, fail-fast configuration
@@ -109,6 +112,7 @@ ignore = [
 "src/reqpilot/web/extraction.py" = ["B008"]
 "src/reqpilot/web/elicitation.py" = ["B008"]
 "src/reqpilot/web/quality.py" = ["B008"]
+"src/reqpilot/web/traceability.py" = ["B008"]
 
 # ---------------------------------------------------------------------------
 # Types
@@ -195,6 +199,25 @@ forbidden_modules = [
     "reqpilot.graph",
     "reqpilot.api",
     "reqpilot.web",
+]
+
+# P8: module M8 renders a structured document; it decides nothing and reaches
+# nothing that does. Its renderers depend on the domain alone - no repository,
+# service, graph, agent, gateway or web/API code - so a document can never
+# acquire authority through the rendering path (architecture C.6, J.1).
+[[tool.importlinter.contracts]]
+name = "Artefact renderers decide nothing: no persistence, services, orchestration or model"
+type = "forbidden"
+source_modules = ["reqpilot.artifacts"]
+forbidden_modules = [
+    "reqpilot.repositories",
+    "reqpilot.services",
+    "reqpilot.agents",
+    "reqpilot.graph",
+    "reqpilot.llm",
+    "reqpilot.api",
+    "reqpilot.web",
+    "langgraph",
 ]
 
 # P3: the gateway is infrastructure below everything that decides. It may not

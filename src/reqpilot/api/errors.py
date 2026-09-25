@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 
 from reqpilot.domain.errors import (
     ApprovalError,
+    ArtifactError,
     AuthorizationError,
     BaselineInvariantError,
     CitationError,
@@ -36,6 +37,7 @@ from reqpilot.domain.errors import (
     ReviewError,
     RuleConfigurationError,
     StateTransitionError,
+    TraceabilityError,
     UngroundedRetrievalError,
 )
 
@@ -64,6 +66,10 @@ ERROR_STATUS: tuple[tuple[type[Exception], int], ...] = (
     (ElicitationError, status.HTTP_409_CONFLICT),
     (ClarificationError, status.HTTP_409_CONFLICT),
     (QualityError, status.HTTP_409_CONFLICT),
+    # P8: an artefact refused in the current governance state, or a trace link
+    # outside the closed allowlist. Neither is a malformed request.
+    (ArtifactError, status.HTTP_409_CONFLICT),
+    (TraceabilityError, status.HTTP_409_CONFLICT),
     # A trust-boundary refusal is not the caller's input error.
     (EgressRefusedError, status.HTTP_409_CONFLICT),
     (PromptRegistryError, status.HTTP_500_INTERNAL_SERVER_ERROR),

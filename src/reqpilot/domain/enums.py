@@ -112,7 +112,11 @@ GATE_REQUIRED_ROLES: dict[Gate, frozenset[Role]] = {
     Gate.G1_REQUIREMENT_BASELINE: frozenset({Role.ANALYST, Role.COMPLIANCE_OFFICER}),
     Gate.G2_REGULATORY_INTERPRETATION: frozenset({Role.COMPLIANCE_OFFICER}),
     Gate.G3_HIGH_RISK_SECURITY: frozenset({Role.SECURITY_REVIEWER}),
-    Gate.G4_STAKEHOLDER_CONFLICT: frozenset({Role.ANALYST}),
+    # P8: "Analyst + affected stakeholders" (approved Phase 0 G.14; architecture
+    # M.3). The stakeholder side is signed by a human holding the Stakeholder role
+    # in the project; the approval service binds each stakeholder task to the
+    # affected stakeholder's own account where one is linked.
+    Gate.G4_STAKEHOLDER_CONFLICT: frozenset({Role.ANALYST, Role.STAKEHOLDER}),
     Gate.G5_ARCHITECTURE_CRITICAL: frozenset({Role.PROJECT_MANAGER}),
     Gate.G6_SDLC_SELECTION: frozenset(
         {Role.PROJECT_MANAGER, Role.SECURITY_REVIEWER, Role.COMPLIANCE_OFFICER}
@@ -128,7 +132,9 @@ GATE_REQUIRED_ROLES: dict[Gate, frozenset[Role]] = {
 #: **Settled, not a tuning knob.** G1 is co-approval: the approved Phase 0
 #: analysis F.1 records "Gates G2, and G1 co-approval", and architecture M.3
 #: now annotates the G1 row to match. G6 and G7 are co-approval for the same
-#: reason - every role a gate names must sign.
+#: reason - every role a gate names must sign. From P8 G4 is co-approval too:
+#: "Analyst + affected stakeholders" (G.14, M.3) names two parties, both of
+#: whom must sign.
 #:
 #: A ``True`` value makes the gate fan out into one task per required role,
 #: sharing a ``task_group_id`` (architecture M.3). A ``False`` value is only
@@ -137,7 +143,8 @@ GATE_REQUIRES_ALL_ROLES: dict[Gate, bool] = {
     Gate.G1_REQUIREMENT_BASELINE: True,
     Gate.G2_REGULATORY_INTERPRETATION: False,
     Gate.G3_HIGH_RISK_SECURITY: False,
-    Gate.G4_STAKEHOLDER_CONFLICT: False,
+    # P8: co-approval - the Analyst and the affected stakeholder(s) each sign.
+    Gate.G4_STAKEHOLDER_CONFLICT: True,
     Gate.G5_ARCHITECTURE_CRITICAL: False,
     Gate.G6_SDLC_SELECTION: True,
     Gate.G7_APPROVED_REQUIREMENT_CHANGE: True,
@@ -471,6 +478,18 @@ class AuditEventType(StrEnum):
     RISK_DECISION_RECORDED = "RISK_DECISION_RECORDED"
     RISK_MITIGATION_DECIDED = "RISK_MITIGATION_DECIDED"
 
+    # Approval, traceability and documents (added by P8). The artefact events are
+    # named in architecture E #11 and O.2; the rest follow the P1-P7 precedent
+    # of a phase adding the events it raises.
+    ARCHITECTURE_CRITICAL_FLAGGED = "ARCHITECTURE_CRITICAL_FLAGGED"
+    CHANGE_GATE_SETTLED = "CHANGE_GATE_SETTLED"
+    CONFLICT_GATE_SETTLED = "CONFLICT_GATE_SETTLED"
+    TRACE_LINKS_SYNCED = "TRACE_LINKS_SYNCED"
+    ARTIFACT_GENERATED = "ARTIFACT_GENERATED"
+    ARTIFACT_VERSION_CREATED = "ARTIFACT_VERSION_CREATED"
+    ARTIFACT_GENERATION_REFUSED = "ARTIFACT_GENERATION_REFUSED"
+    ARTIFACT_EXPORTED = "ARTIFACT_EXPORTED"
+
 
 class Action(StrEnum):
     """Actions the policy can authorise (architecture ADR-009).
@@ -597,6 +616,24 @@ class Action(StrEnum):
     #: mitigation suggestion, with a recorded rationale (``FR-RSK-010``).
     RISK_MANAGE = "risk.manage"
 
+    # Approval, traceability and documents (P8)
+    #: Reading the governance view: the unified review queue and a version's
+    #: baseline readiness (the deterministic list of what still blocks it).
+    GOVERNANCE_READ = "governance.read"
+    #: An analyst flagging a requirement version as architecture-critical, which
+    #: raises G5 (architecture M.3: "... or analyst flag"). Raising, not deciding.
+    ARCHITECTURE_FLAG = "architecture.flag"
+    #: Reading the typed trace graph, the RTM and the coverage report.
+    TRACE_READ = "trace.read"
+    #: Materialising typed trace links from persisted facts (FR-TRC-001). The
+    #: links are derived by code from rows that already exist; nothing is asserted.
+    TRACE_SYNC = "trace.sync"
+    #: Generating an authoritative artefact version from an approved baseline.
+    ARTIFACT_GENERATE = "artifact.generate"
+    ARTIFACT_READ = "artifact.read"
+    #: Downloading an artefact version as Markdown, DOCX or CSV.
+    ARTIFACT_EXPORT = "artifact.export"
+
 
 class ResourceType(StrEnum):
     """Resource types the policy can authorise against."""
@@ -631,6 +668,9 @@ class ResourceType(StrEnum):
     SECURITY_PRIVACY_FINDING = "security_privacy_finding"
     RISK = "risk"
     RISK_MITIGATION = "risk_mitigation"
+    TRACEABILITY_LINK = "traceability_link"
+    ARTIFACT = "artifact"
+    ARTIFACT_VERSION = "artifact_version"
 
 
 # ---------------------------------------------------------------------------
@@ -1208,3 +1248,35 @@ class MitigationStatus(StrEnum):
     SUGGESTED = "suggested"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
+
+
+# ---------------------------------------------------------------------------
+# Approval, traceability and documents (roadmap phase P8)
+# ---------------------------------------------------------------------------
+
+
+class ArtifactType(StrEnum):
+    """The generated artefacts P8 produces (``FR-DOC-001``..``-007``, ``FR-TRC-002``).
+
+    Data and interface requirements (``FR-DOC-007``) are SRS *sections*, not
+    artefacts of their own, exactly as ``FR-DOC-007`` and change C15 word them.
+    Process workflow diagrams (``FR-DOC-011``) and PDF (``FR-DOC-012``) are
+    secondary and deliberately absent.
+    """
+
+    SRS = "srs"
+    RTM = "rtm"
+    USER_STORIES = "user_stories"
+    USE_CASES = "use_cases"
+    COMPLIANCE_MATRIX = "compliance_matrix"
+    RISK_REGISTER = "risk_register"
+    ASSUMPTIONS_DEPENDENCIES = "assumptions_dependencies"
+    OPEN_ISSUES = "open_issues"
+
+
+class ArtifactFormat(StrEnum):
+    """Export formats (``FR-DOC-010``; CSV for the RTM, ``FR-TRC-002``)."""
+
+    MARKDOWN = "markdown"
+    DOCX = "docx"
+    CSV = "csv"

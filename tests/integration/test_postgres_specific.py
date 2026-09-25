@@ -136,6 +136,8 @@ def test_migrations_create_nothing_beyond_the_current_phase(pg_engine) -> None:
         "security_privacy_finding", "security_privacy_finding_evidence",
         # P7
         "risk_matrix", "risk", "risk_evidence", "risk_mitigation",
+        # P8
+        "traceability_link", "artifact", "artifact_version", "artifact_section",
         # The LangGraph checkpoint store, in the same database (architecture C.7);
         # created by the elicitation graph's durable checkpointer on first use.
         "checkpoint_migrations", "checkpoints", "checkpoint_blobs", "checkpoint_writes",
@@ -185,66 +187,77 @@ def test_database_refuses_an_unapproved_baseline_member(pg_engine) -> None:
     This is the check that makes the invariant a property of the database rather
     than of the service layer alone.
     """
-    with pg_engine.begin() as conn:
-        project = conn.execute(
-            text(
-                "INSERT INTO project (id, name, domain, lifecycle_state, created_at) "
-                "VALUES (gen_random_uuid(), 'trigger-test', 'loan', 'elicitation', now()) "
-                "RETURNING id"
-            )
-        ).scalar()
-        requirement = conn.execute(
-            text(
-                "INSERT INTO requirement (id, project_id, human_id, created_at) "
-                "VALUES (gen_random_uuid(), :p, 'FR-TRG-001', now()) RETURNING id"
-            ),
-            {"p": project},
-        ).scalar()
-        version = conn.execute(
-            text(
-                "INSERT INTO requirement_version "
-                "(id, requirement_id, project_id, version_no, state, statement, "
-                " dependencies, assumptions, source_refs, content_hash, created_at) "
-                "VALUES (gen_random_uuid(), :r, :p, 1, 'CANDIDATE', 'unapproved', "
-                " '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, repeat('a', 64), now()) "
-                "RETURNING id"
-            ),
-            {"r": requirement, "p": project},
-        ).scalar()
-        task = conn.execute(
-            text(
-                "INSERT INTO approval_task (id, project_id, gate, subject_type, subject_id, "
-                " subject_version_hash, required_role, status, blocking, created_at) "
-                "VALUES (gen_random_uuid(), :p, 'G1_REQUIREMENT_BASELINE', "
-                " 'requirement_version', :v, repeat('a', 64), 'ANALYST', 'OPEN', true, now()) "
-                "RETURNING id"
-            ),
-            {"p": project, "v": version},
-        ).scalar()
-        decision = conn.execute(
-            text(
-                "INSERT INTO approval_decision (id, task_id, project_id, decided_by, "
-                " role_exercised, decision, subject_version_hash, decided_at) "
-                "VALUES (gen_random_uuid(), :t, :p, gen_random_uuid(), 'ANALYST', "
-                " 'APPROVE', repeat('a', 64), now()) RETURNING id"
-            ),
-            {"t": task, "p": project},
-        ).scalar()
-        baseline = conn.execute(
-            text(
-                "INSERT INTO baseline (id, project_id, label, approval_decision_id, frozen_at) "
-                "VALUES (gen_random_uuid(), :p, 'trigger-test', :d, now()) RETURNING id"
-            ),
-            {"p": project, "d": decision},
-        ).scalar()
+    # Everything runs on one connection inside one transaction that is always
+    # rolled back: the setup rows are never committed, so repeated runs against
+    # the same database see no leftover ``trigger-test`` project.
+    with pg_engine.connect() as conn:
+        outer = conn.begin()
+        try:
+            project = conn.execute(
+                text(
+                    "INSERT INTO project (id, name, domain, lifecycle_state, created_at) "
+                    "VALUES (gen_random_uuid(), 'trigger-test', 'loan', 'elicitation', now()) "
+                    "RETURNING id"
+                )
+            ).scalar()
+            requirement = conn.execute(
+                text(
+                    "INSERT INTO requirement (id, project_id, human_id, created_at) "
+                    "VALUES (gen_random_uuid(), :p, 'FR-TRG-001', now()) RETURNING id"
+                ),
+                {"p": project},
+            ).scalar()
+            version = conn.execute(
+                text(
+                    "INSERT INTO requirement_version "
+                    "(id, requirement_id, project_id, version_no, state, statement, "
+                    " dependencies, assumptions, source_refs, content_hash, created_at) "
+                    "VALUES (gen_random_uuid(), :r, :p, 1, 'CANDIDATE', 'unapproved', "
+                    " '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, repeat('a', 64), now()) "
+                    "RETURNING id"
+                ),
+                {"r": requirement, "p": project},
+            ).scalar()
+            task = conn.execute(
+                text(
+                    "INSERT INTO approval_task (id, project_id, gate, subject_type, subject_id, "
+                    " subject_version_hash, required_role, status, blocking, created_at) "
+                    "VALUES (gen_random_uuid(), :p, 'G1_REQUIREMENT_BASELINE', "
+                    " 'requirement_version', :v, repeat('a', 64), 'ANALYST', 'OPEN', true, now()) "
+                    "RETURNING id"
+                ),
+                {"p": project, "v": version},
+            ).scalar()
+            decision = conn.execute(
+                text(
+                    "INSERT INTO approval_decision (id, task_id, project_id, decided_by, "
+                    " role_exercised, decision, subject_version_hash, decided_at) "
+                    "VALUES (gen_random_uuid(), :t, :p, gen_random_uuid(), 'ANALYST', "
+                    " 'APPROVE', repeat('a', 64), now()) RETURNING id"
+                ),
+                {"t": task, "p": project},
+            ).scalar()
+            baseline = conn.execute(
+                text(
+                    "INSERT INTO baseline (id, project_id, label, approval_decision_id, frozen_at) "
+                    "VALUES (gen_random_uuid(), :p, 'trigger-test', :d, now()) RETURNING id"
+                ),
+                {"p": project, "d": decision},
+            ).scalar()
 
-    with pg_engine.begin() as conn, pytest.raises(Exception) as excinfo:
-        conn.execute(
-            text(
-                "INSERT INTO baseline_member "
-                "(id, baseline_id, requirement_version_id, project_id, version_hash, created_at) "
-                "VALUES (gen_random_uuid(), :b, :v, :p, repeat('a', 64), now())"
-            ),
-            {"b": baseline, "v": version, "p": project},
-        )
+            savepoint = conn.begin_nested()
+            with pytest.raises(Exception) as excinfo:
+                conn.execute(
+                    text(
+                        "INSERT INTO baseline_member "
+                        "(id, baseline_id, requirement_version_id, project_id, version_hash, "
+                        "created_at) "
+                        "VALUES (gen_random_uuid(), :b, :v, :p, repeat('a', 64), now())"
+                    ),
+                    {"b": baseline, "v": version, "p": project},
+                )
+                conn.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
+            savepoint.rollback()
+        finally:
+            outer.rollback()
     assert "unapproved requirement version" in str(excinfo.value).lower()

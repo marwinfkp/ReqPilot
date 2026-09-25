@@ -12,14 +12,18 @@ utterances, quality findings and clarifications. The quality phase adds
 conflicts and the project glossary. The compliance phase adds compliance
 mappings and their evidence links, compliance gaps, and security/privacy
 findings and their evidence links. The risk phase adds the versioned severity
-matrix, risk items and their evidence links, and mitigation suggestions.
+matrix, risk items and their evidence links, and mitigation suggestions. The
+approval, traceability and documents phase (P8) adds the typed trace graph
+(``traceability_link``) and the generated artefacts (``artifact``,
+``artifact_version``, ``artifact_section``).
 
-Tables belonging to later roadmap phases - SDLC, artefacts, evaluation - are
+Tables belonging to later roadmap phases - SDLC, workflow, evaluation - are
 still deliberately absent. A test
 asserts that the migrations create nothing beyond the tables named here.
 """
 
 from reqpilot.domain.models.approval import ApprovalDecision, ApprovalTask
+from reqpilot.domain.models.artifacts import Artifact, ArtifactSection, ArtifactVersion
 from reqpilot.domain.models.audit import AuditEvent
 from reqpilot.domain.models.base import Base
 from reqpilot.domain.models.baseline import Baseline, BaselineMember
@@ -65,12 +69,16 @@ from reqpilot.domain.models.risk import (
     RiskMitigation,
 )
 from reqpilot.domain.models.runs import AgentRun, GraphRun
+from reqpilot.domain.models.traceability import TraceabilityLink
 
 __all__ = [
     "AcceptanceCriterion",
     "AgentRun",
     "ApprovalDecision",
     "ApprovalTask",
+    "Artifact",
+    "ArtifactSection",
+    "ArtifactVersion",
     "AuditEvent",
     "Base",
     "Baseline",
@@ -108,6 +116,7 @@ __all__ = [
     "SourceChunk",
     "SourceDocument",
     "Stakeholder",
+    "TraceabilityLink",
     "User",
     "Utterance",
 ]

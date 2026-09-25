@@ -33,6 +33,9 @@ class Baseline(Base):
     __table_args__ = (
         UniqueConstraint("project_id", "label", name="project_label"),
         Index("ix_baseline_project", "project_id"),
+        # P8: referenceable with its project, so an artefact version names a
+        # baseline *of its own project* through a composite foreign key.
+        UniqueConstraint("id", "project_id", name="id_project"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()

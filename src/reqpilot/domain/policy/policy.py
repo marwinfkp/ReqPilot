@@ -56,6 +56,15 @@ The design rules enforced here rather than trusted to callers:
     close, reject or mitigate a risk (``RISK_MANAGE``), and it cannot decide G8:
     that is the Security Reviewer's, through ``APPROVAL_DECIDE`` (approved Phase
     0 F.1's G8 row; architecture I.5; ``FR-RSK-007``, ``FR-RSK-010``).
+11. **Documents and trace links are projections, never authority.** From P8 an
+    analyst generates artefacts from an approved baseline (``ARTIFACT_GENERATE``)
+    and materialises typed trace links from persisted rows (``TRACE_SYNC``).
+    Both are human-only: no agent role generates an authoritative document or
+    asserts a trace link. Generating an artefact decides nothing about approval,
+    baselining or gates - the artefact service reads those from the approval and
+    baseline records and refuses when they are missing. Flagging a requirement
+    as architecture-critical raises G5 (``ARCHITECTURE_FLAG``); only the Project
+    Manager decides it (architecture M.3).
 """
 
 from __future__ import annotations
@@ -188,9 +197,12 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
             Role.AUDITOR,
         }
     ),
+    # P8: the stakeholder reads approval tasks too - an affected stakeholder is a
+    # G4 party (architecture M.3) and must be able to see the task they sign.
     Action.APPROVAL_TASK_READ: frozenset(
         {
             Role.ANALYST,
+            Role.STAKEHOLDER,
             Role.COMPLIANCE_OFFICER,
             Role.SECURITY_REVIEWER,
             Role.PROJECT_MANAGER,
@@ -404,6 +416,52 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
     Action.RISK_MANAGE: frozenset(
         {Role.ANALYST, Role.SECURITY_REVIEWER, Role.PROJECT_MANAGER, Role.COMPLIANCE_OFFICER}
     ),
+    # --- approval, traceability and documents (P8) ------------------------
+    # Every reviewing role reads the governance view, the trace graph and the
+    # artefacts - the stakeholder too, who is a G4 party and reads requirements.
+    # Generating and syncing are the analyst's, who owns the requirement set.
+    Action.GOVERNANCE_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.STAKEHOLDER,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.ARCHITECTURE_FLAG: frozenset({Role.ANALYST}),
+    Action.TRACE_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.TRACE_SYNC: frozenset({Role.ANALYST}),
+    Action.ARTIFACT_GENERATE: frozenset({Role.ANALYST}),
+    Action.ARTIFACT_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.STAKEHOLDER,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.ARTIFACT_EXPORT: frozenset(
+        {
+            Role.ANALYST,
+            Role.STAKEHOLDER,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
 }
 
 #: Actions an actor may perform without belonging to a project. For these the
@@ -437,6 +495,10 @@ _AUDITOR_READ_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.COMPLIANCE_READ,
         Action.SECURITY_READ,
         Action.RISK_READ,
+        Action.GOVERNANCE_READ,
+        Action.TRACE_READ,
+        Action.ARTIFACT_READ,
+        Action.ARTIFACT_EXPORT,
     }
 )
 
@@ -474,6 +536,11 @@ _HUMAN_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.GLOSSARY_MANAGE,
         # Rule 10 (P7): accepting, closing or mitigating a risk is a human's call.
         Action.RISK_MANAGE,
+        # Rule 11 (P8): no agent role generates an authoritative artefact, asserts
+        # a trace link or flags a requirement for a gate.
+        Action.ARTIFACT_GENERATE,
+        Action.TRACE_SYNC,
+        Action.ARCHITECTURE_FLAG,
     }
 )
 

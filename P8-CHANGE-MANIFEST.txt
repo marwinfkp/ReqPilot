@@ -1,0 +1,243 @@
+ReqPilot - P8 CHANGE MANIFEST
+=============================
+Phase:   P8 - Approval, Traceability & Documents
+Date:    2026-09-25
+Status:  P8 COMPLETE - ROADMAP EXIT PASSED - PROJECT-AUTHOR REVIEW COMPLETED
+Revised: 2026-09-25 final cleanup (trigger-test rollback fix; benchmark review
+         recorded; all hashes below recomputed from the final files)
+Report:  docs/11-p8-approval-traceability-documents.md
+
+Git/GitHub: NO GIT/GITHUB WRITE OPERATIONS WERE PERFORMED. No commits, pushes,
+pull requests, branch creations, tags, releases or GitHub comments were created.
+(Read-only `git status` / `git ls-files` were used to list the changed files.)
+
+This ZIP contains ONLY the files created or modified in P8, at their
+repository-relative paths, plus this manifest. Unzip at the repository root.
+Excluded by construction: .git/, .env, secrets, virtual environments,
+__pycache__, .pytest_cache, .mypy_cache, .ruff_cache, .import_linter_cache,
+node_modules, PostgreSQL data directories, temporary files, and the ZIP itself.
+
+Entries: 82 (56 created + 25 modified + this manifest)
+
+NEW FILES (56)
+  alembic/versions/0010_p8_trace_documents.py
+  data/gold/p8_traceability_synthetic_v1/BENCHMARK.md
+  data/gold/p8_traceability_synthetic_v1/REVIEW_SHEET.md
+  data/gold/p8_traceability_synthetic_v1/aggregate_cases.jsonl
+  data/gold/p8_traceability_synthetic_v1/definition_cases.jsonl
+  data/gold/p8_traceability_synthetic_v1/manifest.json
+  data/gold/p8_traceability_synthetic_v1/scenario.json
+  docs/11-p8-approval-traceability-documents.md
+  docs/evaluation/p8-trace-synthetic-v1/README.md
+  docs/evaluation/p8-trace-synthetic-v1/summary.json
+  scripts/run_p8_eval.py
+  src/reqpilot/api/routes/traceability.py
+  src/reqpilot/api/trace_schemas.py
+  src/reqpilot/artifacts/docx.py
+  src/reqpilot/artifacts/markdown.py
+  src/reqpilot/artifacts/model.py
+  src/reqpilot/artifacts/registry.py
+  src/reqpilot/artifacts/templates/artefact_templates.yaml
+  src/reqpilot/artifacts/templates/document-1.0.0.md.j2
+  src/reqpilot/domain/governance.py
+  src/reqpilot/domain/models/artifacts.py
+  src/reqpilot/domain/models/traceability.py
+  src/reqpilot/domain/traceability.py
+  src/reqpilot/repositories/artifacts.py
+  src/reqpilot/repositories/traceability.py
+  src/reqpilot/services/documents/__init__.py
+  src/reqpilot/services/documents/assemblers.py
+  src/reqpilot/services/documents/context.py
+  src/reqpilot/services/documents/service.py
+  src/reqpilot/services/evaluation/traceability_eval.py
+  src/reqpilot/services/governance/__init__.py
+  src/reqpilot/services/governance/fanout.py
+  src/reqpilot/services/governance/gates.py
+  src/reqpilot/services/governance/queue.py
+  src/reqpilot/services/governance/readiness.py
+  src/reqpilot/services/traceability/__init__.py
+  src/reqpilot/services/traceability/coverage.py
+  src/reqpilot/services/traceability/graph.py
+  src/reqpilot/services/traceability/rtm.py
+  src/reqpilot/services/traceability/scope.py
+  src/reqpilot/services/traceability/sync.py
+  src/reqpilot/web/templates/artifact.html
+  src/reqpilot/web/templates/artifacts.html
+  src/reqpilot/web/templates/governance.html
+  src/reqpilot/web/templates/traceability.html
+  src/reqpilot/web/traceability.py
+  tests/integration/test_p8_api_and_ui.py
+  tests/integration/test_p8_documents.py
+  tests/integration/test_p8_evaluation.py
+  tests/integration/test_p8_governance.py
+  tests/integration/test_p8_postgres.py
+  tests/integration/test_p8_traceability.py
+  tests/p8_helpers.py
+  tests/security/test_p8_security.py
+  tests/unit/test_p8_domain.py
+  tests/workflow/test_p8_exit_test.py
+
+MODIFIED FILES (25)
+  README.md
+  data/gold/README.md
+  pyproject.toml
+  src/reqpilot/api/app.py
+  src/reqpilot/api/errors.py
+  src/reqpilot/api/schemas.py
+  src/reqpilot/domain/enums.py
+  src/reqpilot/domain/errors.py
+  src/reqpilot/domain/models/__init__.py
+  src/reqpilot/domain/models/approval.py
+  src/reqpilot/domain/models/base.py
+  src/reqpilot/domain/models/baseline.py
+  src/reqpilot/domain/policy/policy.py
+  src/reqpilot/main.py
+  src/reqpilot/services/approval/service.py
+  src/reqpilot/services/baseline/service.py
+  src/reqpilot/services/requirements/service.py
+  src/reqpilot/web/router.py
+  src/reqpilot/web/templates/base.html
+  src/reqpilot/web/templates/project.html
+  src/reqpilot/web/templates/tasks.html
+  tests/integration/test_api_health.py
+  tests/integration/test_migrations.py
+  tests/integration/test_p1_persistence.py
+  tests/integration/test_postgres_specific.py
+
+DELETED FILES
+  NONE (no P8-DELETED-FILES.txt is included)
+
+MIGRATION
+  alembic/versions/0010_p8_trace_documents.py
+  revision 0010_p8_trace_documents, down_revision 0009_p7_risk_register (additive)
+  Verified up -> down(0009) -> up -> down(base) -> up on SQLite and on a fresh
+  PostgreSQL 16.13 + pgvector 0.6.0 database (CLI), and by
+  tests/integration/test_migrations.py and test_p8_postgres.py.
+
+TEST SUMMARY
+  Offline suite:     2349 collected - 2095 passed, 0 failed, 248 skipped
+                     (245 PostgreSQL-only, 3 optional sentence-transformers model),
+                     6 deselected (llm marker)
+  PostgreSQL suite:  2349 collected - 2337 passed, 0 failed, 6 skipped
+                     (optional sentence-transformers model), 6 deselected (llm)
+                     fresh database migrated to head.
+                     Repeated verification (final cleanup), full suite twice in
+                     succession on ONE database, no reset between runs:
+                       run 1: 2349 collected - 2337 passed, 0 failed, 6 skipped, 6 deselected
+                       run 2: 2349 collected - 2337 passed, 0 failed, 6 skipped, 6 deselected
+                       0 leftover 'trigger-test' rows after each run
+                     History: the initial P8 PostgreSQL run, on a reused database,
+                     had 3 failures - the PostgreSQL phase guard not yet advanced
+                     to P8, and a P1-era trigger test that committed its
+                     'trigger-test' setup rows. Both were corrected in
+                     tests/integration/test_postgres_specific.py (the trigger test
+                     now rolls back its setup transaction) and passed in the
+                     repeated verification. Not an outstanding issue.
+  P8 tests:          123 tests in 9 new files, all passing
+  ruff format:       403 files clean   | ruff check: clean
+  mypy:              246 source files clean
+  import-linter:     6 contracts kept, 0 broken
+  DOCX validation:   all 8 artefact types - package intact, no macros, no external
+                     relationships, no field codes, escaped markup, byte-reproducible,
+                     metadata complete, content and Markdown hashes re-verified
+
+E6 RESULT (no target exists; none invented)
+  Definition: architecture N.3 (N.3-v1). Benchmark P8-TRACE-SYNTHETIC-v1, frozen
+  before the harness first ran; synthetic. PROJECT-AUTHOR REVIEW COMPLETED after
+  the run: no substantive label corrections identified. v1 remains frozen and
+  unedited (data, labels, manifest and results unchanged); any future correction
+  would be v2. NOT independently reviewed, NOT expert validated.
+  Definition agreement 27/27; aggregate agreement 5/5.
+  Scenario first measurement: S0 project 0.875 (7/8); S1 B1 before rendering
+  0.000 (0/5); S2 B1 rendered 0.800 (4/5); S3 B2 0.800 (4/5); S4 B2 rendered
+  0.800 (4/5); S4 project 0.857 (6/7).
+
+EXIT TEST
+  tests/workflow/test_p8_exit_test.py - 2 passed (17-step story; three roadmap
+  criteria measured directly). Roadmap exit: (1) an unapproved requirement cannot
+  enter a baseline or a document - PASSED; (2) SRS + RTM + risk register produced
+  end to end - PASSED; (3) E6 computed - PASSED.
+
+ZIP CONTENTS (sha256  path)
+  1df78a2a271e1b81e3bff6cdd47703b4f5d4d89f17dc206f65a2be7eef7073b5  README.md
+  ee897a3acee98637dbff15a52edd07f3f68b46aa520bf2b3221461fdfd4812b7  data/gold/README.md
+  9c37a561691194382be6708766d1b8929efd4a9b58a55a71965d45a2c3c21b1a  pyproject.toml
+  2f68814d39ed691bec1a11bc610117e27d7cce40d19c862c08ee4c573a31be7c  src/reqpilot/api/app.py
+  2bf842c9fda0fcb6ed0ed9f8f1e87fc1afe872333d2de4dcf161d39a4039abf1  src/reqpilot/api/errors.py
+  66e9161e9631d94845baf15285dcfcc1de4e1c9436d7e3173f0c187a2ff686df  src/reqpilot/api/schemas.py
+  1ba7ebf14d54abc7dee48f215e5178f2f165b70702cc593918487904bf7dcc13  src/reqpilot/domain/enums.py
+  3acb6f893edae373629cc4faf5e5be369dc13ca4608809dd5b6efe80ff3b7ae3  src/reqpilot/domain/errors.py
+  2f76a45f1ddba293bbc699467487595f177b92f076bc57ca3dfd2318a92ae229  src/reqpilot/domain/models/__init__.py
+  d0cef214242f5a8d73c086b0f7bcc143d4e84f6d9e672aac4f23115d06614ab6  src/reqpilot/domain/models/approval.py
+  ebaf23b98ae7fc098a152d473f9d3f246425f94e68d3ba7d7565804505018603  src/reqpilot/domain/models/base.py
+  1552759e7a2f4a15fb66b172ac03290848d81bbab3f4e37242c09df44d7dcd28  src/reqpilot/domain/models/baseline.py
+  a73fc888888a9cb131c7959f1160e9e4e252c72f5ff09a6ea6d9aa1027327343  src/reqpilot/domain/policy/policy.py
+  3b9ee935f0c4de91e6e6378240af40d515c524b9c572a9e9e4792e7117207b7e  src/reqpilot/main.py
+  769642732ad0b1716064a8c1cb6186d3dde81a09827f5ed4a04e07bdea310587  src/reqpilot/services/approval/service.py
+  088f98a97d1686df1f4e99058a6588125e446a7b3d030334cfb76f653a932c8c  src/reqpilot/services/baseline/service.py
+  c1aa28ba53931a5086a0fb3a69f8c4c6ab7c54829db16c338bab736f8930ceca  src/reqpilot/services/requirements/service.py
+  4e1a1655c69421672cd8bd71c051535d833328490a90fc8407f6b4bf898c9231  src/reqpilot/web/router.py
+  e830d902ef6b8262ae6dd924ce3d132f7f3a5874bc4554878c72ce9b2e195b02  src/reqpilot/web/templates/base.html
+  ed40ff4aee6304697eb348ff4335fc57399873cc3280d726170d1491db5844f8  src/reqpilot/web/templates/project.html
+  678eb72173768944f9e22fa6cd80fe707dfde95820daae1e79a71e4b06240be7  src/reqpilot/web/templates/tasks.html
+  f91abc17fd5ae7d5f179cb742561a840f46ff78be129bc5e2b5bf701e7d6a0e3  tests/integration/test_api_health.py
+  f94a46eb2997ff1109bc6b340a27bafd3651234af6366d72f6346a734c6e658f  tests/integration/test_migrations.py
+  9c9d61f5863c6a16830794c0a7ee715939a21af85ddec65d4f0994f63cd518c7  tests/integration/test_p1_persistence.py
+  3074de634a3f0dba4c085b86f7947980f17a3f5f9e368d5645f6ba860b141d0c  tests/integration/test_postgres_specific.py
+  c77b9d04240ad81f007f8dac518a1cd26d49fc3b7f586850fc8663dd8169cf2c  alembic/versions/0010_p8_trace_documents.py
+  bec4d23ba5b2a078b39df0db88488145e3d28480b18ce7591beb6e153070a1b6  data/gold/p8_traceability_synthetic_v1/BENCHMARK.md
+  99b10286f73971c6277f46451aaaec13135110cbb4e6b136705cb30deba39b37  data/gold/p8_traceability_synthetic_v1/REVIEW_SHEET.md
+  c2c3395cc58c74a84d2a9fbb49a560b35d90f4e08c0e2c6de10119b740fbf513  data/gold/p8_traceability_synthetic_v1/aggregate_cases.jsonl
+  c828e6871be0e9fe8246a890b04268d9547d2634ed55effc76af8f683956d365  data/gold/p8_traceability_synthetic_v1/definition_cases.jsonl
+  044558a75a10b8b3f785cd9f6c992a9e579b6b0ae2ee72ae0d06280f6b886fc9  data/gold/p8_traceability_synthetic_v1/manifest.json
+  8ae39469b4af4ed19d34bcdab0d7a6bb21a34ac8e9f8cc436d80a3fd9585c0c0  data/gold/p8_traceability_synthetic_v1/scenario.json
+  c236376dc0690804dd0b7ac3fe953d5870194dfba63aef21283ab03b353d260e  docs/11-p8-approval-traceability-documents.md
+  4d374e401399d75d9e548e80233428d13363c94d4def0b4f3d9af6b7e77a851c  docs/evaluation/p8-trace-synthetic-v1/README.md
+  9a63e3072b78314adcb4f1365a3ffc0e6c52c07c97eb43bba27a1832ab9ab18c  docs/evaluation/p8-trace-synthetic-v1/summary.json
+  7fa2fd7d849cf0558d1623337f6a7fcebeea9b0f36afc7a22f1d458b8a176691  scripts/run_p8_eval.py
+  f61386c5f081adbce7767349a6d290d9a3b5bf3b6fe9d7f1d6a504f3b5a93b84  src/reqpilot/api/routes/traceability.py
+  2a62cf28f6fef2cb65acd207488bb170c8ecdf5b8db72050b781236b3f7dd891  src/reqpilot/api/trace_schemas.py
+  bc3397910ebbedc59c460e5a67c1365907c808a8ba2e40758b4f93718de0748d  src/reqpilot/artifacts/docx.py
+  968e8789a17eaba2ca9b7f6f173188aabf4d3df7c1b6dcf840059d8ff9302d9e  src/reqpilot/artifacts/markdown.py
+  263f9fbd3886a9daaa5e4fb0aa1e2295eb57299cf1b16ddbaca5afdb31360a33  src/reqpilot/artifacts/model.py
+  a1e8c6ecb65116fa85fb9d06439ae2c196cf88cefe01e705ca9200e8eef37c47  src/reqpilot/artifacts/registry.py
+  c9cb335c17e1db669cb0c9d0000d25141ff5174150e476ce53da23f90c9158cd  src/reqpilot/artifacts/templates/artefact_templates.yaml
+  d2b026f5fe10404846f7fae4122dc56f787e130e7868a3f88a8256733aed101b  src/reqpilot/artifacts/templates/document-1.0.0.md.j2
+  093102b0b61410f977ffa3dec91c57c0731613c94a7dd1e839b865bb19425deb  src/reqpilot/domain/governance.py
+  24d052a3fa08f3a4042b818f83ebcedb23dea8ef39e0eda9be587de86b58bca5  src/reqpilot/domain/models/artifacts.py
+  9882ca2a16497a6b40a38491f2d5672589cabf357856aea1097e65cd9e287185  src/reqpilot/domain/models/traceability.py
+  183febf964dd42eb05a805581a498b90d38e49f356c65cb199323dbd97ec4cd5  src/reqpilot/domain/traceability.py
+  d74d2c16337410b2a557cee2a8dfaa7f144973cf280f7eb6ca5ec129e27f59a0  src/reqpilot/repositories/artifacts.py
+  d5ccac96126846637b3aa0d16200d5c77a2817278c5f201323a54eea167aec84  src/reqpilot/repositories/traceability.py
+  7ac3d931408ff8695426db40a3a0e38476f08138c570464d93441955b73ac026  src/reqpilot/services/documents/__init__.py
+  da5081b2ea84e9543913522c26dcc0706782e56cafc70c2a71625277bb14aa84  src/reqpilot/services/documents/assemblers.py
+  ccb7082fbc15fd9807f494fe01933217c33cc050b07e31e979bbdc037172d7b3  src/reqpilot/services/documents/context.py
+  26e080eadfd54349aa4132560ef02cb6b6398e6503b6642228123f8988b761c5  src/reqpilot/services/documents/service.py
+  b60f84bb3ba429e1cf40d8385cf68a73b7f9cb1d40593afe2b4cbe705b9eb192  src/reqpilot/services/evaluation/traceability_eval.py
+  4caaaad3e65398ce6854abd6e6d1a8dbf03f7aca7cd0f8685225121ea5ee773a  src/reqpilot/services/governance/__init__.py
+  285aafca164849b17a71cc35e88fd4cec4f6681f7dd494e8158da5ae73800e61  src/reqpilot/services/governance/fanout.py
+  216a1c02196e8556c244a33afca749192232bb31bd83811d4023bba02110d95f  src/reqpilot/services/governance/gates.py
+  ef20b61747f87aa0e5d9a44996cd308da2dfdb4d8ce2799d830742a8bbd6a56f  src/reqpilot/services/governance/queue.py
+  55a159e502804f3267834f74b3106f0e58360c569538c925284e72b6a49f86be  src/reqpilot/services/governance/readiness.py
+  256c53b894ab4c5043b54ad86af2f872ef3b6eeb78faf76ffd31511613cbe97a  src/reqpilot/services/traceability/__init__.py
+  4c1a60d8cd1c4b9a70e84190f5ee56f3b207c3835e8469d26eaffc411b5c310e  src/reqpilot/services/traceability/coverage.py
+  8cdc0f45a615cfaa087a6167fe62fce0e8b5fc3f1eb9d97fc8eebf38cfc9a760  src/reqpilot/services/traceability/graph.py
+  622d4f516fe6b3dbfc9ea773b59c56b80bbf201fab1f7ab3e249fd6ef0bddf91  src/reqpilot/services/traceability/rtm.py
+  5215e0dd99d4dacb1606cbcf7741d32272ffa415d506a98ba28f9e6d31d8913e  src/reqpilot/services/traceability/scope.py
+  0d53aa66ce3b7a6db3b68e253535809dbf306371a6594ef5a97a7939e184ae18  src/reqpilot/services/traceability/sync.py
+  3a69489b38b3c586f439acb3684d55cfbc0da4c5cfba7b2b27b67739e5b8a9e2  src/reqpilot/web/templates/artifact.html
+  4346d07dea1300878f2cb403dd54f02ed906ffad168e3cf6a247538e4fd1d506  src/reqpilot/web/templates/artifacts.html
+  ec0249c33b4a5ed8411906a3d9c71d1ba0a1025e55ea7739cbe71604751ade88  src/reqpilot/web/templates/governance.html
+  b30f502335b60bb21f535b5131478109a43281117b0934046c385c533e7a3609  src/reqpilot/web/templates/traceability.html
+  882a1d423b4c3171039722705cd87b7037d894f0dd68ead77e4d0f70bcae45e0  src/reqpilot/web/traceability.py
+  e9d7bb1d5a32a6f537f798f9699c3ce1740336df1a7af17a1f84e0f4c083b249  tests/integration/test_p8_api_and_ui.py
+  5caaaddfa186fed01e07146b5e354a64843eb18af0d9d88e47e103fadbdb6b95  tests/integration/test_p8_documents.py
+  370c278b885ec3f715b07e3352317ce1cedf6341d02ae8494eb7d2610fe3bb3d  tests/integration/test_p8_evaluation.py
+  10757eda2c942ec0606b7526a59fa7e139a134b97210b275a29996145375088c  tests/integration/test_p8_governance.py
+  6fc60000af2f6f9456afc11b1df908d734c270cdc0c6d011410fc8493c0e24d7  tests/integration/test_p8_postgres.py
+  ed9f5c549b93403b536ddd056a289e478cf94b900b67aae6452bd2384f0114b6  tests/integration/test_p8_traceability.py
+  05778d1ad24a96602cb9e189d9c2a58adea9d2865e34e6d39bf2dc1c2521101a  tests/p8_helpers.py
+  252d195ccc1431cb89eb169e1c4a271d211ad296efa4d4cbdffac9cfcde3fc08  tests/security/test_p8_security.py
+  cfa0975ab0578405358dabd98de76fb39e985b195f6f96adb5381c6ca7fcaacc  tests/unit/test_p8_domain.py
+  2a9e64cf72fd9b0f9330365b2fb2676d8f95ed038c2c8c5ff739b0268a9e3ec3  tests/workflow/test_p8_exit_test.py
+  (plus this file) P8-CHANGE-MANIFEST.txt

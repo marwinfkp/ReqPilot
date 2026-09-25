@@ -165,6 +165,8 @@ class ApprovalTaskOut(BaseModel):
     status: ApprovalTaskStatus
     blocking: bool
     created_at: dt.datetime
+    #: P8: the one person who must sign (the affected stakeholder of a G4 task).
+    assignee_user_id: uuid.UUID | None = None
 
 
 class DecisionOut(BaseModel):

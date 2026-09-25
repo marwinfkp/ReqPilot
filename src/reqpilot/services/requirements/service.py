@@ -219,11 +219,13 @@ class RequirementService:
         if requirement is None:
             raise ReqPilotError("requirement not found in this project")
 
-        predecessor = self._current_version(project_id, requirement)
-        predecessor_state = predecessor.state if predecessor else None
-        needs_change_gate = predecessor_state in (
-            RequirementState.APPROVED,
-            RequirementState.BASELINED,
+        # G7 applies when the requirement has an approved version - normally the
+        # current one. P8 closes a P1 gap: after a successor had been withdrawn
+        # the current pointer names the withdrawn version, and a further edit
+        # must still raise G7 because an approved version exists.
+        needs_change_gate = any(
+            v.state in (RequirementState.APPROVED, RequirementState.BASELINED)
+            for v in self._versions.list_for_requirement(project_id, requirement_id)
         )
 
         next_no = self._versions.highest_version_no(project_id, requirement_id) + 1

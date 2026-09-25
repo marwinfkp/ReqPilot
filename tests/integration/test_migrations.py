@@ -142,6 +142,10 @@ COMPLIANCE_TABLES = {
 #: severity matrix, risk items, their evidence links, and mitigation suggestions.
 RISK_TABLES = {"risk_matrix", "risk", "risk_evidence", "risk_mitigation"}
 
+#: Tables the approval, traceability and documents phase adds (architecture N.1,
+#: G.8): the typed trace graph and the generated artefacts.
+TRACE_DOCUMENT_TABLES = {"traceability_link", "artifact", "artifact_version", "artifact_section"}
+
 
 def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None:
     """The schema must not run ahead of the roadmap.
@@ -159,6 +163,7 @@ def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None
         | QUALITY_TABLES
         | COMPLIANCE_TABLES
         | RISK_TABLES
+        | TRACE_DOCUMENT_TABLES
     )
     unexpected = present - permitted
     assert not unexpected, f"migrations created out-of-scope tables: {sorted(unexpected)}"
@@ -321,6 +326,30 @@ def test_downgrading_p6_removes_exactly_the_compliance_tables(
         assert present >= QUALITY_TABLES | KNOWLEDGE_BASE_TABLES
         evidence_indexes = {i["name"] for i in inspector.get_indexes("evidence")}
         assert "uq_evidence_id" not in evidence_indexes
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
+    command.upgrade(config, "head")
+
+
+def test_downgrading_p8_removes_exactly_the_trace_and_document_tables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rolling P8 back leaves P0-P7 intact, without P8's columns and keys."""
+    url = sqlite_url(tmp_path / "p8-down.db")
+    monkeypatch.setenv("DATABASE_URL", url)
+    get_settings.cache_clear()
+    config = alembic_config(url)
+    command.upgrade(config, "head")
+    command.downgrade(config, "0009_p7_risk_register")
+    engine = create_engine(url, future=True)
+    try:
+        inspector = inspect(engine)
+        present = set(inspector.get_table_names())
+        assert not present & TRACE_DOCUMENT_TABLES, "downgrade left P8 tables behind"
+        assert present >= RISK_TABLES | COMPLIANCE_TABLES | QUALITY_TABLES
+        assert "assignee_user_id" not in {c["name"] for c in inspector.get_columns("approval_task")}
+        assert "uq_baseline_id" not in {i["name"] for i in inspector.get_indexes("baseline")}
     finally:
         engine.dispose()
         get_settings.cache_clear()

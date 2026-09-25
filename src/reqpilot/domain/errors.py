@@ -238,3 +238,31 @@ class ScopeGuardError(RiskError):
     ratings, probability of default or fraud scores, and it makes no lending
     decision. A refusal is audited; it is never downgraded to a warning.
     """
+
+
+class GovernanceBlockedError(ApprovalError):
+    """A governed step is refused because something still blocks it (roadmap phase P8).
+
+    Raised when a version is submitted for G1, approved at G1, committed to a
+    baseline or rendered into an authoritative artefact while a gate it needs is
+    unresolved - an open or stake-holder-unsigned conflict (G4), a pending G2/G3
+    interpretation, an architecture-critical requirement without G5, a change to
+    an approved requirement without G7, or an unreviewed high-severity risk (G8).
+    ``blockers`` carries the deterministic reasons, so the refusal is explainable.
+    """
+
+    def __init__(self, message: str, blockers: tuple[str, ...] = ()) -> None:
+        super().__init__(message)
+        self.blockers = blockers
+
+
+class TraceabilityError(ReqPilotError):
+    """A trace link outside the closed allowlist, or with an unresolvable end (N.1)."""
+
+
+class ArtifactError(ReqPilotError):
+    """An artefact could not be generated, validated or exported (roadmap phase P8).
+
+    Generation fails closed: an artefact whose sections do not trace to the
+    baseline, or that cites a requirement version outside it, is never stored.
+    """

@@ -34,6 +34,23 @@ and its computed severity), the same staleness refusal. Settling it moves the
 risk out of ``UNDER_REVIEW``, which is what lets the requirement's
 ``ANALYZED -> VALIDATED`` guard pass - a consequence of the review, never a
 grant of approval (``FR-RSK-007``; architecture I.5).
+
+**From P8, G4, G5 and G7** (``services/governance/gates.py``). G4's subject is a
+resolved stakeholder-disagreement conflict, co-approved by the Analyst and each
+affected stakeholder (a task may be *assigned* to the one person who must sign
+it). G5's and G7's subjects are requirement versions, told apart from G1 by the
+gate. The same five checks apply to all three, plus the assignment check. None
+of them approves a requirement: G7 approves a *change*, G5 an
+architecture-critical requirement's design impact, G4 a conflict resolution.
+
+**Also from P8, baseline readiness at G1** (``FR-HIL-004``). Submitting a version
+for G1 and approving it at G1 are both refused while anything still blocks it -
+an open conflict, an unsigned G4, a pending G2/G3, an unreviewed high risk (G8),
+a missing G5 or G7, an open defect - as evaluated from persisted rows by
+:class:`~reqpilot.services.governance.readiness.GovernanceReadinessService`. G1
+remains co-approval, exactly as P1 built it. When a successor version passes G1
+its approved predecessor becomes SUPERSEDED (architecture H.3); the predecessor's
+approval and baseline membership are never altered.
 """
 
 from __future__ import annotations
@@ -64,14 +81,18 @@ from reqpilot.domain.errors import (
 from reqpilot.domain.ids import ProjectId, new_task_group_id
 from reqpilot.domain.lifecycle import RequirementState, TransitionContext, validate_transition
 from reqpilot.domain.models.approval import ApprovalDecision, ApprovalTask
+from reqpilot.domain.models.requirements import RequirementVersion
 from reqpilot.domain.policy import Actor, ResourceRef, require
 from reqpilot.domain.versioning import hashes_match
 from reqpilot.repositories.approval import ApprovalDecisionRepository, ApprovalTaskRepository
 from reqpilot.repositories.requirements import RequirementVersionRepository
 from reqpilot.services.audit import AuditService
+from reqpilot.services.governance.gates import is_governance_task
 
 if TYPE_CHECKING:  # pragma: no cover
     from reqpilot.services.compliance.gates import AnalysisGateService
+    from reqpilot.services.governance.gates import GovernanceGateService
+    from reqpilot.services.governance.readiness import GovernanceReadinessService
     from reqpilot.services.risk.gates import RiskGateService
 
     AnalysisGate = AnalysisGateService | RiskGateService
@@ -187,11 +208,19 @@ class ApprovalService:
         required_role: Role,
         task_group_id: uuid.UUID | None = None,
         blocking: bool = True,
+        assignee_user_id: uuid.UUID | None = None,
         _action: Action = Action.REQUIREMENT_SUBMIT,
     ) -> ApprovalTask:
-        """Raise one approval task for one role, bound to an exact subject version."""
+        """Raise one approval task for one role, bound to an exact subject version.
+
+        ``assignee_user_id`` names the one person who may decide the task, for a
+        gate that names a party rather than only a role (P8: the affected
+        stakeholder of a G4 conflict). Only G4 uses it.
+        """
         if required_role not in required_roles(gate):
             raise ReqPilotError(f"{required_role} is not a required role for {gate}")
+        if assignee_user_id is not None and gate is not Gate.G4_STAKEHOLDER_CONFLICT:
+            raise ReqPilotError("only a G4 task is assigned to a named party")
         task = ApprovalTask(
             project_id=project_id,
             gate=gate,
@@ -203,6 +232,7 @@ class ApprovalService:
             required_role=required_role,
             status=ApprovalTaskStatus.OPEN,
             blocking=blocking,
+            assignee_user_id=assignee_user_id,
             created_by=self._actor.actor_id,
         )
         self._tasks.add(task, action=_action)
@@ -221,6 +251,7 @@ class ApprovalService:
                 "required_role": str(required_role),
                 "gate_requires_all_roles": requires_all_roles(gate),
                 "subject_version_hash": subject_version_hash,
+                "assigned": assignee_user_id is not None,
             },
         )
         return task
@@ -251,6 +282,7 @@ class ApprovalService:
         from reqpilot.services.requirements.service import RequirementService
 
         requirements = RequirementService(self._session, self._actor)
+        readiness = self._readiness()
         group_id = new_task_group_id()
         tasks: list[ApprovalTask] = []
 
@@ -259,6 +291,10 @@ class ApprovalService:
             if version is None:
                 raise ReqPilotError(f"requirement version {version_id} not found in this project")
 
+            # P8 (FR-HIL-004): nothing unresolved may be submitted for G1.
+            readiness.require_ready(
+                project_id, version, stage="submission", label=self._label(project_id, version)
+            )
             requirements.transition(
                 project_id=project_id,
                 version_id=version.id,
@@ -306,6 +342,19 @@ class ApprovalService:
 
         if decision is ApprovalDecisionType.REJECT and not justification:
             raise ApprovalError("a rejection must carry a justification")
+
+        if (
+            decision is ApprovalDecisionType.APPROVE
+            and task.gate is Gate.G1_REQUIREMENT_BASELINE
+            and task.subject_type == "requirement_version"
+        ):
+            # P8 (FR-HIL-004): a G1 signature is refused while anything still
+            # blocks this exact version - checked before the decision row exists.
+            version = self._versions.get(project_id, task.subject_id)
+            if version is not None:
+                self._readiness().require_ready(
+                    project_id, version, stage="approval", label=self._label(project_id, version)
+                )
 
         record = ApprovalDecision(
             task_id=task.id,
@@ -379,7 +428,17 @@ class ApprovalService:
                 "own task"
             )
 
+        # P8: a task assigned to a named party (the affected stakeholder of a G4
+        # conflict) is decided by that person and nobody else.
+        if task.assignee_user_id is not None and task.assignee_user_id != self._actor.actor_id:
+            raise ApprovalError(
+                "this task is assigned to the affected stakeholder it names; "
+                "another holder of the role cannot sign it"
+            )
+
     def _subject_hash(self, project_id: ProjectId, task: ApprovalTask) -> str:
+        if is_governance_task(task):
+            return self._governance().subject(project_id, task).current_hash
         if self._is_analysis_gate(task):
             return self._analysis_gates(task).subject(project_id, task).current_hash
         if task.subject_type != "requirement_version":
@@ -400,6 +459,14 @@ class ApprovalService:
             )
 
     def _check_not_self_approval(self, project_id: ProjectId, task: ApprovalTask) -> None:
+        if is_governance_task(task):
+            # G4: an author of either conflicting version may not sign its
+            # resolution. G5 / G7: the author of the version may not sign it.
+            if self._actor.actor_id in self._governance().subject(project_id, task).authors:
+                raise SelfApprovalError(
+                    f"an actor may not decide {task.gate} on a requirement version they authored"
+                )
+            return
         if self._is_analysis_gate(task):
             # The interpretation or the risk was produced by the pipeline; the
             # person whose work it is about may not sign it off.
@@ -424,6 +491,8 @@ class ApprovalService:
         baseline_label: str | None,
     ) -> GateOutcome:
         """Apply a decision's effect to the task, the subject and the group."""
+        if is_governance_task(task):
+            return self._settle_governance_gate(project_id, task, decision, record)
         if self._is_analysis_gate(task):
             return self._settle_analysis_gate(project_id, task, decision, record)
         if decision is ApprovalDecisionType.REJECT:
@@ -449,6 +518,10 @@ class ApprovalService:
         subject_complete = self._subject_complete(project_id, task)
         if subject_complete:
             self._transition_subject(project_id, task, RequirementState.APPROVED)
+            # P8 (architecture H.3, M.3 G7): the approved successor supersedes
+            # the requirement's previously approved version. The predecessor's
+            # approval and baseline membership stay exactly as recorded.
+            self._supersede_predecessors(project_id, task)
             self._audit.append(
                 event_type=AuditEventType.GATE_PASSED,
                 actor_kind=self._actor.kind,
@@ -479,6 +552,84 @@ class ApprovalService:
             group_complete=group_complete,
             baseline_id=baseline_id,
         )
+
+    # -- G4 / G5 / G7 (P8) --------------------------------------------------
+    def _governance(self) -> GovernanceGateService:
+        from reqpilot.services.governance.gates import GovernanceGateService
+
+        return GovernanceGateService(self._session, self._actor)
+
+    def _readiness(self) -> GovernanceReadinessService:
+        from reqpilot.services.governance.readiness import GovernanceReadinessService
+
+        return GovernanceReadinessService(self._session, self._actor)
+
+    def _label(self, project_id: ProjectId, version: RequirementVersion) -> str:
+        from reqpilot.repositories.requirements import RequirementRepository
+
+        requirement = RequirementRepository(self._session, self._actor).get(
+            project_id, version.requirement_id
+        )
+        return requirement.human_id if requirement is not None else str(version.requirement_id)
+
+    def _settle_governance_gate(
+        self,
+        project_id: ProjectId,
+        task: ApprovalTask,
+        decision: ApprovalDecisionType,
+        record: ApprovalDecision,
+    ) -> GateOutcome:
+        """Settle G4/G5/G7: co-approval per subject, never a requirement approval."""
+        gates = self._governance()
+        if decision is ApprovalDecisionType.MODIFY:
+            self._session.flush()
+            return GateOutcome(task=task, decision=record, task_closed=False, group_complete=False)
+        if decision is ApprovalDecisionType.REJECT:
+            task.status = ApprovalTaskStatus.REJECTED
+            self._session.flush()
+            self._cancel_siblings(project_id, task)
+            gates.on_rejected(project_id, task, record)
+            return GateOutcome(task=task, decision=record, task_closed=True, group_complete=False)
+
+        task.status = ApprovalTaskStatus.APPROVED
+        self._session.flush()
+        subject_complete = self._subject_complete(project_id, task)
+        if subject_complete:
+            gates.on_passed(project_id, task, record)
+            self._audit.append(
+                event_type=AuditEventType.GATE_PASSED,
+                actor_kind=self._actor.kind,
+                actor_ref=str(self._actor.actor_id),
+                project_id=project_id,
+                subject_type=task.subject_type,
+                subject_id=str(task.subject_id),
+                subject_version=task.subject_version,
+                payload={
+                    "gate": str(task.gate),
+                    "approving_roles": sorted(
+                        {str(t.required_role) for t in self._sibling_tasks(project_id, task)}
+                    ),
+                },
+            )
+        return GateOutcome(
+            task=task, decision=record, task_closed=True, group_complete=subject_complete
+        )
+
+    def _supersede_predecessors(self, project_id: ProjectId, task: ApprovalTask) -> None:
+        from reqpilot.services.requirements.service import RequirementService
+
+        successor = self._versions.get(project_id, task.subject_id)
+        if successor is None:  # pragma: no cover - checked at binding
+            return
+        requirements = RequirementService(self._session, self._actor)
+        for earlier in self._versions.list_for_requirement(project_id, successor.requirement_id):
+            if earlier.version_no < successor.version_no and earlier.state in (
+                RequirementState.APPROVED,
+                RequirementState.BASELINED,
+            ):
+                requirements.supersede(
+                    project_id=project_id, version_id=earlier.id, successor_id=successor.id
+                )
 
     # -- G2 / G3 (P6) and G8 (P7) ------------------------------------------
     @staticmethod

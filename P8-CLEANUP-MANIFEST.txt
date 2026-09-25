@@ -1,0 +1,22 @@
+ReqPilot - P8 FINAL CLEANUP MANIFEST
+Date: 2026-09-25
+Relative to: ReqPilot-P8-changes.zip (the original P8 handoff)
+NO GIT/GITHUB OPERATIONS. Unzip at the repository root.
+
+Changed files (6) - sha256  path  (what changed):
+  1df78a2a271e1b81e3bff6cdd47703b4f5d4d89f17dc206f65a2be7eef7073b5  README.md
+      P8 status row: project-author review of the E6 benchmark recorded
+  ee897a3acee98637dbff15a52edd07f3f68b46aa520bf2b3221461fdfd4812b7  data/gold/README.md
+      P8-TRACE-SYNTHETIC-v1: project-author review completed, no substantive label correction; v1 frozen
+  3074de634a3f0dba4c085b86f7947980f17a3f5f9e368d5645f6ba860b141d0c  tests/integration/test_postgres_specific.py
+      trigger test now rolls back its setup transaction (no leaked 'trigger-test' rows)
+  c236376dc0690804dd0b7ac3fe953d5870194dfba63aef21283ab03b353d260e  docs/11-p8-approval-traceability-documents.md
+      leak recorded as corrected + repeated PG verification; benchmark review recorded; status line
+  4d374e401399d75d9e548e80233428d13363c94d4def0b4f3d9af6b7e77a851c  docs/evaluation/p8-trace-synthetic-v1/README.md
+      review-status note added at top; results unchanged
+  fe30fc7e5c2f0498487a4f9d7a86df5b7da2599e3cbb8d5ce165730d43aca1e1  P8-CHANGE-MANIFEST.txt
+      updated P8 manifest; all 81 file hashes recomputed and verified
+
+New files: none (besides this manifest). Deleted files: none.
+Unchanged: all P8 implementation code, the frozen P8-TRACE-SYNTHETIC-v1 benchmark
+(data, labels, manifest) and all P8 evaluation results.

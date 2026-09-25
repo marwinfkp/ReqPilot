@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Artefacts &middot; {{ project.name }}{% endblock %}
+{% block nav %}<a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/governance">governance</a>
+  <a href="/ui/projects/{{ project.id }}/traceability">traceability</a>{% endblock %}
+{% block content %}
+<h1>Generated artefacts</h1>
+<p class="note">Artefacts are generated only from an approved baseline, deterministically, and
+never overwrite history: a regeneration with different content is a new version, and one with
+identical content returns the existing version. Generation is refused &mdash; with its reasons,
+and audited &mdash; if any requirement version it would render is not an approved, fully
+governed baseline member.</p>
+
+{% if outcomes %}
+<h2>Result of this generation</h2>
+<table>
+  <tr><th>Artefact</th><th>Outcome</th><th>Details</th></tr>
+  {% for o in outcomes %}
+  <tr>
+    <td class="mono">{{ o.artifact_type.value }}</td>
+    <td>{% if o.refused %}<b>refused</b>{% elif o.reused %}identical content &mdash; existing version kept{% else %}new version{% endif %}</td>
+    <td>{% if o.refused %}<ul>{% for b in o.blockers %}<li>{{ b }}</li>{% endfor %}</ul>
+        {% elif o.version %}<a href="/ui/artifact-versions/{{ o.version.id }}">v{{ o.version.version_no }}</a>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<h2>Baselines</h2>
+{% if baselines %}
+{% for b in baselines %}
+<fieldset>
+  <legend>baseline {{ b.label }}</legend>
+  <p class="muted">frozen {{ b.frozen_at }} &middot; <span class="mono">{{ b.id }}</span></p>
+  {% if may_generate %}
+  <form method="post" action="/ui/baselines/{{ b.id }}/artifacts">
+    {% for t in types %}<label style="display:inline"><input type="checkbox" name="artifact_types" value="{{ t.value }}" checked> {{ t.value }}</label> {% endfor %}
+    <p><button class="primary" type="submit">Generate from this baseline</button></p>
+  </form>
+  {% endif %}
+</fieldset>
+{% endfor %}
+{% else %}<p class="muted">No baseline yet. Artefacts can only be generated once G1 has passed.</p>{% endif %}
+
+<h2>Version history</h2>
+{% if versions %}
+<table>
+  <tr><th>Artefact</th><th>Version</th><th>Baseline</th><th>Generated</th><th>Model</th><th>Structure hash</th></tr>
+  {% for v in versions %}
+  <tr><td class="mono">{{ v.artifact_type.value }}</td>
+      <td><a href="/ui/artifact-versions/{{ v.id }}">v{{ v.version_no }}</a></td>
+      <td class="mono">{{ v.baseline_id|string|truncate(8, True, "") }}</td>
+      <td>{{ v.generated_at }}</td>
+      <td class="mono">{{ v.model_identifier }}</td>
+      <td class="mono">{{ v.content_hash[:16] }}&hellip;</td></tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">Nothing generated yet.</p>{% endif %}
+{% endblock %}

@@ -43,3 +43,14 @@ def utc_now() -> dt.datetime:
 
 def created_at_column() -> MappedColumn[dt.datetime]:
     return mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+def as_utc(value: dt.datetime) -> dt.datetime:
+    """A timezone-aware UTC value for comparison and sorting.
+
+    SQLite hands back naive datetimes for rows it has stored, while rows created
+    in the current session carry the aware values ``utc_now`` produced; sorting a
+    mix of the two would raise. Every stored value is UTC, so a naive one is
+    marked as such. (P8: artefact assembly sorts rows of both kinds.)
+    """
+    return value if value.tzinfo is not None else value.replace(tzinfo=dt.UTC)

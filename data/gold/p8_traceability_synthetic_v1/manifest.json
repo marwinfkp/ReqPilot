@@ -1,0 +1,40 @@
+{
+  "name": "p8_traceability_synthetic",
+  "version": "1",
+  "benchmark_id": "P8-TRACE-SYNTHETIC-v1",
+  "kind": "synthetic_reference_benchmark",
+  "metrics": [
+    "E6"
+  ],
+  "supplementary": [
+    "definition_agreement",
+    "aggregate_agreement",
+    "scenario_e6",
+    "scenario_element_counts"
+  ],
+  "targets": {},
+  "targets_note": "No numeric target. Approved Phase 0 O.1 defines E6 but sets no target (targets for E2-E9 are set from measured behaviour, not guessed). The scenario figures are first measurements.",
+  "e6_definition": "architecture N.3 (definition version N.3-v1)",
+  "case_study": "synthetic loan origination (tests/p8_helpers.py, L01-L08, fictional speakers)",
+  "counts": {
+    "definition_cases": 27,
+    "definition_cases_fully_traced": 9,
+    "aggregate_cases": 5,
+    "scenario_steps": 5
+  },
+  "reference_generation": "written by the AI coding assistant (Claude, Anthropic) on 2026-09-25, AFTER the P8 coverage implementation and BEFORE the evaluation harness was first run; labels derived by hand from the N.3 text",
+  "review": "not reviewed by the project author before evaluation (autonomous P8 instruction); not independently reviewed; not expert validated; author review pending (REVIEW_SHEET.md)",
+  "harness": "services/evaluation/traceability_eval.py (protocol in BENCHMARK.md)",
+  "frozen_at": "2026-09-25",
+  "frozen_by": "Claude (AI coding assistant), on the project author's autonomous P8 instruction",
+  "files": {
+    "BENCHMARK.md": "bec4d23ba5b2a078b39df0db88488145e3d28480b18ce7591beb6e153070a1b6",
+    "REVIEW_SHEET.md": "99b10286f73971c6277f46451aaaec13135110cbb4e6b136705cb30deba39b37",
+    "aggregate_cases.jsonl": "c2c3395cc58c74a84d2a9fbb49a560b35d90f4e08c0e2c6de10119b740fbf513",
+    "definition_cases.jsonl": "c828e6871be0e9fe8246a890b04268d9547d2634ed55effc76af8f683956d365",
+    "scenario.json": "8ae39469b4af4ed19d34bcdab0d7a6bb21a34ac8e9f8cc436d80a3fd9585c0c0"
+  },
+  "external_fixtures": {
+    "tests/p8_helpers.py": "05778d1ad24a96602cb9e189d9c2a58adea9d2865e34e6d39bf2dc1c2521101a"
+  }
+}
