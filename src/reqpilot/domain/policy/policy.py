@@ -65,6 +65,16 @@ The design rules enforced here rather than trusted to callers:
     baseline records and refuses when they are missing. Flagging a requirement
     as architecture-critical raises G5 (``ARCHITECTURE_FLAG``); only the Project
     Manager decides it (architecture M.3).
+12. **An SDLC recommendation is computed, explained and then decided by four
+    humans.** From P9 an analyst starts an SDLC run from an approved baseline
+    (``SDLC_RUN_START``); the pipeline records the factor profile, the rule
+    applications, the ranking and the explanation (``SDLC_RECORD``) and raises
+    G6 (``GATE_TASK_RAISE``). Overriding a factor score (``SDLC_FACTOR_OVERRIDE``,
+    the analyst's per F.1 and the Project Manager's per architecture S) and
+    asking again for an explanation (``SDLC_EXPLAIN``) are human-only. Nobody can
+    set a ranking: G6 is decided per gate (rule 4) by the Project Manager, the
+    Architect, the Security Reviewer and the Compliance Officer - all four. The
+    Architect role (P9) reads what the Project Manager reads and authors nothing.
 """
 
 from __future__ import annotations
@@ -462,6 +472,37 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
             Role.AUDITOR,
         }
     ),
+    # --- SDLC recommendation (P9) -------------------------------------------
+    # The analyst starts a run and owns the factor profile; the pipeline records
+    # in the analyst's name; the G6 approvers and the auditor read it.
+    Action.SDLC_RUN_START: frozenset({Role.ANALYST}),
+    Action.SDLC_RECORD: frozenset({Role.ANALYST}),
+    Action.SDLC_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.SDLC_FACTOR_OVERRIDE: frozenset({Role.ANALYST, Role.PROJECT_MANAGER}),
+    Action.SDLC_EXPLAIN: frozenset({Role.ANALYST}),
+}
+
+#: P9: the Architect is a reviewing role (a G6 approver). It is granted every
+#: read the Project Manager holds - so it can see what it signs - and nothing
+#: that authors, manages or records. Derived rather than listed so the two can
+#: never drift apart.
+_ARCHITECT_READS: frozenset[Action] = frozenset(
+    action
+    for action, roles in _ACTION_GRANTS.items()
+    if Role.PROJECT_MANAGER in roles
+    and (action.value.endswith(".read") or action is Action.ARTIFACT_EXPORT)
+)
+_ACTION_GRANTS = {
+    action: (roles | {Role.ARCHITECT}) if action in _ARCHITECT_READS else roles
+    for action, roles in _ACTION_GRANTS.items()
 }
 
 #: Actions an actor may perform without belonging to a project. For these the
@@ -499,6 +540,7 @@ _AUDITOR_READ_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.TRACE_READ,
         Action.ARTIFACT_READ,
         Action.ARTIFACT_EXPORT,
+        Action.SDLC_READ,
     }
 )
 
@@ -541,6 +583,11 @@ _HUMAN_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.ARTIFACT_GENERATE,
         Action.TRACE_SYNC,
         Action.ARCHITECTURE_FLAG,
+        # Rule 12 (P9): starting an SDLC run, overriding a factor and asking for an
+        # explanation are human; no agent role reorders or re-scores anything.
+        Action.SDLC_RUN_START,
+        Action.SDLC_FACTOR_OVERRIDE,
+        Action.SDLC_EXPLAIN,
     }
 )
 

@@ -36,6 +36,7 @@ from reqpilot.domain.errors import (
     RequirementIdError,
     ReviewError,
     RuleConfigurationError,
+    SdlcError,
     StateTransitionError,
     TraceabilityError,
     UngroundedRetrievalError,
@@ -70,6 +71,9 @@ ERROR_STATUS: tuple[tuple[type[Exception], int], ...] = (
     # outside the closed allowlist. Neither is a malformed request.
     (ArtifactError, status.HTTP_409_CONFLICT),
     (TraceabilityError, status.HTTP_409_CONFLICT),
+    # P9: an SDLC recommendation refused in the current state (unapproved
+    # inputs, a superseded run, a lifecycle that does not allow the request).
+    (SdlcError, status.HTTP_409_CONFLICT),
     # A trust-boundary refusal is not the caller's input error.
     (EgressRefusedError, status.HTTP_409_CONFLICT),
     (PromptRegistryError, status.HTTP_500_INTERNAL_SERVER_ERROR),

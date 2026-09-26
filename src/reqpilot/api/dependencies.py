@@ -50,6 +50,7 @@ from reqpilot.rules.elicitation import ElicitationRules, load_elicitation_rules
 from reqpilot.rules.extraction import ExtractionRules, load_extraction_rules
 from reqpilot.rules.quality import QualityRules, load_quality_rules
 from reqpilot.rules.risk import RiskRules, load_risk_rules
+from reqpilot.rules.sdlc import SdlcRules, load_sdlc_rules
 from reqpilot.services.compliance import Retriever
 from reqpilot.services.knowledge.retrieval import RetrievalService
 
@@ -225,6 +226,19 @@ def get_security_rules(
     return _security_rules(str(settings.rules_dir))
 
 
+@lru_cache(maxsize=4)
+def _sdlc_rules(rules_dir: str) -> SdlcRules:
+    return load_sdlc_rules(Path(rules_dir))
+
+
+def get_sdlc_rules(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> SdlcRules:
+    """The versioned SDLC candidates, weights, rules and derivation bands (P9, L.1-L.5),
+    validated once per process. A run pins the file's content hash."""
+    return _sdlc_rules(str(settings.rules_dir))
+
+
 def get_llm_gateway(settings: Annotated[Settings, Depends(get_settings)]) -> LLMGateway:
     """The one model access boundary (ADR-006), built from configuration.
 
@@ -246,6 +260,7 @@ QualityRulesDep = Annotated[QualityRules, Depends(get_quality_rules)]
 ComplianceRulesDep = Annotated[ComplianceRules, Depends(get_compliance_rules)]
 SecurityRulesDep = Annotated[SecurityRules, Depends(get_security_rules)]
 RiskRulesDep = Annotated[RiskRules, Depends(get_risk_rules)]
+SdlcRulesDep = Annotated[SdlcRules, Depends(get_sdlc_rules)]
 
 #: Builds the P2 allowlisted retrieval boundary for one request's session and actor.
 RetrieverFactory = Callable[[Session, Actor], Retriever]

@@ -22,6 +22,12 @@ enforces the gate.</p>
      page (bound to hash <code>{{ row.task.subject_version_hash[:16] }}&hellip;</code>)
      {% if row.task.assignee_user_id %}&middot; assigned to the affected stakeholder
      <span class="mono">{{ row.task.assignee_user_id }}</span>{% endif %}</p>
+  {% elif not row.version and row.task.subject_type == "sdlc_run" %}
+  <p class="muted">subject: the SDLC recommendation
+     <a class="mono" href="/ui/sdlc-runs/{{ row.task.subject_id }}">{{ row.task.subject_version }}</a>
+     &mdash; the factor profile, the computed ranking, the rule effects and the explanation (with
+     any discrepancy) are on its page (bound to hash
+     <code>{{ row.task.subject_version_hash[:16] }}&hellip;</code>). All four G6 roles must approve.</p>
   {% elif not row.version %}
   <p class="muted">subject: <span class="mono">{{ row.task.subject_type }} {{ row.task.subject_id }}</span>
      &mdash; the interpretation, its cited evidence with full provenance and the advisory notice

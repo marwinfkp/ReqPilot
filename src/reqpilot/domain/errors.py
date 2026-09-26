@@ -266,3 +266,12 @@ class ArtifactError(ReqPilotError):
     Generation fails closed: an artefact whose sections do not trace to the
     baseline, or that cites a requirement version outside it, is never stored.
     """
+
+
+class SdlcError(ReqPilotError):
+    """An SDLC recommendation refused in the current state (roadmap phase P9).
+
+    Raised when the inputs are not approved (fails closed: no recommendation is
+    computed from an unapproved baseline or an ungoverned risk register), when an
+    override is malformed, or when a run's lifecycle does not allow the request.
+    """

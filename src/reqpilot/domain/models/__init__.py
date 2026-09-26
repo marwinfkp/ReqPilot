@@ -15,10 +15,12 @@ findings and their evidence links. The risk phase adds the versioned severity
 matrix, risk items and their evidence links, and mitigation suggestions. The
 approval, traceability and documents phase (P8) adds the typed trace graph
 (``traceability_link``) and the generated artefacts (``artifact``,
-``artifact_version``, ``artifact_section``).
+``artifact_version``, ``artifact_section``). The SDLC recommendation phase (P9)
+adds ``sdlc_run``, ``sdlc_factor``, ``sdlc_candidate`` and
+``sdlc_rule_application``.
 
-Tables belonging to later roadmap phases - SDLC, workflow, evaluation - are
-still deliberately absent. A test
+Tables belonging to later roadmap phases - workflow, evaluation - are still
+deliberately absent. A test
 asserts that the migrations create nothing beyond the tables named here.
 """
 
@@ -69,6 +71,7 @@ from reqpilot.domain.models.risk import (
     RiskMitigation,
 )
 from reqpilot.domain.models.runs import AgentRun, GraphRun
+from reqpilot.domain.models.sdlc import SdlcCandidate, SdlcFactor, SdlcRuleApplication, SdlcRun
 from reqpilot.domain.models.traceability import TraceabilityLink
 
 __all__ = [
@@ -110,6 +113,10 @@ __all__ = [
     "RiskEvidence",
     "RiskMatrixCell",
     "RiskMitigation",
+    "SdlcCandidate",
+    "SdlcFactor",
+    "SdlcRuleApplication",
+    "SdlcRun",
     "SecurityPrivacyFinding",
     "SecurityPrivacyFindingEvidence",
     "SourceAllowlist",

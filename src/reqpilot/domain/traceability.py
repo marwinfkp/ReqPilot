@@ -19,7 +19,10 @@ needs to make the full ``FR-TRC-001`` chain navigable. Every addition is marked
 * N.2 #11 (``security_privacy_finding DERIVED requirement_version``) has no
   producer: P6 records a derived requirement as text on the finding, never as a
   requirement version. The triple is not allowlisted, so no edge can pretend it.
-* N.2 #20-#26 belong to P9 (SDLC factors) and P10 (workflow) and are absent.
+* N.2 #20-#23 (SDLC factors, candidates and the G6 decision) arrive with P9 and
+  are marked ``N.2 #n``; the edges P9 adds so that every factor's evidence is
+  navigable are marked ``P9``. N.2 #24-#26 belong to P10 (workflow) and are
+  absent.
 """
 
 from __future__ import annotations
@@ -53,6 +56,10 @@ class TraceNodeType(StrEnum):
     EVIDENCE = "evidence"
     KNOWLEDGE_ITEM = "knowledge_item"
     NORMATIVE_SOURCE = "normative_source"
+    # P9: the SDLC recommendation (architecture G.8, N.2 #20-#23).
+    SDLC_RUN = "sdlc_run"
+    SDLC_FACTOR = "sdlc_factor"
+    SDLC_CANDIDATE = "sdlc_candidate"
 
 
 class TraceLinkType(StrEnum):
@@ -82,6 +89,9 @@ class TraceLinkType(StrEnum):
     SUPERSEDES = "SUPERSEDES"
     DRAWN_FROM = "DRAWN_FROM"
     ISSUED_UNDER = "ISSUED_UNDER"
+    # P9 (architecture N.2 #20-#22).
+    AGGREGATED_INTO = "AGGREGATED_INTO"
+    INFORMED = "INFORMED"
 
 
 N = TraceNodeType
@@ -138,6 +148,22 @@ ALLOWED_TRIPLES: dict[tuple[TraceNodeType, TraceLinkType, TraceNodeType], str] =
     (N.KNOWLEDGE_ITEM, L.ISSUED_UNDER, N.NORMATIVE_SOURCE): "P8",
     # versioning
     (N.REQUIREMENT_VERSION, L.SUPERSEDES, N.REQUIREMENT_VERSION): "N.2 #27",
+    # SDLC recommendation (P9): the factor derivation, the scoring and G6.
+    (N.RISK, L.AGGREGATED_INTO, N.SDLC_FACTOR): "N.2 #20",
+    (N.REQUIREMENT_VERSION, L.AGGREGATED_INTO, N.SDLC_FACTOR): "N.2 #21",
+    (N.SDLC_FACTOR, L.INFORMED, N.SDLC_CANDIDATE): "N.2 #22",
+    (N.SDLC_RUN, L.APPROVED_BY, N.APPROVAL_DECISION): "N.2 #23",
+    # The other approved rows a factor's evidence cites (P9), the baseline a
+    # run was computed from, and the run's own factors and candidates.
+    (N.COMPLIANCE_MAPPING, L.AGGREGATED_INTO, N.SDLC_FACTOR): "P9",
+    (N.CONFLICT, L.AGGREGATED_INTO, N.SDLC_FACTOR): "P9",
+    (N.STAKEHOLDER, L.AGGREGATED_INTO, N.SDLC_FACTOR): "P9",
+    (N.CLARIFICATION, L.AGGREGATED_INTO, N.SDLC_FACTOR): "P9",
+    (N.ACCEPTANCE_CRITERION, L.AGGREGATED_INTO, N.SDLC_FACTOR): "P9",
+    (N.BASELINE, L.AGGREGATED_INTO, N.SDLC_FACTOR): "P9",
+    (N.BASELINE, L.INFORMED, N.SDLC_RUN): "P9",
+    (N.SDLC_RUN, L.CONTAINS, N.SDLC_FACTOR): "P9",
+    (N.SDLC_RUN, L.CONTAINS, N.SDLC_CANDIDATE): "P9",
 }
 
 
@@ -156,12 +182,25 @@ def is_allowed(from_type: str, link_type: str, to_type: str) -> bool:
     return triple_key(from_type, link_type, to_type) in ALLOWED_TRIPLE_KEYS
 
 
-def allowed_triple_check_sql() -> str:
+def is_p9_triple(
+    from_type: TraceNodeType, link_type: TraceLinkType, to_type: TraceNodeType
+) -> bool:
+    """Whether a triple arrived with P9 (for the migration's downgrade)."""
+    sdlc = {N.SDLC_RUN, N.SDLC_FACTOR, N.SDLC_CANDIDATE}
+    return from_type in sdlc or to_type in sdlc
+
+
+def allowed_triple_check_sql(*, before_p9: bool = False) -> str:
     """``CHECK`` expression pinning every row to the allowlist (architecture N.1).
 
     Portable across SQLite and PostgreSQL: string concatenation and ``IN``.
+    ``before_p9`` gives the P8 allowlist, which migration 0011 restores on
+    downgrade.
     """
-    keys = ", ".join(f"'{k}'" for k in sorted(ALLOWED_TRIPLE_KEYS))
+    triples = [triple for triple in ALLOWED_TRIPLES if not (before_p9 and is_p9_triple(*triple))]
+    keys = ", ".join(
+        f"'{k}'" for k in sorted(triple_key(str(f), str(link), str(t)) for (f, link, t) in triples)
+    )
     return f"(from_type || ':' || link_type || ':' || to_type) IN ({keys})"
 
 

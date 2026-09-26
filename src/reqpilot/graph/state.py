@@ -213,3 +213,30 @@ class ElicitationState(BaseGraphState, total=False):
     #: A node failed safely; the session stalls. Last-write-wins, reset by
     #: ``load_session`` - unlike ``errors``, which accumulates across a thread.
     failure: str | None
+
+
+class SDLCState(BaseGraphState, total=False):
+    """State of ``sdlc_graph`` (architecture C.5, D.2; roadmap phase P9), ids and counters only.
+
+    The evidence, the derived profile, the proposals and the scoring result live
+    in the database (and, while the run executes, in the transient run context);
+    no factor rationale, explanation text or prompt is ever placed here.
+    """
+
+    #: ``start`` (a new recommendation), ``override`` (a factor override's full
+    #: recompute) or ``explain`` (retrying the explanation of a ranked run).
+    mode: str
+    baseline_id: str
+    #: The run this graph run recorded (or, for ``explain``, is explaining).
+    sdlc_run_id: str | None
+    #: For ``override``: the run the override was made on.
+    supersedes_run_id: str | None
+    semantic: bool
+    #: A node failed; the graph ends without the later steps.
+    failed: bool
+    semantic_failures: Annotated[int, operator.add]
+    proposals_accepted: int
+    proposals_rejected: int
+    #: An ``ExplanationStatus`` value.
+    explanation_status: str
+    g6_task_ids: list[str]

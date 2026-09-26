@@ -22,7 +22,8 @@ from __future__ import annotations
 
 from typing import Literal, Protocol, TypeVar
 
-from reqpilot.graph.state import AnalysisState, BaseGraphState, ElicitationState
+from reqpilot.domain.enums import ExplanationStatus
+from reqpilot.graph.state import AnalysisState, BaseGraphState, ElicitationState, SDLCState
 
 StateT = TypeVar("StateT", bound=BaseGraphState)
 
@@ -287,3 +288,28 @@ def route_after_assessment(state: ElicitationState) -> AfterAssessment:
     if state.get("failure"):
         return "stall"
     return "generate_question" if state.get("awaiting_followup") else "select_next_topic"
+
+
+# ---------------------------------------------------------------------------
+# sdlc_graph (P9; architecture C.5)
+# ---------------------------------------------------------------------------
+def route_after_collect(state: SDLCState) -> str:
+    if state.get("failed"):
+        return "end"
+    return "explain" if state.get("mode") == "explain" else "propose"
+
+
+def route_after_scoring(state: SDLCState) -> str:
+    return "end" if state.get("failed") else "explain"
+
+
+def route_after_explanation(state: SDLCState) -> str:
+    """G6 is raised only once an explanation exists - consistent or not."""
+    if state.get("failed"):
+        return "end"
+    if state.get("explanation_status") in (
+        str(ExplanationStatus.GENERATED),
+        str(ExplanationStatus.DISCREPANCY),
+    ):
+        return "raise_g6"
+    return "end"

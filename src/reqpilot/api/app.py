@@ -25,6 +25,7 @@ from reqpilot.api.routes import (
     quality,
     requirements,
     risk,
+    sdlc,
     traceability,
 )
 
@@ -51,7 +52,12 @@ DESCRIPTION = (
     "readiness enforced at G1, a typed append-only trace graph, the RTM and coverage (E6), and "
     "deterministic, versioned SRS, RTM, risk register, user stories, use cases, compliance "
     "matrix, assumptions/dependency register and open-issues list, exported as Markdown and "
-    "DOCX, generated only from an approved baseline). Model calls go to the configured "
+    "DOCX, generated only from an approved baseline) and P9 (SDLC recommendation: a "
+    "13-factor profile derived from the approved baseline and the governed risk register, "
+    "bounded model proposals and recorded human overrides, versioned rules and weighted MCDA "
+    "over seven candidates, a persisted ranking explained afterwards and checked for "
+    "consistency, and G6 co-approval by the Project Manager, Architect, Security Reviewer and "
+    "Compliance Officer). Model calls go to the configured "
     "provider: the offline stub by default, "
     "or OpenAI when LLM_PROVIDER=openai."
 )
@@ -75,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(compliance.router)
     app.include_router(risk.router)
     app.include_router(traceability.router)
+    app.include_router(sdlc.router)
     return app
 
 

@@ -15,7 +15,7 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 
 ---
 
-## Current status — roadmap phase P8 (Approval, traceability & documents)
+## Current status — roadmap phase P9 (SDLC recommendation)
 
 | Stage | State |
 |---|---|
@@ -29,7 +29,8 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 | P5 Quality & conflict detection — `docs/08-p5-quality-conflict.md` | P5 COMPLETE — ROADMAP EXIT PASSED: deterministic quality rules plus validated model proposals; a bounded deterministic shortlist before any pairwise model call; conflicts as transition guards (D12) that only a human resolves. On **P5-QC-SYNTHETIC-v1** (a synthetic benchmark written by the AI assistant, author review pending) the configured pipeline scored E3 conflict recall 1.00 with no false positives (0/768), and E2 ambiguity P 0.87 / R 1.00 (FP rate 0.15). Not evidence of real-world accuracy |
 | P6 Compliance & security analysis — `docs/09-p6-compliance-security.md` | P6 COMPLETE — ROADMAP EXIT PASSED (see the report) |
 | P7 Risk analysis & register — `docs/10-p7-risk-analysis.md` | P7 COMPLETE — ROADMAP EXIT PASSED — PROJECT-AUTHOR REVIEW COMPLETED (see the report) |
-| **P8 Approval, traceability & documents — `docs/11-p8-approval-traceability-documents.md`** | **P8 COMPLETE — ROADMAP EXIT PASSED — PROJECT-AUTHOR REVIEW COMPLETED**: gates G4, G5 and G7 on the one approval service with G1/G2/G3/G8; fail-closed readiness at submission, G1, baseline commit and generation; a typed, append-only trace graph; RTM; SRS (with data and interface sections), user stories, use cases, compliance matrix, risk register, assumptions/dependency register and open-issues list, all deterministic, versioned and exported as Markdown and DOCX; E6 computed (no target exists; first measurement 0.800 on a synthetic scenario baseline; the synthetic E6 benchmark was reviewed by the project author with no substantive label correction and is not independently expert-validated). P9 is not started |
+| P8 Approval, traceability & documents — `docs/11-p8-approval-traceability-documents.md` | P8 COMPLETE — ROADMAP EXIT PASSED — PROJECT-AUTHOR REVIEW COMPLETED: gates G4, G5 and G7 on the one approval service with G1/G2/G3/G8; fail-closed readiness at submission, G1, baseline commit and generation; a typed, append-only trace graph; RTM; SRS (with data and interface sections), user stories, use cases, compliance matrix, risk register, assumptions/dependency register and open-issues list, all deterministic, versioned and exported as Markdown and DOCX; E6 computed (no target exists; first measurement 0.800 on a synthetic scenario baseline; the synthetic E6 benchmark was reviewed by the project author with no substantive label correction and is not independently expert-validated) |
+| **P9 SDLC recommendation — `docs/12-p9-sdlc-recommendation.md`** | **P9 COMPLETE — ROADMAP EXIT PASSED — PROJECT-AUTHOR REVIEW COMPLETED**: thirteen factors derived from the approved baseline and the governed risk register, with evidence; bounded model proposals and human overrides; weighted MCDA plus four versioned rules; a persisted ranking with reversal analysis; an LLM explanation checked against the ranking; G6 co-approval by Project Manager, Architect, Security Reviewer and Compliance Officer. E9 = 0.167 (2/12) agreement with a **synthetic AI-generated panel**, not a real or independently validated expert panel (no target exists; the benchmark was reviewed by the project author with no substantive correction). The exit criterion names a blind expert panel; the synthetic panel fills it under **deviation P9-3, approved by the project author** (docs/12 §17). P10 is not started |
 
 P0 built the foundation. P1 built the deterministic requirements repository:
 immutable requirement versions, a guarded lifecycle, G1 human approval, and
@@ -37,6 +38,13 @@ baselines. P2 built the grounding layer: a typed, versioned knowledge base
 (C.1 taxonomy), structure-aware chunking with exact offsets, local embeddings,
 PostgreSQL + pgvector hybrid retrieval with the source allowlist enforced
 **inside the query**, immutable evidence, and exact citation resolution.
+
+P9 added the SDLC recommendation: a thirteen-factor profile derived by code
+from the approved baseline and the governed risk register; bounded model
+proposals and human overrides; weighted MCDA and a fixed-order rule pass over
+versioned data, persisted before any explanation exists; an LLM explanation
+checked field by field against that ranking; and G6, decided by four humans.
+The model explains the ranking and never selects the SDLC.
 
 P8 added governance and output: G4 (Analyst plus each affected stakeholder),
 G5 (Project Manager) and G7 (Analyst + Compliance Officer) on the existing

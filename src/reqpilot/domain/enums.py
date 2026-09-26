@@ -19,7 +19,16 @@ from enum import StrEnum
 
 
 class Role(StrEnum):
-    """The seven human roles (approved Phase 0 F.1)."""
+    """The human roles (approved Phase 0 F.1), plus the Architect from P9.
+
+    F.1 lists seven actors and merges "Project Manager / Software Architect" into
+    one. The problem statement (§14: "approved by the project manager, architect,
+    security team, and compliance officer"), ``FR-SDL-008`` and architecture M.3
+    ("PM + Architect + Security + Compliance (all four)") name the architect as a
+    separate G6 approver, so P9 adds ``ARCHITECT`` as its own role: without it the
+    four-role G6 requirement could not be represented as four distinct
+    ``role_exercised`` values. Recorded as a P9 deviation from F.1's table.
+    """
 
     ANALYST = "analyst"
     STAKEHOLDER = "stakeholder"
@@ -28,6 +37,8 @@ class Role(StrEnum):
     PROJECT_MANAGER = "project_manager"
     AUDITOR = "auditor"
     KB_ADMIN = "kb_admin"
+    #: P9: the software architect, a G6 approver (``FR-SDL-008``).
+    ARCHITECT = "architect"
 
 
 class AgentRole(StrEnum):
@@ -105,9 +116,8 @@ class Gate(StrEnum):
     G8_HIGH_SEVERITY_RISK = "G8"
 
 
-#: Gate -> the role required to decide it (architecture M.3). G6 additionally
-#: requires four roles; that grouping is implemented by the approval service in
-#: the roadmap phase that introduces SDLC selection.
+#: Gate -> the role required to decide it (architecture M.3). From P9, G6 names
+#: all four of its approvers (``FR-SDL-008``; ``[PS §14]``).
 GATE_REQUIRED_ROLES: dict[Gate, frozenset[Role]] = {
     Gate.G1_REQUIREMENT_BASELINE: frozenset({Role.ANALYST, Role.COMPLIANCE_OFFICER}),
     Gate.G2_REGULATORY_INTERPRETATION: frozenset({Role.COMPLIANCE_OFFICER}),
@@ -119,7 +129,7 @@ GATE_REQUIRED_ROLES: dict[Gate, frozenset[Role]] = {
     Gate.G4_STAKEHOLDER_CONFLICT: frozenset({Role.ANALYST, Role.STAKEHOLDER}),
     Gate.G5_ARCHITECTURE_CRITICAL: frozenset({Role.PROJECT_MANAGER}),
     Gate.G6_SDLC_SELECTION: frozenset(
-        {Role.PROJECT_MANAGER, Role.SECURITY_REVIEWER, Role.COMPLIANCE_OFFICER}
+        {Role.PROJECT_MANAGER, Role.ARCHITECT, Role.SECURITY_REVIEWER, Role.COMPLIANCE_OFFICER}
     ),
     Gate.G7_APPROVED_REQUIREMENT_CHANGE: frozenset({Role.ANALYST, Role.COMPLIANCE_OFFICER}),
     Gate.G8_HIGH_SEVERITY_RISK: frozenset({Role.SECURITY_REVIEWER}),
@@ -489,6 +499,18 @@ class AuditEventType(StrEnum):
     ARTIFACT_VERSION_CREATED = "ARTIFACT_VERSION_CREATED"
     ARTIFACT_GENERATION_REFUSED = "ARTIFACT_GENERATION_REFUSED"
     ARTIFACT_EXPORTED = "ARTIFACT_EXPORTED"
+    # SDLC recommendation (added by P9). The first six are architecture O.2's
+    # SDLC events verbatim; the last three record the run lifecycle.
+    FACTOR_PROPOSED = "FACTOR_PROPOSED"
+    FACTOR_OVERRIDDEN = "FACTOR_OVERRIDDEN"
+    RULES_APPLIED = "RULES_APPLIED"
+    MCDA_COMPUTED = "MCDA_COMPUTED"
+    EXPLANATION_GENERATED = "EXPLANATION_GENERATED"
+    EXPLANATION_DISCREPANCY = "EXPLANATION_DISCREPANCY"
+    SDLC_RUN_SUPERSEDED = "SDLC_RUN_SUPERSEDED"
+    SDLC_SELECTION_RECORDED = "SDLC_SELECTION_RECORDED"
+    #: A G6 rejection or modification request settled on the run (not a selection).
+    SDLC_G6_SETTLED = "SDLC_G6_SETTLED"
 
 
 class Action(StrEnum):
@@ -633,6 +655,16 @@ class Action(StrEnum):
     ARTIFACT_READ = "artifact.read"
     #: Downloading an artefact version as Markdown, DOCX or CSV.
     ARTIFACT_EXPORT = "artifact.export"
+    # --- SDLC recommendation (P9) ------------------------------------------
+    #: Starting an SDLC run from an approved baseline (human only).
+    SDLC_RUN_START = "sdlc.run_start"
+    #: Recording a run's factor profile, ranking and explanation (the pipeline).
+    SDLC_RECORD = "sdlc.record"
+    SDLC_READ = "sdlc.read"
+    #: Overriding a factor score with a reason (FR-SDL-003; human only).
+    SDLC_FACTOR_OVERRIDE = "sdlc.factor_override"
+    #: Asking for the explanation again after a provider failure (human only).
+    SDLC_EXPLAIN = "sdlc.explain"
 
 
 class ResourceType(StrEnum):
@@ -671,6 +703,7 @@ class ResourceType(StrEnum):
     TRACEABILITY_LINK = "traceability_link"
     ARTIFACT = "artifact"
     ARTIFACT_VERSION = "artifact_version"
+    SDLC_RUN = "sdlc_run"
 
 
 # ---------------------------------------------------------------------------
@@ -1280,3 +1313,40 @@ class ArtifactFormat(StrEnum):
     MARKDOWN = "markdown"
     DOCX = "docx"
     CSV = "csv"
+
+
+# ---------------------------------------------------------------------------
+# SDLC recommendation (roadmap phase P9)
+# ---------------------------------------------------------------------------
+
+
+class SdlcRunStatus(StrEnum):
+    """Where one SDLC run stands (architecture C.5, M.3 G6).
+
+    ``RANKED`` - the factor profile, the rules and the ranking are persisted (the
+    ranking exists before any explanation). ``AWAITING_G6`` - the explanation is
+    complete (with or without a discrepancy) and the four G6 tasks are open.
+    ``REVISION_REQUESTED`` - a G6 approver asked for factor revision (MODIFY).
+    ``REJECTED`` - a G6 approver rejected the selection. ``SELECTED`` - all four
+    approved: the final SDLC selection. ``SUPERSEDED`` - a later run (a factor
+    override, or a new run) replaced this one; its history is kept unchanged.
+    """
+
+    RANKED = "ranked"
+    AWAITING_G6 = "awaiting_g6"
+    REVISION_REQUESTED = "revision_requested"
+    REJECTED = "rejected"
+    SELECTED = "selected"
+    SUPERSEDED = "superseded"
+
+
+class ExplanationStatus(StrEnum):
+    """What became of a run's LLM explanation (architecture L.5, ``[DESIGN] D9``)."""
+
+    NOT_GENERATED = "not_generated"
+    #: Consistent with the computed ranking.
+    GENERATED = "generated"
+    #: Still inconsistent after the one regeneration: stored, shown with a banner.
+    DISCREPANCY = "discrepancy"
+    #: The provider failed or refused; the ranking stands, G6 is not raised yet.
+    FAILED = "failed"

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}SDLC recommendation - {{ project.name }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/tasks">approval queue (G6)</a>
+  <a href="/ui/projects/{{ project.id }}/risks">risk register</a>
+{% endblock %}
+{% block content %}
+<h1>SDLC recommendation</h1>
+<p class="note warn"><b>How to read this.</b> {{ notice }}</p>
+<p class="muted">Ruleset <span class="mono">{{ ruleset }}</span>. Candidates:
+  {% for c in candidates %}{{ c.label }}{% if not loop.last %}, {% endif %}{% endfor %}.
+  A recommendation is computed only from an approved baseline and the governed risk register;
+  the application refuses anything else. This page enforces nothing.</p>
+
+{% if may_start %}
+<h2>Start a recommendation</h2>
+{% if baselines %}
+<form method="post" action="/ui/projects/{{ project.id }}/sdlc-runs">
+  <label>Approved baseline
+    <select name="baseline_id">
+      {% for b in baselines %}<option value="{{ b.id }}">{{ b.label }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit" class="primary">Compute recommendation</button>
+</form>
+{% else %}
+<p class="muted">No baseline exists yet: approve requirements at G1 first.</p>
+{% endif %}
+{% endif %}
+
+<h2>Runs</h2>
+{% if runs %}
+<table>
+  <tr><th>Run</th><th>Status</th><th>First</th><th>Runner-up</th><th>Explanation</th><th>Selected</th><th>Created</th></tr>
+  {% for r in runs|reverse %}
+  <tr>
+    <td class="mono"><a href="/ui/sdlc-runs/{{ r.id }}">{{ r.id|string|truncate(8, True, "") }}</a>
+      {% if r.supersedes_run_id %}<div class="muted">override of {{ r.supersedes_run_id|string|truncate(8, True, "") }}</div>{% endif %}</td>
+    <td>{{ r.status.value }}</td>
+    <td class="mono">{{ r.top_candidate }}</td>
+    <td class="mono">{{ r.runner_up_candidate or "-" }}</td>
+    <td>{{ r.explanation_status.value }}</td>
+    <td class="mono">{{ r.selected_candidate or "-" }}</td>
+    <td class="muted">{{ r.created_at }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="muted">No recommendation yet.</p>
+{% endif %}
+{% endblock %}

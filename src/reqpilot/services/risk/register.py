@@ -30,8 +30,9 @@ from __future__ import annotations
 
 import uuid
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
@@ -254,26 +255,7 @@ class RiskRegisterService:
         These are *inputs* to the SDLC factor profile, which P9 builds. P7
         exposes them and stops there: no scoring, no weighting, no ranking.
         """
-        view = self.register(project_id)
-        out: list[FactorInput] = []
-        for formula in self._rules.factors:
-            relevant = [r for r in view.risks if r.category in formula.categories]
-            counts = Counter(str(r.severity) for r in relevant)
-            if formula.impact_scores:
-                worst = max(relevant, key=lambda r: _impact_rank(r.impact), default=None)
-                value = formula.impact_scores.get(worst.impact, 1) if worst else 1
-            else:
-                value = _threshold_value(formula.thresholds, counts)
-            out.append(
-                FactorInput(
-                    key=formula.key,
-                    value=value,
-                    description=formula.description,
-                    evidence_risk_ids=tuple(r.id for r in relevant),
-                    counts={level.value: counts.get(level.value, 0) for level in RiskSeverity},
-                )
-            )
-        return tuple(out)
+        return compute_factor_inputs(self._rules, self.register(project_id).risks)
 
     # ------------------------------------------------------------------
     # rendering (deterministic; the P8 document generator will reuse the views)
@@ -336,6 +318,52 @@ class RiskRegisterService:
             lines.append("")
         lines.extend(["---", "", f"> {REGISTER_NOTICE}", ""])
         return "\n".join(lines)
+
+
+class AggregatableRisk(Protocol):
+    """What an I.6 aggregate reads from a risk: nothing else is consulted."""
+
+    @property
+    def id(self) -> Any: ...
+    @property
+    def category(self) -> RiskCategory: ...
+    @property
+    def severity(self) -> RiskSeverity: ...
+    @property
+    def impact(self) -> str: ...
+
+
+def compute_factor_inputs(
+    rules: RiskRules, risks: Iterable[AggregatableRisk]
+) -> tuple[FactorInput, ...]:
+    """The I.6 formulas over a given set of risks (``FR-RSK-009``). Pure.
+
+    :meth:`RiskRegisterService.factor_inputs` applies it to the whole register;
+    P9 applies it to the *approved* scope - the risks of the versions in force as
+    of a baseline plus the project-level risks, without rejected or closed ones -
+    so there is exactly one implementation of the aggregation (no second risk
+    engine), and the P9 evaluation harness uses it too.
+    """
+    pool = list(risks)
+    out: list[FactorInput] = []
+    for formula in rules.factors:
+        relevant = [r for r in pool if r.category in formula.categories]
+        counts = Counter(str(r.severity) for r in relevant)
+        if formula.impact_scores:
+            worst = max(relevant, key=lambda r: _impact_rank(str(r.impact)), default=None)
+            value = formula.impact_scores.get(str(worst.impact), 1) if worst else 1
+        else:
+            value = _threshold_value(formula.thresholds, counts)
+        out.append(
+            FactorInput(
+                key=formula.key,
+                value=value,
+                description=formula.description,
+                evidence_risk_ids=tuple(r.id for r in relevant),
+                counts={level.value: counts.get(level.value, 0) for level in RiskSeverity},
+            )
+        )
+    return tuple(out)
 
 
 def _impact_rank(impact: str) -> int:

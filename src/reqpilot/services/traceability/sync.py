@@ -79,6 +79,19 @@ _DECISION_SUBJECTS: dict[str, TraceNodeType] = {
     "security_privacy_finding": N.SECURITY_PRIVACY_FINDING,
     "risk": N.RISK,
     "conflict": N.CONFLICT,
+    "sdlc_run": N.SDLC_RUN,
+}
+
+#: SDLC evidence-reference kinds that are trace-graph nodes (N.2 #20-#21, P9).
+_SDLC_EVIDENCE_NODES: dict[str, TraceNodeType] = {
+    "requirement_version": N.REQUIREMENT_VERSION,
+    "risk": N.RISK,
+    "compliance_mapping": N.COMPLIANCE_MAPPING,
+    "conflict": N.CONFLICT,
+    "stakeholder": N.STAKEHOLDER,
+    "clarification": N.CLARIFICATION,
+    "acceptance_criterion": N.ACCEPTANCE_CRITERION,
+    "baseline": N.BASELINE,
 }
 
 
@@ -412,6 +425,7 @@ class TraceGraphSync:
             )
 
         self._evidence_edges(project_id, cited_evidence, edges)
+        edges.extend(self.sdlc_edges(project_id))
         return edges, unresolved
 
     def _source_edges(
@@ -546,6 +560,8 @@ class TraceGraphSync:
                 anchor = finding_anchor.get(task.subject_id)
             elif node is N.RISK:
                 anchor = risk_anchor.get(task.subject_id)
+            elif node is N.SDLC_RUN:
+                anchor = None  # a recommendation is about a baseline, not one version
             else:
                 anchor = conflicts.get(task.subject_id)
             edges.append(
@@ -559,6 +575,98 @@ class TraceGraphSync:
                     f"approval_decision:{task.gate.value}",
                 )
             )
+
+    def sdlc_edges(
+        self, project_id: ProjectId, run_ids: Iterable[uuid.UUID] | None = None
+    ) -> list[Edge]:
+        """P9: every edge an SDLC run's persisted rows support (N.2 #20-#22).
+
+        ``baseline INFORMED sdlc_run``; ``sdlc_run CONTAINS`` each factor and each
+        candidate; each factor's typed evidence references ``AGGREGATED_INTO`` the
+        factor (a requirement version, a risk, a compliance mapping, a conflict, a
+        stakeholder, a clarification, an acceptance criterion or the baseline);
+        and ``sdlc_factor INFORMED sdlc_candidate`` wherever the factor's weighted
+        contribution to the candidate's MCDA score is non-zero. The G6 decisions
+        (#23) come from :meth:`_decision_edges` like every other gate's.
+        """
+        from reqpilot.domain.models.sdlc import SdlcCandidate, SdlcFactor, SdlcRun
+
+        wanted = set(run_ids) if run_ids is not None else None
+        runs = [r for r in self._rows(SdlcRun, project_id) if wanted is None or r.id in wanted]
+        if not runs:
+            return []
+        ids = {r.id for r in runs}
+        factors: dict[uuid.UUID, list[SdlcFactor]] = {}
+        for row in self._rows(SdlcFactor, project_id):
+            if row.sdlc_run_id in ids:
+                factors.setdefault(row.sdlc_run_id, []).append(row)
+        candidates: dict[uuid.UUID, list[SdlcCandidate]] = {}
+        for row in self._rows(SdlcCandidate, project_id):
+            if row.sdlc_run_id in ids:
+                candidates.setdefault(row.sdlc_run_id, []).append(row)
+        out: list[Edge] = []
+        for run in sorted(runs, key=lambda r: str(r.id)):
+            rid = str(run.id)
+            out.append(
+                Edge(
+                    N.BASELINE,
+                    str(run.baseline_id),
+                    L.INFORMED,
+                    N.SDLC_RUN,
+                    rid,
+                    None,
+                    "sdlc_run.baseline_id",
+                )
+            )
+            run_candidates = sorted(candidates.get(run.id, []), key=lambda c: c.rank)
+            for candidate in run_candidates:
+                out.append(
+                    Edge(
+                        N.SDLC_RUN,
+                        rid,
+                        L.CONTAINS,
+                        N.SDLC_CANDIDATE,
+                        str(candidate.id),
+                        None,
+                        "sdlc_candidate",
+                    )
+                )
+            for factor in sorted(factors.get(run.id, []), key=lambda f: f.factor_id):
+                fid = str(factor.id)
+                out.append(
+                    Edge(N.SDLC_RUN, rid, L.CONTAINS, N.SDLC_FACTOR, fid, None, "sdlc_factor")
+                )
+                for reference in factor.evidence_refs or []:
+                    kind, _, identifier = str(reference).partition(":")
+                    node = _SDLC_EVIDENCE_NODES.get(kind)
+                    if node is None or _uuid(identifier) is None:
+                        continue
+                    anchor = _uuid(identifier) if node is N.REQUIREMENT_VERSION else None
+                    out.append(
+                        Edge(
+                            node,
+                            identifier,
+                            L.AGGREGATED_INTO,
+                            N.SDLC_FACTOR,
+                            fid,
+                            anchor,
+                            "sdlc_factor.evidence_refs",
+                        )
+                    )
+                for candidate in run_candidates:
+                    if float((candidate.contributions or {}).get(factor.factor_id, 0.0)) != 0.0:
+                        out.append(
+                            Edge(
+                                N.SDLC_FACTOR,
+                                fid,
+                                L.INFORMED,
+                                N.SDLC_CANDIDATE,
+                                str(candidate.id),
+                                None,
+                                "sdlc_candidate.contributions",
+                            )
+                        )
+        return out
 
     def _evidence_edges(
         self, project_id: ProjectId, evidence_ids: set[uuid.UUID], edges: list[Edge]

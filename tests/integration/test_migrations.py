@@ -146,6 +146,10 @@ RISK_TABLES = {"risk_matrix", "risk", "risk_evidence", "risk_mitigation"}
 #: G.8): the typed trace graph and the generated artefacts.
 TRACE_DOCUMENT_TABLES = {"traceability_link", "artifact", "artifact_version", "artifact_section"}
 
+#: Tables the SDLC-recommendation phase adds (architecture G.8, L): runs, their
+#: 13 factors, the candidates' MCDA results and the triggered rules.
+SDLC_TABLES = {"sdlc_run", "sdlc_factor", "sdlc_candidate", "sdlc_rule_application"}
+
 
 def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None:
     """The schema must not run ahead of the roadmap.
@@ -164,6 +168,7 @@ def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None
         | COMPLIANCE_TABLES
         | RISK_TABLES
         | TRACE_DOCUMENT_TABLES
+        | SDLC_TABLES
     )
     unexpected = present - permitted
     assert not unexpected, f"migrations created out-of-scope tables: {sorted(unexpected)}"
@@ -350,6 +355,43 @@ def test_downgrading_p8_removes_exactly_the_trace_and_document_tables(
         assert present >= RISK_TABLES | COMPLIANCE_TABLES | QUALITY_TABLES
         assert "assignee_user_id" not in {c["name"] for c in inspector.get_columns("approval_task")}
         assert "uq_baseline_id" not in {i["name"] for i in inspector.get_indexes("baseline")}
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
+    command.upgrade(config, "head")
+
+
+def test_downgrading_p9_removes_exactly_the_sdlc_tables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rolling P9 back leaves P0-P8 intact and restores the P8 trace allowlist check."""
+    url = sqlite_url(tmp_path / "p9-down.db")
+    monkeypatch.setenv("DATABASE_URL", url)
+    get_settings.cache_clear()
+    config = alembic_config(url)
+    command.upgrade(config, "head")
+    engine = create_engine(url, future=True)
+    try:
+        with engine.connect() as conn:
+            ddl = conn.exec_driver_sql(
+                "SELECT sql FROM sqlite_master WHERE name = 'traceability_link'"
+            ).scalar_one()
+        assert "sdlc_run" in ddl, "P9 widens the trace allowlist check"
+    finally:
+        engine.dispose()
+    command.downgrade(config, "0010_p8_trace_documents")
+    engine = create_engine(url, future=True)
+    try:
+        inspector = inspect(engine)
+        present = set(inspector.get_table_names())
+        assert not present & SDLC_TABLES, "downgrade left P9 tables behind"
+        assert present >= TRACE_DOCUMENT_TABLES | RISK_TABLES | COMPLIANCE_TABLES
+        with engine.connect() as conn:
+            ddl = conn.exec_driver_sql(
+                "SELECT sql FROM sqlite_master WHERE name = 'traceability_link'"
+            ).scalar_one()
+        assert "sdlc_run" not in ddl, "downgrade restores the P8 trace allowlist check"
+        assert "ck_traceability_link_allowed_triple" in ddl
     finally:
         engine.dispose()
         get_settings.cache_clear()

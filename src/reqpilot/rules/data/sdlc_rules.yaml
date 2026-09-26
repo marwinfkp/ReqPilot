@@ -1,0 +1,415 @@
+# The SDLC selection ruleset (roadmap phase P9; architecture L.1-L.5, I.6,
+# FR-SDL-001..008, [DESIGN] D9, D11, D18).
+#
+# Versioned data, not code (DQ-03). Every SDLC run records the `version` below
+# as its ruleset_version and `weights.version` as its weights_version, so a
+# change here never silently re-ranks a recommendation that was computed, and
+# approved at G6, under an earlier ruleset.
+#
+# PROVENANCE. The problem statement fixes the 13 factors ([PS §13]), the
+# candidates and the hybrid approach ([PS §14]); architecture L fixes the formula
+# shape (weighted MCDA with coefficients in [-2..+2] over factor scores 1..5
+# mapped to -1..+1), the three rule effects and their example conditions, and the
+# consistency check. NO APPROVED SOURCE FIXES A WEIGHT, A COEFFICIENT, A BAND, A
+# KEYWORD OR AN UPLIFT: every one of those numbers is a project/engineering
+# decision ([PROJ]) taken in P9, stated here so that it can be reviewed and
+# changed as data. The coefficients encode the direction of the [PS §14] table
+# (stable requirements and extensive approvals -> Waterfall; strict verification
+# and validation -> V-Model; high uncertainty or technical risk -> Spiral;
+# frequently changing requirements -> Agile; continuous secure deployment ->
+# DevSecOps; high regulation with evolving requirements -> Agile-V-Model or
+# DevSecOps hybrid) and were fixed, with their unit tests, BEFORE the
+# P9-SDLC-SYNTHETIC-v1 benchmark was generated; they were not tuned against it.
+
+name: sdlc_rules
+version: "1.0.0"
+description: >
+  SDLC candidates, factor weights and anchors, suitability coefficients, the
+  declarative post-MCDA rules, the factor derivation bands and evidence signals,
+  and the explanation consistency settings for P9.
+
+rules:
+  # --- candidates (architecture L.1) -------------------------------------
+  # Order matters only as the final tie-break in the ranking.
+  # coefficients: S[c][f] in [-2..+2] - how strongly a HIGH score on factor f
+  # favours (+) or disfavours (-) candidate c. A LOW score flips the sign through
+  # norm(1) = -1. [PROJ], encoding the [PS §14] table's direction.
+  candidates:
+    - key: waterfall
+      label: Waterfall
+      description: Sequential phases with a signed-off specification before build.
+      attributes: [waterfall, pure_waterfall, plan_driven]
+      coefficients:
+        requirement_stability: 2
+        regulatory_criticality: 1
+        security_risk: 0
+        project_complexity: -1
+        system_size: 1
+        legacy_system_dependence: 1
+        expected_frequency_of_change: -2
+        need_for_continuous_delivery: -2
+        stakeholder_availability: -1
+        testing_and_documentation_requirements: 1
+        budget_and_schedule_constraints: 1
+        need_for_formal_verification: 1
+        consequences_of_failure: 1
+    - key: v_model
+      label: V-Model
+      description: Sequential development with a verification level paired to every specification level.
+      attributes: [v_model, plan_driven]
+      coefficients:
+        requirement_stability: 2
+        regulatory_criticality: 2
+        security_risk: 1
+        project_complexity: 0
+        system_size: 1
+        legacy_system_dependence: 1
+        expected_frequency_of_change: -2
+        need_for_continuous_delivery: -1
+        stakeholder_availability: -1
+        testing_and_documentation_requirements: 2
+        budget_and_schedule_constraints: 0
+        need_for_formal_verification: 2
+        consequences_of_failure: 2
+    - key: spiral
+      label: Spiral
+      description: Risk-driven iterations, each resolving the highest remaining risk first.
+      attributes: [spiral, risk_driven, iterative]
+      coefficients:
+        requirement_stability: -1
+        regulatory_criticality: 1
+        security_risk: 1
+        project_complexity: 2
+        system_size: 1
+        legacy_system_dependence: 1
+        expected_frequency_of_change: 1
+        need_for_continuous_delivery: -1
+        stakeholder_availability: 0
+        testing_and_documentation_requirements: 0
+        budget_and_schedule_constraints: -2
+        need_for_formal_verification: 1
+        consequences_of_failure: 1
+    - key: agile
+      label: Agile
+      description: Short iterations with continuous stakeholder feedback and evolving requirements.
+      attributes: [agile, iterative]
+      coefficients:
+        requirement_stability: -2
+        regulatory_criticality: -1
+        security_risk: -1
+        project_complexity: 0
+        system_size: -1
+        legacy_system_dependence: -1
+        expected_frequency_of_change: 2
+        need_for_continuous_delivery: 1
+        stakeholder_availability: 2
+        testing_and_documentation_requirements: -1
+        budget_and_schedule_constraints: 1
+        need_for_formal_verification: -2
+        consequences_of_failure: -1
+    - key: devsecops
+      label: DevSecOps
+      description: Continuous integration and delivery with security controls automated in the pipeline.
+      attributes: [devsecops, iterative]
+      coefficients:
+        requirement_stability: -1
+        regulatory_criticality: 1
+        security_risk: 2
+        project_complexity: 0
+        system_size: 0
+        legacy_system_dependence: -1
+        expected_frequency_of_change: 1
+        need_for_continuous_delivery: 2
+        stakeholder_availability: 1
+        testing_and_documentation_requirements: 1
+        budget_and_schedule_constraints: 0
+        need_for_formal_verification: 0
+        consequences_of_failure: 1
+    - key: agile_v_model_hybrid
+      label: Agile–V-Model hybrid
+      description: Agile delivery inside V-Model verification levels and sign-offs.
+      attributes: [agile, v_model, hybrid, iterative]
+      coefficients:
+        requirement_stability: 0
+        regulatory_criticality: 2
+        security_risk: 1
+        project_complexity: 1
+        system_size: 1
+        legacy_system_dependence: 1
+        expected_frequency_of_change: 1
+        need_for_continuous_delivery: 0
+        stakeholder_availability: 1
+        testing_and_documentation_requirements: 2
+        budget_and_schedule_constraints: 0
+        need_for_formal_verification: 1
+        consequences_of_failure: 1
+    - key: agile_devsecops_hybrid
+      label: Agile–DevSecOps hybrid
+      description: Agile iterations delivered through a secured continuous-delivery pipeline.
+      attributes: [agile, devsecops, hybrid, iterative]
+      coefficients:
+        requirement_stability: -1
+        regulatory_criticality: 1
+        security_risk: 2
+        project_complexity: 1
+        system_size: 0
+        legacy_system_dependence: 0
+        expected_frequency_of_change: 2
+        need_for_continuous_delivery: 2
+        stakeholder_availability: 1
+        testing_and_documentation_requirements: 1
+        budget_and_schedule_constraints: 0
+        need_for_formal_verification: -1
+        consequences_of_failure: 1
+
+  # --- factors (architecture L.2) and weights ([PROJ]) --------------------
+  # Anchors for 1, 3 and 5 make a proposed score defensible and an override
+  # meaningful. Weights emphasise the financial-sector factors the problem
+  # statement names first (regulation, security, change) - a [PROJ] judgement.
+  weights:
+    version: "1.0.0"
+  factors:
+    requirement_stability:
+      label: Requirement stability
+      weight: 1.5
+      anchors:
+        1: Requirements are churning - frequent revisions and open conflicts.
+        3: Some revisions or conflicts; the core is settled.
+        5: The approved set has not needed revision and carries no conflict.
+    regulatory_criticality:
+      label: Regulatory criticality
+      weight: 1.5
+      anchors:
+        1: No regulatory obligation is mapped and no compliance risk is recorded.
+        3: Several obligations apply; compliance risks are moderate.
+        5: Heavily regulated - high compliance risks or many obligations and gaps.
+    security_risk:
+      label: Security risk
+      weight: 1.5
+      anchors:
+        1: No security risk in the approved register.
+        3: At least one medium security risk.
+        5: At least one high security risk.
+    project_complexity:
+      label: Project complexity
+      weight: 1.0
+      anchors:
+        1: Few requirements, no integration, no technical risk.
+        3: Moderate size, some integration or technical risk.
+        5: Large, integration-heavy, with high technical risks.
+    system_size:
+      label: System size
+      weight: 0.5
+      anchors:
+        1: A handful of requirements.
+        3: A few dozen requirements.
+        5: Well over sixty requirements.
+    legacy_system_dependence:
+      label: Legacy-system dependence
+      weight: 0.75
+      anchors:
+        1: No dependence on legacy or existing systems.
+        3: One legacy dependency.
+        5: Several requirements depend on legacy systems.
+    expected_frequency_of_change:
+      label: Expected frequency of change
+      weight: 1.5
+      anchors:
+        1: Nothing indicates the requirements will change.
+        3: Around a tenth of the requirements signal change.
+        5: A third or more of the requirements signal frequent change.
+    need_for_continuous_delivery:
+      label: Need for continuous delivery
+      weight: 1.0
+      anchors:
+        1: No requirement asks for frequent or continuous release.
+        3: One requirement asks for frequent release.
+        5: Several requirements depend on continuous deployment.
+    stakeholder_availability:
+      label: Stakeholder availability
+      weight: 0.75
+      anchors:
+        1: Stakeholders have not been reachable.
+        3: A quarter to a half of the stakeholders have taken part.
+        5: Most stakeholders have taken part and questions get answered.
+    testing_and_documentation_requirements:
+      label: Testing and documentation requirements
+      weight: 1.0
+      anchors:
+        1: No acceptance criteria are recorded.
+        3: Half or more of the requirements carry acceptance criteria.
+        5: Nearly all carry acceptance criteria and audit documentation is required.
+    budget_and_schedule_constraints:
+      label: Budget and schedule constraints
+      weight: 0.5
+      anchors:
+        1: Budget and schedule are explicitly flexible.
+        3: No constraint is recorded (neutral).
+        5: Several requirements fix a budget or a date.
+    need_for_formal_verification:
+      label: Need for formal verification
+      weight: 1.25
+      anchors:
+        1: No requirement demands exact verification or independent control.
+        3: A couple of requirements demand reconciliation or dual control.
+        5: Many requirements demand exact, independently verified behaviour.
+    consequences_of_failure:
+      label: Consequences of system failure
+      weight: 1.25
+      anchors:
+        1: No security, compliance or operational risk with impact.
+        3: The worst such risk has moderate impact (I2).
+        5: The worst such risk has major impact (I3).
+
+  # --- declarative rules, applied after MCDA (architecture L.4, D18) ------
+  sdlc_rules:
+    - id: R1-veto-waterfall-regulated-unstable
+      effect: veto
+      target_attribute: pure_waterfall
+      when:
+        - {factor: regulatory_criticality, op: ">=", value: 4}
+        - {factor: requirement_stability, op: "<=", value: 2}
+      description: Pure Waterfall cannot rank first for a highly regulated project with unstable requirements
+      provenance: architecture L.4 example row 1 ([DESIGN] D18)
+    - id: R2-require-v-model-formal-critical
+      effect: require_top_n
+      n: 2
+      target_attribute: v_model
+      when:
+        - {factor: need_for_formal_verification, op: "==", value: 5}
+        - {factor: consequences_of_failure, op: "==", value: 5}
+      description: A V-Model-containing candidate must appear in the top two when formal verification and failure consequences are both maximal
+      provenance: architecture L.4 example row 2 ([DESIGN] D18)
+    - id: R3-boost-devsecops-security
+      effect: boost
+      uplift: 5
+      target_attribute: devsecops
+      when:
+        - {factor: security_risk, op: "==", value: 5}
+      description: DevSecOps-containing candidates receive a bounded uplift when security risk is maximal
+      provenance: architecture L.4 example row 3 ([DESIGN] D18); uplift 5 is [PROJ]
+    - id: R4-boost-hybrid-regulated-evolving
+      effect: boost
+      uplift: 5
+      target_attribute: hybrid
+      when:
+        - {factor: regulatory_criticality, op: ">=", value: 4}
+        - {factor: expected_frequency_of_change, op: ">=", value: 4}
+      description: Hybrid candidates receive a bounded uplift for high regulation with evolving requirements
+      provenance: "[PS §14] table, row 'High regulation with evolving requirements'; uplift 5 is [PROJ]"
+
+  # --- derivation: approved facts -> factor scores ([PROJ]) ----------------
+  # A band's value applies when the measure reaches its minimum; the highest
+  # band reached wins. Percentages are 0-100.
+  derivation:
+    bands:
+      stability_churn:            # churn % = (revised + conflicts + change signals) / requirements
+        - {min: 0, value: 5}
+        - {min: 1, value: 4}
+        - {min: 11, value: 3}
+        - {min: 26, value: 2}
+        - {min: 51, value: 1}
+      normative_sources:          # distinct normative sources mapped
+        - {min: 0, value: 1}
+        - {min: 1, value: 2}
+        - {min: 2, value: 3}
+        - {min: 3, value: 4}
+        - {min: 5, value: 5}
+      open_compliance_gaps:
+        - {min: 0, value: 1}
+        - {min: 1, value: 3}
+        - {min: 3, value: 4}
+        - {min: 5, value: 5}
+      system_size:                # in-force requirements in the baseline
+        - {min: 0, value: 1}
+        - {min: 8, value: 2}
+        - {min: 16, value: 3}
+        - {min: 31, value: 4}
+        - {min: 61, value: 5}
+      integration_requirements:
+        - {min: 0, value: 1}
+        - {min: 1, value: 2}
+        - {min: 2, value: 3}
+        - {min: 4, value: 4}
+        - {min: 6, value: 5}
+      legacy_requirements:
+        - {min: 0, value: 1}
+        - {min: 1, value: 3}
+        - {min: 2, value: 4}
+        - {min: 4, value: 5}
+      change_ratio:               # % = (change signals + revised) / requirements
+        - {min: 0, value: 1}
+        - {min: 1, value: 2}
+        - {min: 10, value: 3}
+        - {min: 20, value: 4}
+        - {min: 35, value: 5}
+      delivery_signals:
+        - {min: 0, value: 1}
+        - {min: 1, value: 3}
+        - {min: 2, value: 4}
+        - {min: 4, value: 5}
+      interviewed_ratio:          # % of stakeholders with a completed interview
+        - {min: 0, value: 1}
+        - {min: 1, value: 2}
+        - {min: 25, value: 3}
+        - {min: 50, value: 4}
+        - {min: 80, value: 5}
+      acceptance_criteria_ratio:  # % of requirements with acceptance criteria
+        - {min: 0, value: 1}
+        - {min: 1, value: 2}
+        - {min: 50, value: 3}
+        - {min: 80, value: 4}
+      schedule_signals:
+        - {min: 0, value: 3}
+        - {min: 1, value: 4}
+        - {min: 2, value: 5}
+      verification_signals:
+        - {min: 0, value: 1}
+        - {min: 1, value: 2}
+        - {min: 2, value: 3}
+        - {min: 4, value: 4}
+        - {min: 6, value: 5}
+    params:
+      open_clarification_penalty_at: 3
+      documentation_bonus_at: 2
+
+  # --- evidence signals over approved statements ([PROJ]) -----------------
+  # A requirement counts once per signal when its statement contains a keyword
+  # (case-insensitive, at a word start) or carries one of the listed
+  # classification categories. Hints, not judgements: they only decide which
+  # rows are counted, and every counted row is cited.
+  signals:
+    integration:
+      categories: [integration]
+      keywords: [integrat, interface with, api, interoperab, exchange data with, third-party, third party, external system]
+    legacy:
+      categories: []
+      keywords: [legacy, core banking, mainframe, existing system, existing core, cobol, batch file]
+    change:
+      categories: []
+      keywords: [frequent, regularly updated, change often, configurable, rule changes, new product, evolving, rapidly, quarterly]
+    delivery:
+      categories: []
+      keywords: [continuous deliver, continuous deploy, continuous integration, deploy, release cycle, frequent release, releases, several times a week, zero downtime, hotfix, feature toggle]
+    verification:
+      categories: []
+      keywords: [reconcil, exact, must be verified, independent verification, dual control, four-eyes, four eyes, second approver, second loan officer, certif, formally, integrity, tamper]
+    documentation:
+      categories: [audit_reporting, regulatory]
+      keywords: [audit trail, documented, record of, report to, evidence of]
+    schedule:
+      categories: []
+      keywords: [deadline, budget, fixed price, fixed-price, go-live, launch date, delivered by, time-to-market]
+
+  # --- factor proposals and the explanation check -------------------------
+  # A model may move a derived score by at most this much (role #10 proposes;
+  # deterministic code disposes). 0 would ignore proposals entirely. [PROJ]
+  max_proposal_deviation: 1
+  consistency:
+    score_tolerance: 1.0          # points on the 0-100 suitability scale [PROJ]
+    max_regenerations: 1          # architecture L.5: one regeneration
+    forbidden_claims:
+      - "\\bI (have )?(selected|chose|choose|decided|picked)\\b"
+      - "\\bI recommend\\b"
+      - "\\bthe (model|AI|LLM|assistant) (selected|chose|decided|picked|recommends)\\b"
+      - "\\bmy (selection|choice|decision)\\b"

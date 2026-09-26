@@ -89,6 +89,9 @@ EXPECTED = {
         Role.COMPLIANCE_OFFICER,
         Role.SECURITY_REVIEWER,
         Role.PROJECT_MANAGER,
+        # P9: the architect reads what the project manager reads (a G6 approver
+        # must be able to see the evidence behind a recommendation).
+        Role.ARCHITECT,
         Role.AUDITOR,
     },
 }

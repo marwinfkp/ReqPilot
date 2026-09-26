@@ -1,0 +1,437 @@
+{
+  "cases": [
+    {
+      "borda": {
+        "agile": 21,
+        "agile_devsecops_hybrid": 29,
+        "agile_v_model_hybrid": 16,
+        "devsecops": 21,
+        "spiral": 11,
+        "v_model": 6,
+        "waterfall": 1
+      },
+      "case_id": "C01",
+      "consensus_strength": 0.8,
+      "first_place_votes": {
+        "agile": 1,
+        "agile_devsecops_hybrid": 4,
+        "agile_v_model_hybrid": 0,
+        "devsecops": 0,
+        "spiral": 0,
+        "v_model": 0,
+        "waterfall": 0
+      },
+      "kendall_w": 0.8029,
+      "mean_confidence": 3.8,
+      "plurality": [
+        "agile_devsecops_hybrid"
+      ],
+      "ranking": [
+        "agile_devsecops_hybrid",
+        "agile",
+        "devsecops",
+        "agile_v_model_hybrid",
+        "spiral",
+        "v_model",
+        "waterfall"
+      ]
+    },
+    {
+      "borda": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 6,
+        "agile_v_model_hybrid": 19,
+        "devsecops": 9,
+        "spiral": 24,
+        "v_model": 29,
+        "waterfall": 18
+      },
+      "case_id": "C02",
+      "consensus_strength": 0.8,
+      "first_place_votes": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 0,
+        "agile_v_model_hybrid": 0,
+        "devsecops": 0,
+        "spiral": 1,
+        "v_model": 4,
+        "waterfall": 0
+      },
+      "kendall_w": 0.92,
+      "mean_confidence": 4.4,
+      "plurality": [
+        "v_model"
+      ],
+      "ranking": [
+        "v_model",
+        "spiral",
+        "agile_v_model_hybrid",
+        "waterfall",
+        "devsecops",
+        "agile_devsecops_hybrid",
+        "agile"
+      ]
+    },
+    {
+      "borda": {
+        "agile": 28,
+        "agile_devsecops_hybrid": 25,
+        "agile_v_model_hybrid": 16,
+        "devsecops": 16,
+        "spiral": 15,
+        "v_model": 4,
+        "waterfall": 1
+      },
+      "case_id": "C03",
+      "consensus_strength": 0.8,
+      "first_place_votes": {
+        "agile": 4,
+        "agile_devsecops_hybrid": 1,
+        "agile_v_model_hybrid": 0,
+        "devsecops": 0,
+        "spiral": 0,
+        "v_model": 0,
+        "waterfall": 0
+      },
+      "kendall_w": 0.84,
+      "mean_confidence": 3.8,
+      "plurality": [
+        "agile"
+      ],
+      "ranking": [
+        "agile",
+        "agile_devsecops_hybrid",
+        "devsecops",
+        "agile_v_model_hybrid",
+        "spiral",
+        "v_model",
+        "waterfall"
+      ]
+    },
+    {
+      "borda": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 8,
+        "agile_v_model_hybrid": 23,
+        "devsecops": 7,
+        "spiral": 17,
+        "v_model": 30,
+        "waterfall": 20
+      },
+      "case_id": "C04",
+      "consensus_strength": 1.0,
+      "first_place_votes": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 0,
+        "agile_v_model_hybrid": 0,
+        "devsecops": 0,
+        "spiral": 0,
+        "v_model": 5,
+        "waterfall": 0
+      },
+      "kendall_w": 0.9371,
+      "mean_confidence": 4.6,
+      "plurality": [
+        "v_model"
+      ],
+      "ranking": [
+        "v_model",
+        "agile_v_model_hybrid",
+        "waterfall",
+        "spiral",
+        "agile_devsecops_hybrid",
+        "devsecops",
+        "agile"
+      ]
+    },
+    {
+      "borda": {
+        "agile": 1,
+        "agile_devsecops_hybrid": 20,
+        "agile_v_model_hybrid": 27,
+        "devsecops": 15,
+        "spiral": 16,
+        "v_model": 22,
+        "waterfall": 4
+      },
+      "case_id": "C05",
+      "consensus_strength": 0.6,
+      "first_place_votes": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 1,
+        "agile_v_model_hybrid": 3,
+        "devsecops": 0,
+        "spiral": 1,
+        "v_model": 0,
+        "waterfall": 0
+      },
+      "kendall_w": 0.7657,
+      "mean_confidence": 4.2,
+      "plurality": [
+        "agile_v_model_hybrid"
+      ],
+      "ranking": [
+        "agile_v_model_hybrid",
+        "v_model",
+        "agile_devsecops_hybrid",
+        "spiral",
+        "devsecops",
+        "waterfall",
+        "agile"
+      ]
+    },
+    {
+      "borda": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 5,
+        "agile_v_model_hybrid": 20,
+        "devsecops": 10,
+        "spiral": 15,
+        "v_model": 30,
+        "waterfall": 25
+      },
+      "case_id": "C06",
+      "consensus_strength": 1.0,
+      "first_place_votes": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 0,
+        "agile_v_model_hybrid": 0,
+        "devsecops": 0,
+        "spiral": 0,
+        "v_model": 5,
+        "waterfall": 0
+      },
+      "kendall_w": 1.0,
+      "mean_confidence": 4.2,
+      "plurality": [
+        "v_model"
+      ],
+      "ranking": [
+        "v_model",
+        "waterfall",
+        "agile_v_model_hybrid",
+        "spiral",
+        "devsecops",
+        "agile_devsecops_hybrid",
+        "agile"
+      ]
+    },
+    {
+      "borda": {
+        "agile": 22,
+        "agile_devsecops_hybrid": 29,
+        "agile_v_model_hybrid": 11,
+        "devsecops": 24,
+        "spiral": 14,
+        "v_model": 4,
+        "waterfall": 1
+      },
+      "case_id": "C07",
+      "consensus_strength": 0.8,
+      "first_place_votes": {
+        "agile": 1,
+        "agile_devsecops_hybrid": 4,
+        "agile_v_model_hybrid": 0,
+        "devsecops": 0,
+        "spiral": 0,
+        "v_model": 0,
+        "waterfall": 0
+      },
+      "kendall_w": 0.9429,
+      "mean_confidence": 4.4,
+      "plurality": [
+        "agile_devsecops_hybrid"
+      ],
+      "ranking": [
+        "agile_devsecops_hybrid",
+        "devsecops",
+        "agile",
+        "spiral",
+        "agile_v_model_hybrid",
+        "v_model",
+        "waterfall"
+      ]
+    },
+    {
+      "borda": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 5,
+        "agile_v_model_hybrid": 22,
+        "devsecops": 10,
+        "spiral": 16,
+        "v_model": 30,
+        "waterfall": 22
+      },
+      "case_id": "C08",
+      "consensus_strength": 1.0,
+      "first_place_votes": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 0,
+        "agile_v_model_hybrid": 0,
+        "devsecops": 0,
+        "spiral": 0,
+        "v_model": 5,
+        "waterfall": 0
+      },
+      "kendall_w": 0.9629,
+      "mean_confidence": 4.6,
+      "plurality": [
+        "v_model"
+      ],
+      "ranking": [
+        "v_model",
+        "waterfall",
+        "agile_v_model_hybrid",
+        "spiral",
+        "devsecops",
+        "agile_devsecops_hybrid",
+        "agile"
+      ]
+    },
+    {
+      "borda": {
+        "agile": 15,
+        "agile_devsecops_hybrid": 15,
+        "agile_v_model_hybrid": 27,
+        "devsecops": 6,
+        "spiral": 28,
+        "v_model": 13,
+        "waterfall": 1
+      },
+      "case_id": "C09",
+      "consensus_strength": 0.6,
+      "first_place_votes": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 0,
+        "agile_v_model_hybrid": 2,
+        "devsecops": 0,
+        "spiral": 3,
+        "v_model": 0,
+        "waterfall": 0
+      },
+      "kendall_w": 0.8486,
+      "mean_confidence": 3.0,
+      "plurality": [
+        "spiral"
+      ],
+      "ranking": [
+        "spiral",
+        "agile_v_model_hybrid",
+        "agile",
+        "agile_devsecops_hybrid",
+        "v_model",
+        "devsecops",
+        "waterfall"
+      ]
+    },
+    {
+      "borda": {
+        "agile": 1,
+        "agile_devsecops_hybrid": 7,
+        "agile_v_model_hybrid": 16,
+        "devsecops": 7,
+        "spiral": 24,
+        "v_model": 28,
+        "waterfall": 22
+      },
+      "case_id": "C10",
+      "consensus_strength": 0.6,
+      "first_place_votes": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 0,
+        "agile_v_model_hybrid": 0,
+        "devsecops": 0,
+        "spiral": 2,
+        "v_model": 3,
+        "waterfall": 0
+      },
+      "kendall_w": 0.8914,
+      "mean_confidence": 3.6,
+      "plurality": [
+        "v_model"
+      ],
+      "ranking": [
+        "v_model",
+        "spiral",
+        "waterfall",
+        "agile_v_model_hybrid",
+        "devsecops",
+        "agile_devsecops_hybrid",
+        "agile"
+      ]
+    },
+    {
+      "borda": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 5,
+        "agile_v_model_hybrid": 20,
+        "devsecops": 10,
+        "spiral": 15,
+        "v_model": 30,
+        "waterfall": 25
+      },
+      "case_id": "C11",
+      "consensus_strength": 1.0,
+      "first_place_votes": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 0,
+        "agile_v_model_hybrid": 0,
+        "devsecops": 0,
+        "spiral": 0,
+        "v_model": 5,
+        "waterfall": 0
+      },
+      "kendall_w": 1.0,
+      "mean_confidence": 4.8,
+      "plurality": [
+        "v_model"
+      ],
+      "ranking": [
+        "v_model",
+        "waterfall",
+        "agile_v_model_hybrid",
+        "spiral",
+        "devsecops",
+        "agile_devsecops_hybrid",
+        "agile"
+      ]
+    },
+    {
+      "borda": {
+        "agile": 1,
+        "agile_devsecops_hybrid": 14,
+        "agile_v_model_hybrid": 27,
+        "devsecops": 7,
+        "spiral": 28,
+        "v_model": 20,
+        "waterfall": 8
+      },
+      "case_id": "C12",
+      "consensus_strength": 0.6,
+      "first_place_votes": {
+        "agile": 0,
+        "agile_devsecops_hybrid": 0,
+        "agile_v_model_hybrid": 2,
+        "devsecops": 0,
+        "spiral": 3,
+        "v_model": 0,
+        "waterfall": 0
+      },
+      "kendall_w": 0.9257,
+      "mean_confidence": 3.4,
+      "plurality": [
+        "spiral"
+      ],
+      "ranking": [
+        "spiral",
+        "agile_v_model_hybrid",
+        "v_model",
+        "agile_devsecops_hybrid",
+        "waterfall",
+        "devsecops",
+        "agile"
+      ]
+    }
+  ],
+  "method": "Borda count over each panellist's full ranking (6 points for first ... 0 for seventh); ties broken by first-place votes, then the fixed candidate order. Plurality = the candidate(s) with most first-place votes. Consensus strength = share of panellists whose first choice is the Borda winner. Kendall's W = concordance of the five rankings."
+}

@@ -1,0 +1,35 @@
+{
+  "note": "AI-generated personas. Not real people and not real experts.",
+  "personas": [
+    {
+      "persona_id": "P1",
+      "name": "Requirements Engineering Specialist",
+      "perspective": "Requirements state and volatility",
+      "criteria": "How settled or volatile the requirements are; revisions and conflicts; stakeholder availability to clarify; open clarifications; quality of acceptance criteria."
+    },
+    {
+      "persona_id": "P2",
+      "name": "Software Architecture Specialist",
+      "perspective": "Technical shape of the project",
+      "criteria": "Integration and legacy-system dependence; technical risk and uncertainty; system size and complexity; whether architecture-critical decisions need early risk reduction or can evolve incrementally."
+    },
+    {
+      "persona_id": "P3",
+      "name": "Financial-Systems Project Manager",
+      "perspective": "Delivery realities",
+      "criteria": "Budget and schedule constraints; fixed external deadlines; required release cadence; stakeholder access; predictability of scope; control of delivery risk."
+    },
+    {
+      "persona_id": "P4",
+      "name": "Security/DevSecOps Specialist",
+      "perspective": "Security exposure and secure delivery",
+      "criteria": "Threat and security risk; the need to integrate security controls into delivery; continuous deployment needs; consequences of a security failure."
+    },
+    {
+      "persona_id": "P5",
+      "name": "Regulated-Systems Engineering Specialist",
+      "perspective": "Regulation and assurance",
+      "criteria": "Regulatory criticality; need for formal verification and validation; traceability; audit documentation; consequences of system failure."
+    }
+  ]
+}

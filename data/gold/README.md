@@ -201,11 +201,41 @@ because they record the state at freeze time; `docs/11` §25 is the later record
 the manifest and compute the figures; the results are in
 `docs/evaluation/p8-trace-synthetic-v1/` and `docs/11` §25. A correction is `_v2`.
 
+## P9-SDLC-SYNTHETIC-v1 - the P9 E9 slot (synthetic panel)
+
+**Frozen on 2026-09-25 as `p9_sdlc_synthetic_v1/`, before ReqPilot was run on
+any case.** It holds 12 fictional financial-sector cases, five **AI-generated
+expert personas**, their 60 blind rankings of the seven SDLC candidates, the
+deterministic Borda aggregate, and the exact generation prompts. The personas
+were separate AI sub-agents that never saw ReqPilot's rules, weights, scores or
+output; ReqPilot's ruleset and its hand-computed tests were fixed before the
+cases and the panel were generated.
+
+**The panel is synthetic. Its members are not real people and not experts.**
+E9 against it measures agreement with a simulation of expert judgement, not
+agreement with experts, and is not evidence of real-world SDLC recommendation
+accuracy. It sets no target (O.1). The first measurement is E9 = 0.167 (2/12).
+The project author reviewed the benchmark materials **after** the evaluation
+run (recorded 2026-09-26): **no substantive corrections were identified**, so **v1 remains
+frozen and unedited**. It is a synthetic, **project-author-reviewed** benchmark,
+not independently reviewed, not expert-validated, and no real expert reviewed
+it. Phase 0 O.1 defines E9 against a panel of at least three experts; the
+project author explicitly approved using this synthetic panel in that slot
+(**deviation P9-3**, `docs/12` §17), which closes the P9 exit criterion. The
+deviation does not make the panel an expert panel: it remains synthetic,
+AI-generated and not independently validated. Its frozen `manifest.json`, `BENCHMARK.md` and `REVIEW_SHEET.md` still say
+"not reviewed" because they record the state at freeze time; `docs/12` §15 is the
+later record. `services/evaluation/sdlc_eval.py` and `scripts/run_p9_eval.py`
+verify the manifest and compute the figures; the results are in
+`docs/evaluation/p9-sdlc-synthetic-v1/` and `docs/12` §14. A correction, or a
+human panel, is a new version.
+
 ## Roadmap note
 
 Empty in P0. Gold datasets are produced alongside the phases they evaluate, and
 each is frozen before use (`docs/01-analysis.md` §O, §P). After P3 this directory
 holds `e1_synthetic_v1/`, frozen before ReqPilot was run on it; after P5 also
 `p5_quality_conflict_synthetic_v1/`, after P6 `p6_compliance_security_synthetic_v1/`,
-after P7 `p7_risk_synthetic_v1/`, and after P8 `p8_traceability_synthetic_v1/`.
+after P7 `p7_risk_synthetic_v1/`, after P8 `p8_traceability_synthetic_v1/`, and
+after P9 `p9_sdlc_synthetic_v1/`.
 None is ever edited; a correction is a new `_v2`.

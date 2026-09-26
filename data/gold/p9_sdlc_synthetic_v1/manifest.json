@@ -1,0 +1,82 @@
+{
+  "name": "p9_sdlc_synthetic",
+  "version": "1",
+  "benchmark_id": "P9-SDLC-SYNTHETIC-v1",
+  "kind": "synthetic_ai_generated_panel_benchmark",
+  "metrics": [
+    "E9"
+  ],
+  "supplementary": [
+    "top1_in_panel_top2",
+    "panel_top_in_reqpilot_top2",
+    "agreement_with_panel_plurality",
+    "mean_kendall_tau",
+    "mean_spearman_rho",
+    "mean_pairwise_agreement",
+    "panel_consensus_strength",
+    "panel_kendall_w"
+  ],
+  "targets": {},
+  "targets_note": "No numeric target. Phase 0 O.1 defines E9 but says targets for E2-E9 are set from measured behaviour; this is a first measurement against a synthetic AI-generated panel.",
+  "panel": {
+    "size": 5,
+    "composition": "AI-generated expert personas (not real experts)",
+    "generator": "Anthropic Claude, 'sonnet' model tier, as independent Claude Code sub-agents; one fresh context per persona; no tools; no file or repository access",
+    "blind_to": [
+      "ReqPilot rules, weights and coefficients",
+      "ReqPilot factor scores",
+      "ReqPilot ranking and scores",
+      "ReqPilot explanation and recommendation",
+      "expected answers",
+      "other panellists' answers",
+      "the aggregate"
+    ]
+  },
+  "cases": {
+    "count": 12,
+    "generator": "Anthropic Claude, 'sonnet' model tier, one independent sub-agent call; not shown ReqPilot's rules or output",
+    "domains": [
+      "digital banking",
+      "loan processing",
+      "payment systems",
+      "fraud detection",
+      "insurance",
+      "regulatory reporting"
+    ]
+  },
+  "candidates": [
+    "waterfall",
+    "v_model",
+    "spiral",
+    "agile",
+    "devsecops",
+    "agile_v_model_hybrid",
+    "agile_devsecops_hybrid"
+  ],
+  "counts": {
+    "cases": 12,
+    "personas": 5,
+    "responses": 60
+  },
+  "aggregation": "Borda count over full rankings; ties by first-place votes, then the candidate order above (deterministic; computed before any comparison)",
+  "system_under_test": {
+    "sdlc_rules": "src/reqpilot/rules/data/sdlc_rules.yaml",
+    "sdlc_rules_version": "1.0.0",
+    "sdlc_rules_sha256": "41730a927957ecabd369f2ee6dc3aca3da242b1e5201d83a7fb6685643340904",
+    "note": "fixed, with its hand-computed tests, before the cases and the panel were generated"
+  },
+  "validation_status": "synthetic; AI-generated panel; not real experts; not independently validated; not expert-validated; engineering benchmark only",
+  "review": "not reviewed by the project author at freeze time; not independently reviewed (REVIEW_SHEET.md)",
+  "harness": "services/evaluation/sdlc_eval.py (protocol in BENCHMARK.md)",
+  "frozen_at": "2026-09-25",
+  "frozen_by": "Claude (AI coding assistant), on the project author's autonomous P9 instruction, before ReqPilot was run on any case",
+  "files": {
+    "BENCHMARK.md": "a537146edf3d1183b8c0eb521382ca076ddca457a6050012b5692c2020ea082f",
+    "REVIEW_SHEET.md": "604b84a029c70a9f3f89f95d8cf051d77e2a7f202a522870f4873395ee18ee2b",
+    "cases.jsonl": "1c3d20786cc2e67c163b0e2f8dbcfe8b9e5f92bdc38cf9ca7ddd07875fba1ec6",
+    "generation_prompts.md": "cdd7c053f1b83fa526c3d424b4eff7c9a35b235e857ad8967b904ca9362ed089",
+    "panel_aggregate.json": "995007f9b795d923008ffd29aa8af63065ddd4b6eb8e16ed9ba00d00d2bb0694",
+    "panel_personas.json": "26388cb9e9452e64799e3b435331ee0e298f936e04910f89efbc5f3c62171405",
+    "panel_responses.jsonl": "b56432f3dbec629db30ff3d50bdf8b669261d62e38f6e34285244de59c257d2a"
+  }
+}

@@ -33,10 +33,15 @@ def test_the_active_templates_load_with_their_roles() -> None:
         "requirement_extraction",
         "requirement_quality_review",
         "risk_identification",
+        "sdlc_explanation",
+        "sdlc_factor_proposal",
         "security_requirement_analysis",
         "stakeholder_answer_assessment",
         "stakeholder_interview_question",
     )
+    # P9: both SDLC templates are role #10's (advisory; no ranking or selection).
+    assert registry.get("sdlc_factor_proposal").role is AgentRole.SDLC_SELECTION
+    assert registry.get("sdlc_explanation").role is AgentRole.SDLC_SELECTION
     # P6: the compliance mapping is role #7; security and privacy are role #8.
     assert registry.get("compliance_mapping").role is AgentRole.COMPLIANCE
     assert registry.get("security_requirement_analysis").role is AgentRole.SECURITY_PRIVACY

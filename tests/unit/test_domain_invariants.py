@@ -105,11 +105,14 @@ def test_g3_and_g8_require_security_review() -> None:
     assert Role.SECURITY_REVIEWER in GATE_REQUIRED_ROLES[Gate.G8_HIGH_SEVERITY_RISK]
 
 
-# --- the 7 human roles ---------------------------------------------------
+# --- the human roles -------------------------------------------------------
 
 
-def test_there_are_exactly_seven_human_roles() -> None:
-    assert len(list(Role)) == 7
+def test_there_are_exactly_eight_human_roles() -> None:
+    """The seven of P0-P8 plus ``ARCHITECT``, added by P9 as the fourth G6 approver
+    (``FR-SDL-008``; a recorded deviation from F.1's merged PM/Architect actor)."""
+    assert len(list(Role)) == 8
+    assert Role.ARCHITECT in set(Role)
 
 
 # --- identifiers ---------------------------------------------------------

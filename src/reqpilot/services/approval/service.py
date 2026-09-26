@@ -51,6 +51,18 @@ a missing G5 or G7, an open defect - as evaluated from persisted rows by
 remains co-approval, exactly as P1 built it. When a successor version passes G1
 its approved predecessor becomes SUPERSEDED (architecture H.3); the predecessor's
 approval and baseline membership are never altered.
+
+**From P9, G6** (``services/sdlc/gates.py``; ``FR-SDL-008``). Its subject is an
+SDLC run, co-approved by the Project Manager, the Architect, the Security
+Reviewer and the Compliance Officer - one task per role in one group. The same
+five checks apply. The binding is the run's recommendation hash (ranking and
+explanation as stored); a superseded run, or one no longer awaiting G6, is
+refused as stale. Self-approval covers everyone who shaped the recommendation:
+whoever started the run and whoever overrode one of its factors. Only when all
+four approve is the selection recorded, and it is always the computed first
+candidate; one REJECT rejects the run, one MODIFY requests revision, and either
+cancels the remaining tasks. G6 approves a selection, **never** a requirement,
+and moves no requirement's lifecycle state.
 """
 
 from __future__ import annotations
@@ -88,12 +100,14 @@ from reqpilot.repositories.approval import ApprovalDecisionRepository, ApprovalT
 from reqpilot.repositories.requirements import RequirementVersionRepository
 from reqpilot.services.audit import AuditService
 from reqpilot.services.governance.gates import is_governance_task
+from reqpilot.services.sdlc.gates import is_sdlc_task
 
 if TYPE_CHECKING:  # pragma: no cover
     from reqpilot.services.compliance.gates import AnalysisGateService
     from reqpilot.services.governance.gates import GovernanceGateService
     from reqpilot.services.governance.readiness import GovernanceReadinessService
     from reqpilot.services.risk.gates import RiskGateService
+    from reqpilot.services.sdlc.gates import SdlcGateService
 
     AnalysisGate = AnalysisGateService | RiskGateService
 
@@ -437,6 +451,8 @@ class ApprovalService:
             )
 
     def _subject_hash(self, project_id: ProjectId, task: ApprovalTask) -> str:
+        if is_sdlc_task(task):
+            return self._sdlc_gates().subject(project_id, task).current_hash
         if is_governance_task(task):
             return self._governance().subject(project_id, task).current_hash
         if self._is_analysis_gate(task):
@@ -459,6 +475,15 @@ class ApprovalService:
             )
 
     def _check_not_self_approval(self, project_id: ProjectId, task: ApprovalTask) -> None:
+        if is_sdlc_task(task):
+            # G6: whoever started the recommendation, or overrode one of its
+            # factors, shaped it and may not sign it.
+            if self._actor.actor_id in self._sdlc_gates().subject(project_id, task).authors:
+                raise SelfApprovalError(
+                    "an actor may not decide G6 on an SDLC recommendation they started or "
+                    "whose factors they overrode"
+                )
+            return
         if is_governance_task(task):
             # G4: an author of either conflicting version may not sign its
             # resolution. G5 / G7: the author of the version may not sign it.
@@ -491,6 +516,8 @@ class ApprovalService:
         baseline_label: str | None,
     ) -> GateOutcome:
         """Apply a decision's effect to the task, the subject and the group."""
+        if is_sdlc_task(task):
+            return self._settle_sdlc_gate(project_id, task, decision, record)
         if is_governance_task(task):
             return self._settle_governance_gate(project_id, task, decision, record)
         if self._is_analysis_gate(task):
@@ -611,6 +638,57 @@ class ApprovalService:
                     ),
                 },
             )
+        return GateOutcome(
+            task=task, decision=record, task_closed=True, group_complete=subject_complete
+        )
+
+    # -- G6 (P9) -------------------------------------------------------------
+    def _sdlc_gates(self) -> SdlcGateService:
+        from reqpilot.services.sdlc.gates import SdlcGateService
+
+        return SdlcGateService(self._session, self._actor)
+
+    def _settle_sdlc_gate(
+        self,
+        project_id: ProjectId,
+        task: ApprovalTask,
+        decision: ApprovalDecisionType,
+        record: ApprovalDecision,
+    ) -> GateOutcome:
+        """Settle G6: co-approval of four roles, then the selection - never a requirement."""
+        gates = self._sdlc_gates()
+        if decision is not ApprovalDecisionType.APPROVE:
+            # REJECT closes this task as rejected; MODIFY asks for revision. Either
+            # way the remaining G6 tasks are moot and are cancelled.
+            task.status = (
+                ApprovalTaskStatus.REJECTED
+                if decision is ApprovalDecisionType.REJECT
+                else ApprovalTaskStatus.CANCELLED
+            )
+            self._session.flush()
+            gates.settle(project_id, task, decision, record, subject_complete=False)
+            return GateOutcome(task=task, decision=record, task_closed=True, group_complete=False)
+
+        task.status = ApprovalTaskStatus.APPROVED
+        self._session.flush()
+        subject_complete = self._subject_complete(project_id, task)
+        if subject_complete:
+            self._audit.append(
+                event_type=AuditEventType.GATE_PASSED,
+                actor_kind=self._actor.kind,
+                actor_ref=str(self._actor.actor_id),
+                project_id=project_id,
+                subject_type=task.subject_type,
+                subject_id=str(task.subject_id),
+                subject_version=task.subject_version,
+                payload={
+                    "gate": str(task.gate),
+                    "approving_roles": sorted(
+                        {str(t.required_role) for t in self._sibling_tasks(project_id, task)}
+                    ),
+                },
+            )
+        gates.settle(project_id, task, decision, record, subject_complete=subject_complete)
         return GateOutcome(
             task=task, decision=record, task_closed=True, group_complete=subject_complete
         )

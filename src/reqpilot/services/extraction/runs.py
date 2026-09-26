@@ -48,7 +48,12 @@ ANALYSIS_GRAPH = "analysis_graph"
 #: re-analysis (``FR-CLR-003``; architecture C.3 ``route_after_clarification``):
 #: the stakeholder who answers cannot start runs, but the answer must be
 #: re-analysed. The run still acts as its restricted system actor.
-TRIGGERING_ACTIONS: frozenset[Action] = frozenset({Action.CLARIFICATION_ANSWER})
+#: From P9, overriding an SDLC factor triggers a full recompute of the
+#: recommendation (architecture L.6): a Project Manager may override a factor
+#: without being able to start runs, and the recompute runs as its system actor.
+TRIGGERING_ACTIONS: frozenset[Action] = frozenset(
+    {Action.CLARIFICATION_ANSWER, Action.SDLC_FACTOR_OVERRIDE}
+)
 
 
 def pipeline_actor(initiator: Actor, project_id: ProjectId, run_id: uuid.UUID) -> Actor:

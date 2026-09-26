@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}SDLC run {{ run.id|string|truncate(8, True, "") }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}/sdlc">all recommendations</a>
+  <a href="/ui/projects/{{ project.id }}/tasks">approval queue (G6)</a>
+  <a href="/api/v1/sdlc-runs/{{ run.id }}">JSON</a>
+{% endblock %}
+{% block content %}
+<h1>SDLC recommendation <span class="mono">{{ run.id|string|truncate(8, True, "") }}</span></h1>
+<p class="note warn"><b>How to read this.</b> {{ run.notice }}</p>
+<p>Status <b>{{ run.status.value }}</b>.
+  Computed first: <b class="mono">{{ run.top_candidate }}</b>;
+  runner-up <span class="mono">{{ run.runner_up_candidate or "-" }}</span>.
+  {% if run.selected_candidate %}<b>Selected at G6: <span class="mono">{{ run.selected_candidate }}</span></b> ({{ run.selected_at }}).{% endif %}
+</p>
+<p class="muted">Baseline <a class="mono" href="/ui/baselines/{{ run.baseline_id }}">{{ run.baseline_id }}</a>
+  &middot; ruleset <span class="mono">{{ run.ruleset_ref }}</span> &middot; weights {{ run.weights_version }}
+  &middot; ranking hash <code>{{ run.ranking_hash[:16] }}&hellip;</code>
+  {% if run.supersedes_run_id %}&middot; supersedes <a class="mono" href="/ui/sdlc-runs/{{ run.supersedes_run_id }}">{{ run.supersedes_run_id|string|truncate(8, True, "") }}</a>{% endif %}</p>
+
+<h2>G6 &mdash; SDLC selection</h2>
+<p>{{ run.g6_status }}</p>
+{% if run.g6_tasks %}
+<table>
+  <tr><th>Role</th><th>Status</th><th>Decide</th></tr>
+  {% for t in run.g6_tasks %}
+  <tr>
+    <td>{{ t.required_role.value }}</td>
+    <td>{{ t.status.value }}</td>
+    <td>{% if t.id in signable %}
+      <form method="post" action="/ui/approval-tasks/{{ t.id }}/decide">
+        <input type="hidden" name="project_id" value="{{ project.id }}">
+        <input type="hidden" name="role_exercised" value="{{ t.required_role.value }}">
+        <input name="justification" placeholder="justification (required to reject)">
+        <button name="decision" value="APPROVE" class="primary">approve</button>
+        <button name="decision" value="MODIFY">request revision</button>
+        <button name="decision" value="REJECT">reject</button>
+      </form>
+      {% else %}<span class="muted">-</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="muted">Each role decides its own task through the one approval path; the server
+refuses a wrong role, a stale recommendation, and anyone who started this run or overrode one
+of its factors.</p>
+{% endif %}
+
+<h2>Ranking</h2>
+<table>
+  <tr><th>#</th><th>Candidate</th><th>Score (0-100)</th><th>MCDA</th><th>Raw / max</th><th>Rule effects</th></tr>
+  {% for c in run.candidates %}
+  <tr>
+    <td>{{ c.rank }}</td>
+    <td>{{ c.label }} <span class="mono muted">{{ c.candidate_key }}</span></td>
+    <td><b>{{ c.score }}</b></td>
+    <td>{{ c.mcda_score }}</td>
+    <td class="mono">{{ c.raw_score }} / {{ c.max_raw }}</td>
+    <td class="mono">{% for v in c.vetoed_by %}veto {{ v }} {% endfor %}{% for b in c.boosted_by %}boost {{ b }} {% endfor %}{% for q in c.required_by %}top-n {{ q }} {% endfor %}</td>
+  </tr>
+  {% endfor %}
+</table>
+<h3>Rules applied</h3>
+{% if run.rules_applied %}
+<ul>{% for r in run.rules_applied %}<li><span class="mono">{{ r.rule_id }}</span> ({{ r.effect }}{% if r.changed_ranking %}, changed the ranking{% endif %}): {{ r.reason }}</li>{% endfor %}</ul>
+{% else %}<p class="muted">No rule triggered.</p>{% endif %}
+<h3>What would reverse the ranking</h3>
+{% if run.reversal_conditions %}
+<ul>{% for r in run.reversal_conditions %}<li class="mono">{{ r.text }}</li>{% endfor %}</ul>
+{% else %}<p class="muted">No single-factor change on the 1-5 scale puts the runner-up first.</p>{% endif %}
+
+<h2>Explanation <span class="muted">(AI-generated, advisory)</span></h2>
+<p>Status <b>{{ run.explanation.status.value }}</b> after {{ run.explanation.attempts }} attempt(s)
+  {% if run.explanation.model %}&middot; <span class="mono">{{ run.explanation.model }}</span>, {{ run.explanation.prompt }}{% endif %}</p>
+{% if run.explanation.discrepancies %}
+<p class="note warn"><b>Discrepancy.</b> The explanation disagrees with the computed ranking or its
+evidence. It is shown as generated and has not been corrected; the ranking above is authoritative.</p>
+<ul>{% for d in run.explanation.discrepancies %}<li><span class="mono">{{ d.code }}</span>: {{ d.detail }}</li>{% endfor %}</ul>
+<p class="muted">The model asserted <span class="mono">{{ run.explanation.asserted_top_candidate }}</span> first
+  and scores {{ run.explanation.asserted_scores }}.</p>
+{% endif %}
+{% if run.explanation.narrative %}
+<blockquote>{{ run.explanation.narrative }}</blockquote>
+{% for c in run.explanation.counter_arguments %}
+<p><b>Why not <span class="mono">{{ c.candidate }}</span>:</b> {{ c.why_not_selected }}
+  {% if c.reversal_condition %}<br><span class="muted">Would reverse if: {{ c.reversal_condition }}</span>{% endif %}</p>
+{% endfor %}
+{% elif may_explain and run.status.value == "ranked" %}
+<form method="post" action="/ui/sdlc-runs/{{ run.id }}/explanation">
+  <button type="submit">Retry the explanation</button>
+</form>
+{% endif %}
+
+<h2>Factor profile</h2>
+<p class="muted">Derived from the approved baseline; the four risk-derived factors are the P7
+register aggregates. A model proposal counts only within the ruleset's bound and with supplied
+evidence; a human override always wins and creates a new run.</p>
+<table>
+  <tr><th>Factor</th><th>Score</th><th>Source</th><th>Weight</th><th>Basis and evidence</th><th>Proposal</th>{% if may_override %}<th>Override</th>{% endif %}</tr>
+  {% for f in run.factors %}
+  <tr>
+    <td>{{ f.label }}<div class="mono muted">{{ f.factor_id }}</div></td>
+    <td><b>{{ f.score }}</b>{% if f.score != f.derived_score %}<div class="muted">derived {{ f.derived_score }}</div>{% endif %}</td>
+    <td>{{ f.source }}{% if f.is_overridden %}<div class="muted">by {{ f.override_role }} {{ f.overridden_by }}: {{ f.previous_score }} &rarr; {{ f.score }} &mdash; {{ f.override_reason }} ({{ f.overridden_at }})</div>{% endif %}</td>
+    <td>{{ f.weight }}</td>
+    <td>{{ f.rationale }}
+      <div class="muted">{{ f.evidence_state }}:
+        {% for r in f.evidence_refs %}<span class="mono">{{ r }}</span>{% if not loop.last %}, {% endif %}{% endfor %}{% if not f.evidence_refs %}none{% endif %}</div></td>
+    <td>{{ f.proposal_status }}{% if f.proposed_score %} ({{ f.proposed_score }}){% endif %}
+      {% if f.proposal_rejection_reason %}<div class="muted">{{ f.proposal_rejection_reason }}</div>{% endif %}</td>
+    {% if may_override %}
+    <td>{% if override_roles and run.status.value != "superseded" %}
+      <form method="post" action="/ui/sdlc-runs/{{ run.id }}/factors/{{ f.factor_id }}/override">
+        <select name="score">{% for s in range(1, 6) %}<option value="{{ s }}"{% if s == f.score %} selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+        <select name="role">{% for r in override_roles %}<option value="{{ r.value }}">{{ r.value }}</option>{% endfor %}</select>
+        <input name="reason" required placeholder="reason (required)">
+        <button type="submit">override</button>
+      </form>{% endif %}</td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+</table>
+<p class="muted">Input fingerprint <code>{{ run.input_fingerprint[:16] }}&hellip;</code>; profile hash
+  <code>{{ run.profile_hash[:16] }}&hellip;</code>. Counts behind the profile: {{ run.facts_summary }}</p>
+{% endblock %}

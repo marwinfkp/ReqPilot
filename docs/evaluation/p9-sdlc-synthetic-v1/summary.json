@@ -1,0 +1,1101 @@
+{
+  "benchmark_id": "P9-SDLC-SYNTHETIC-v1",
+  "cases": [
+    {
+      "agrees_with_plurality": false,
+      "case_id": "C01",
+      "kendall_tau": 0.4286,
+      "pairwise_agreement": 0.7143,
+      "panel": {
+        "borda": {
+          "agile": 21,
+          "agile_devsecops_hybrid": 29,
+          "agile_v_model_hybrid": 16,
+          "devsecops": 21,
+          "spiral": 11,
+          "v_model": 6,
+          "waterfall": 1
+        },
+        "case_id": "C01",
+        "consensus_strength": 0.8,
+        "first_place_votes": {
+          "agile": 1,
+          "agile_devsecops_hybrid": 4,
+          "agile_v_model_hybrid": 0,
+          "devsecops": 0,
+          "spiral": 0,
+          "v_model": 0,
+          "waterfall": 0
+        },
+        "kendall_w": 0.8029,
+        "mean_confidence": 3.8,
+        "plurality": [
+          "agile_devsecops_hybrid"
+        ],
+        "ranking": [
+          "agile_devsecops_hybrid",
+          "agile",
+          "devsecops",
+          "agile_v_model_hybrid",
+          "spiral",
+          "v_model",
+          "waterfall"
+        ]
+      },
+      "panel_top": "agile_devsecops_hybrid",
+      "panel_top_in_reqpilot_top2": false,
+      "panellists_preferring_reqpilot_top": 0,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 5,
+        "expected_frequency_of_change": 5,
+        "legacy_system_dependence": 5,
+        "need_for_continuous_delivery": 5,
+        "need_for_formal_verification": 5,
+        "project_complexity": 4,
+        "regulatory_criticality": 3,
+        "requirement_stability": 1,
+        "security_risk": 5,
+        "stakeholder_availability": 4,
+        "system_size": 4,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "devsecops",
+        "agile_v_model_hybrid",
+        "agile_devsecops_hybrid",
+        "spiral",
+        "v_model",
+        "agile",
+        "waterfall"
+      ],
+      "reqpilot_scores": {
+        "agile": 52.78,
+        "agile_devsecops_hybrid": 90.0,
+        "agile_v_model_hybrid": 84.72,
+        "devsecops": 92.26,
+        "spiral": 75.45,
+        "v_model": 55.18,
+        "waterfall": 38.26
+      },
+      "reqpilot_top": "devsecops",
+      "rules_triggered": [
+        "R3-boost-devsecops-security",
+        "R2-require-v-model-formal-critical"
+      ],
+      "spearman_rho": 0.4643,
+      "top1_agrees": false,
+      "top1_in_panel_top2": false
+    },
+    {
+      "agrees_with_plurality": false,
+      "case_id": "C02",
+      "kendall_tau": 0.2381,
+      "pairwise_agreement": 0.619,
+      "panel": {
+        "borda": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 6,
+          "agile_v_model_hybrid": 19,
+          "devsecops": 9,
+          "spiral": 24,
+          "v_model": 29,
+          "waterfall": 18
+        },
+        "case_id": "C02",
+        "consensus_strength": 0.8,
+        "first_place_votes": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 0,
+          "agile_v_model_hybrid": 0,
+          "devsecops": 0,
+          "spiral": 1,
+          "v_model": 4,
+          "waterfall": 0
+        },
+        "kendall_w": 0.92,
+        "mean_confidence": 4.4,
+        "plurality": [
+          "v_model"
+        ],
+        "ranking": [
+          "v_model",
+          "spiral",
+          "agile_v_model_hybrid",
+          "waterfall",
+          "devsecops",
+          "agile_devsecops_hybrid",
+          "agile"
+        ]
+      },
+      "panel_top": "v_model",
+      "panel_top_in_reqpilot_top2": false,
+      "panellists_preferring_reqpilot_top": 0,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 5,
+        "expected_frequency_of_change": 4,
+        "legacy_system_dependence": 5,
+        "need_for_continuous_delivery": 4,
+        "need_for_formal_verification": 5,
+        "project_complexity": 4,
+        "regulatory_criticality": 5,
+        "requirement_stability": 2,
+        "security_risk": 2,
+        "stakeholder_availability": 3,
+        "system_size": 4,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "agile_v_model_hybrid",
+        "agile_devsecops_hybrid",
+        "spiral",
+        "v_model",
+        "devsecops",
+        "waterfall",
+        "agile"
+      ],
+      "reqpilot_scores": {
+        "agile": 43.06,
+        "agile_devsecops_hybrid": 69.62,
+        "agile_v_model_hybrid": 88.33,
+        "devsecops": 65.09,
+        "spiral": 69.09,
+        "v_model": 66.46,
+        "waterfall": 56.06
+      },
+      "reqpilot_top": "agile_v_model_hybrid",
+      "rules_triggered": [
+        "R4-boost-hybrid-regulated-evolving",
+        "R1-veto-waterfall-regulated-unstable",
+        "R2-require-v-model-formal-critical"
+      ],
+      "spearman_rho": 0.3929,
+      "top1_agrees": false,
+      "top1_in_panel_top2": false
+    },
+    {
+      "agrees_with_plurality": true,
+      "case_id": "C03",
+      "kendall_tau": 1.0,
+      "pairwise_agreement": 1.0,
+      "panel": {
+        "borda": {
+          "agile": 28,
+          "agile_devsecops_hybrid": 25,
+          "agile_v_model_hybrid": 16,
+          "devsecops": 16,
+          "spiral": 15,
+          "v_model": 4,
+          "waterfall": 1
+        },
+        "case_id": "C03",
+        "consensus_strength": 0.8,
+        "first_place_votes": {
+          "agile": 4,
+          "agile_devsecops_hybrid": 1,
+          "agile_v_model_hybrid": 0,
+          "devsecops": 0,
+          "spiral": 0,
+          "v_model": 0,
+          "waterfall": 0
+        },
+        "kendall_w": 0.84,
+        "mean_confidence": 3.8,
+        "plurality": [
+          "agile"
+        ],
+        "ranking": [
+          "agile",
+          "agile_devsecops_hybrid",
+          "devsecops",
+          "agile_v_model_hybrid",
+          "spiral",
+          "v_model",
+          "waterfall"
+        ]
+      },
+      "panel_top": "agile",
+      "panel_top_in_reqpilot_top2": true,
+      "panellists_preferring_reqpilot_top": 4,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 3,
+        "expected_frequency_of_change": 5,
+        "legacy_system_dependence": 3,
+        "need_for_continuous_delivery": 5,
+        "need_for_formal_verification": 3,
+        "project_complexity": 3,
+        "regulatory_criticality": 2,
+        "requirement_stability": 1,
+        "security_risk": 1,
+        "stakeholder_availability": 5,
+        "system_size": 3,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "agile",
+        "agile_devsecops_hybrid",
+        "devsecops",
+        "agile_v_model_hybrid",
+        "spiral",
+        "v_model",
+        "waterfall"
+      ],
+      "reqpilot_scores": {
+        "agile": 78.47,
+        "agile_devsecops_hybrid": 63.85,
+        "agile_v_model_hybrid": 54.63,
+        "devsecops": 61.32,
+        "spiral": 45.45,
+        "v_model": 28.66,
+        "waterfall": 25.76
+      },
+      "reqpilot_top": "agile",
+      "rules_triggered": [],
+      "spearman_rho": 1.0,
+      "top1_agrees": true,
+      "top1_in_panel_top2": true
+    },
+    {
+      "agrees_with_plurality": false,
+      "case_id": "C04",
+      "kendall_tau": 0.4286,
+      "pairwise_agreement": 0.7143,
+      "panel": {
+        "borda": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 8,
+          "agile_v_model_hybrid": 23,
+          "devsecops": 7,
+          "spiral": 17,
+          "v_model": 30,
+          "waterfall": 20
+        },
+        "case_id": "C04",
+        "consensus_strength": 1.0,
+        "first_place_votes": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 0,
+          "agile_v_model_hybrid": 0,
+          "devsecops": 0,
+          "spiral": 0,
+          "v_model": 5,
+          "waterfall": 0
+        },
+        "kendall_w": 0.9371,
+        "mean_confidence": 4.6,
+        "plurality": [
+          "v_model"
+        ],
+        "ranking": [
+          "v_model",
+          "agile_v_model_hybrid",
+          "waterfall",
+          "spiral",
+          "agile_devsecops_hybrid",
+          "devsecops",
+          "agile"
+        ]
+      },
+      "panel_top": "v_model",
+      "panel_top_in_reqpilot_top2": false,
+      "panellists_preferring_reqpilot_top": 0,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 5,
+        "expected_frequency_of_change": 4,
+        "legacy_system_dependence": 5,
+        "need_for_continuous_delivery": 4,
+        "need_for_formal_verification": 5,
+        "project_complexity": 5,
+        "regulatory_criticality": 5,
+        "requirement_stability": 2,
+        "security_risk": 1,
+        "stakeholder_availability": 4,
+        "system_size": 5,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "agile_v_model_hybrid",
+        "spiral",
+        "agile_devsecops_hybrid",
+        "v_model",
+        "devsecops",
+        "waterfall",
+        "agile"
+      ],
+      "reqpilot_scores": {
+        "agile": 46.53,
+        "agile_devsecops_hybrid": 67.69,
+        "agile_v_model_hybrid": 89.72,
+        "devsecops": 60.85,
+        "spiral": 70.91,
+        "v_model": 64.33,
+        "waterfall": 54.17
+      },
+      "reqpilot_top": "agile_v_model_hybrid",
+      "rules_triggered": [
+        "R4-boost-hybrid-regulated-evolving",
+        "R1-veto-waterfall-regulated-unstable",
+        "R2-require-v-model-formal-critical"
+      ],
+      "spearman_rho": 0.5,
+      "top1_agrees": false,
+      "top1_in_panel_top2": true
+    },
+    {
+      "agrees_with_plurality": true,
+      "case_id": "C05",
+      "kendall_tau": 0.619,
+      "pairwise_agreement": 0.8095,
+      "panel": {
+        "borda": {
+          "agile": 1,
+          "agile_devsecops_hybrid": 20,
+          "agile_v_model_hybrid": 27,
+          "devsecops": 15,
+          "spiral": 16,
+          "v_model": 22,
+          "waterfall": 4
+        },
+        "case_id": "C05",
+        "consensus_strength": 0.6,
+        "first_place_votes": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 1,
+          "agile_v_model_hybrid": 3,
+          "devsecops": 0,
+          "spiral": 1,
+          "v_model": 0,
+          "waterfall": 0
+        },
+        "kendall_w": 0.7657,
+        "mean_confidence": 4.2,
+        "plurality": [
+          "agile_v_model_hybrid"
+        ],
+        "ranking": [
+          "agile_v_model_hybrid",
+          "v_model",
+          "agile_devsecops_hybrid",
+          "spiral",
+          "devsecops",
+          "waterfall",
+          "agile"
+        ]
+      },
+      "panel_top": "agile_v_model_hybrid",
+      "panel_top_in_reqpilot_top2": true,
+      "panellists_preferring_reqpilot_top": 3,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 5,
+        "expected_frequency_of_change": 4,
+        "legacy_system_dependence": 5,
+        "need_for_continuous_delivery": 5,
+        "need_for_formal_verification": 5,
+        "project_complexity": 4,
+        "regulatory_criticality": 5,
+        "requirement_stability": 2,
+        "security_risk": 5,
+        "stakeholder_availability": 4,
+        "system_size": 4,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "agile_v_model_hybrid",
+        "agile_devsecops_hybrid",
+        "devsecops",
+        "spiral",
+        "v_model",
+        "waterfall",
+        "agile"
+      ],
+      "reqpilot_scores": {
+        "agile": 40.28,
+        "agile_devsecops_hybrid": 92.69,
+        "agile_v_model_hybrid": 98.06,
+        "devsecops": 92.26,
+        "spiral": 75.45,
+        "v_model": 69.82,
+        "waterfall": 51.89
+      },
+      "reqpilot_top": "agile_v_model_hybrid",
+      "rules_triggered": [
+        "R3-boost-devsecops-security",
+        "R4-boost-hybrid-regulated-evolving",
+        "R1-veto-waterfall-regulated-unstable",
+        "R2-require-v-model-formal-critical"
+      ],
+      "spearman_rho": 0.75,
+      "top1_agrees": true,
+      "top1_in_panel_top2": true
+    },
+    {
+      "agrees_with_plurality": false,
+      "case_id": "C06",
+      "kendall_tau": 0.1429,
+      "pairwise_agreement": 0.5714,
+      "panel": {
+        "borda": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 5,
+          "agile_v_model_hybrid": 20,
+          "devsecops": 10,
+          "spiral": 15,
+          "v_model": 30,
+          "waterfall": 25
+        },
+        "case_id": "C06",
+        "consensus_strength": 1.0,
+        "first_place_votes": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 0,
+          "agile_v_model_hybrid": 0,
+          "devsecops": 0,
+          "spiral": 0,
+          "v_model": 5,
+          "waterfall": 0
+        },
+        "kendall_w": 1.0,
+        "mean_confidence": 4.2,
+        "plurality": [
+          "v_model"
+        ],
+        "ranking": [
+          "v_model",
+          "waterfall",
+          "agile_v_model_hybrid",
+          "spiral",
+          "devsecops",
+          "agile_devsecops_hybrid",
+          "agile"
+        ]
+      },
+      "panel_top": "v_model",
+      "panel_top_in_reqpilot_top2": false,
+      "panellists_preferring_reqpilot_top": 0,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 3,
+        "expected_frequency_of_change": 4,
+        "legacy_system_dependence": 5,
+        "need_for_continuous_delivery": 4,
+        "need_for_formal_verification": 5,
+        "project_complexity": 3,
+        "regulatory_criticality": 3,
+        "requirement_stability": 3,
+        "security_risk": 1,
+        "stakeholder_availability": 5,
+        "system_size": 3,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "agile_v_model_hybrid",
+        "agile",
+        "v_model",
+        "waterfall",
+        "agile_devsecops_hybrid",
+        "spiral",
+        "devsecops"
+      ],
+      "reqpilot_scores": {
+        "agile": 53.47,
+        "agile_devsecops_hybrid": 50.0,
+        "agile_v_model_hybrid": 64.81,
+        "devsecops": 49.06,
+        "spiral": 49.09,
+        "v_model": 52.44,
+        "waterfall": 50.76
+      },
+      "reqpilot_top": "agile_v_model_hybrid",
+      "rules_triggered": [],
+      "spearman_rho": 0.1786,
+      "top1_agrees": false,
+      "top1_in_panel_top2": false
+    },
+    {
+      "agrees_with_plurality": false,
+      "case_id": "C07",
+      "kendall_tau": 0.4286,
+      "pairwise_agreement": 0.7143,
+      "panel": {
+        "borda": {
+          "agile": 22,
+          "agile_devsecops_hybrid": 29,
+          "agile_v_model_hybrid": 11,
+          "devsecops": 24,
+          "spiral": 14,
+          "v_model": 4,
+          "waterfall": 1
+        },
+        "case_id": "C07",
+        "consensus_strength": 0.8,
+        "first_place_votes": {
+          "agile": 1,
+          "agile_devsecops_hybrid": 4,
+          "agile_v_model_hybrid": 0,
+          "devsecops": 0,
+          "spiral": 0,
+          "v_model": 0,
+          "waterfall": 0
+        },
+        "kendall_w": 0.9429,
+        "mean_confidence": 4.4,
+        "plurality": [
+          "agile_devsecops_hybrid"
+        ],
+        "ranking": [
+          "agile_devsecops_hybrid",
+          "devsecops",
+          "agile",
+          "spiral",
+          "agile_v_model_hybrid",
+          "v_model",
+          "waterfall"
+        ]
+      },
+      "panel_top": "agile_devsecops_hybrid",
+      "panel_top_in_reqpilot_top2": false,
+      "panellists_preferring_reqpilot_top": 0,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 3,
+        "expected_frequency_of_change": 5,
+        "legacy_system_dependence": 5,
+        "need_for_continuous_delivery": 5,
+        "need_for_formal_verification": 5,
+        "project_complexity": 3,
+        "regulatory_criticality": 3,
+        "requirement_stability": 1,
+        "security_risk": 1,
+        "stakeholder_availability": 3,
+        "system_size": 3,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "agile_v_model_hybrid",
+        "agile",
+        "agile_devsecops_hybrid",
+        "devsecops",
+        "spiral",
+        "v_model",
+        "waterfall"
+      ],
+      "reqpilot_scores": {
+        "agile": 63.19,
+        "agile_devsecops_hybrid": 60.0,
+        "agile_v_model_hybrid": 64.81,
+        "devsecops": 58.49,
+        "spiral": 55.45,
+        "v_model": 42.07,
+        "waterfall": 36.36
+      },
+      "reqpilot_top": "agile_v_model_hybrid",
+      "rules_triggered": [],
+      "spearman_rho": 0.5357,
+      "top1_agrees": false,
+      "top1_in_panel_top2": false
+    },
+    {
+      "agrees_with_plurality": false,
+      "case_id": "C08",
+      "kendall_tau": -0.0476,
+      "pairwise_agreement": 0.4762,
+      "panel": {
+        "borda": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 5,
+          "agile_v_model_hybrid": 22,
+          "devsecops": 10,
+          "spiral": 16,
+          "v_model": 30,
+          "waterfall": 22
+        },
+        "case_id": "C08",
+        "consensus_strength": 1.0,
+        "first_place_votes": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 0,
+          "agile_v_model_hybrid": 0,
+          "devsecops": 0,
+          "spiral": 0,
+          "v_model": 5,
+          "waterfall": 0
+        },
+        "kendall_w": 0.9629,
+        "mean_confidence": 4.6,
+        "plurality": [
+          "v_model"
+        ],
+        "ranking": [
+          "v_model",
+          "waterfall",
+          "agile_v_model_hybrid",
+          "spiral",
+          "devsecops",
+          "agile_devsecops_hybrid",
+          "agile"
+        ]
+      },
+      "panel_top": "v_model",
+      "panel_top_in_reqpilot_top2": false,
+      "panellists_preferring_reqpilot_top": 0,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 5,
+        "expected_frequency_of_change": 4,
+        "legacy_system_dependence": 5,
+        "need_for_continuous_delivery": 5,
+        "need_for_formal_verification": 5,
+        "project_complexity": 4,
+        "regulatory_criticality": 5,
+        "requirement_stability": 2,
+        "security_risk": 1,
+        "stakeholder_availability": 4,
+        "system_size": 4,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "agile_v_model_hybrid",
+        "agile_devsecops_hybrid",
+        "devsecops",
+        "spiral",
+        "v_model",
+        "waterfall",
+        "agile"
+      ],
+      "reqpilot_scores": {
+        "agile": 48.61,
+        "agile_devsecops_hybrid": 69.23,
+        "agile_v_model_hybrid": 86.94,
+        "devsecops": 64.62,
+        "spiral": 64.55,
+        "v_model": 62.5,
+        "waterfall": 51.89
+      },
+      "reqpilot_top": "agile_v_model_hybrid",
+      "rules_triggered": [
+        "R4-boost-hybrid-regulated-evolving",
+        "R1-veto-waterfall-regulated-unstable",
+        "R2-require-v-model-formal-critical"
+      ],
+      "spearman_rho": 0.0,
+      "top1_agrees": false,
+      "top1_in_panel_top2": false
+    },
+    {
+      "agrees_with_plurality": false,
+      "case_id": "C09",
+      "kendall_tau": 0.619,
+      "pairwise_agreement": 0.8095,
+      "panel": {
+        "borda": {
+          "agile": 15,
+          "agile_devsecops_hybrid": 15,
+          "agile_v_model_hybrid": 27,
+          "devsecops": 6,
+          "spiral": 28,
+          "v_model": 13,
+          "waterfall": 1
+        },
+        "case_id": "C09",
+        "consensus_strength": 0.6,
+        "first_place_votes": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 0,
+          "agile_v_model_hybrid": 2,
+          "devsecops": 0,
+          "spiral": 3,
+          "v_model": 0,
+          "waterfall": 0
+        },
+        "kendall_w": 0.8486,
+        "mean_confidence": 3.0,
+        "plurality": [
+          "spiral"
+        ],
+        "ranking": [
+          "spiral",
+          "agile_v_model_hybrid",
+          "agile",
+          "agile_devsecops_hybrid",
+          "v_model",
+          "devsecops",
+          "waterfall"
+        ]
+      },
+      "panel_top": "spiral",
+      "panel_top_in_reqpilot_top2": false,
+      "panellists_preferring_reqpilot_top": 2,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 3,
+        "expected_frequency_of_change": 5,
+        "legacy_system_dependence": 5,
+        "need_for_continuous_delivery": 5,
+        "need_for_formal_verification": 5,
+        "project_complexity": 4,
+        "regulatory_criticality": 3,
+        "requirement_stability": 1,
+        "security_risk": 1,
+        "stakeholder_availability": 4,
+        "system_size": 4,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "agile_v_model_hybrid",
+        "agile",
+        "agile_devsecops_hybrid",
+        "spiral",
+        "devsecops",
+        "v_model",
+        "waterfall"
+      ],
+      "reqpilot_scores": {
+        "agile": 64.58,
+        "agile_devsecops_hybrid": 62.69,
+        "agile_v_model_hybrid": 68.98,
+        "devsecops": 59.91,
+        "spiral": 60.0,
+        "v_model": 41.77,
+        "waterfall": 34.47
+      },
+      "reqpilot_top": "agile_v_model_hybrid",
+      "rules_triggered": [],
+      "spearman_rho": 0.75,
+      "top1_agrees": false,
+      "top1_in_panel_top2": true
+    },
+    {
+      "agrees_with_plurality": false,
+      "case_id": "C10",
+      "kendall_tau": 0.2381,
+      "pairwise_agreement": 0.619,
+      "panel": {
+        "borda": {
+          "agile": 1,
+          "agile_devsecops_hybrid": 7,
+          "agile_v_model_hybrid": 16,
+          "devsecops": 7,
+          "spiral": 24,
+          "v_model": 28,
+          "waterfall": 22
+        },
+        "case_id": "C10",
+        "consensus_strength": 0.6,
+        "first_place_votes": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 0,
+          "agile_v_model_hybrid": 0,
+          "devsecops": 0,
+          "spiral": 2,
+          "v_model": 3,
+          "waterfall": 0
+        },
+        "kendall_w": 0.8914,
+        "mean_confidence": 3.6,
+        "plurality": [
+          "v_model"
+        ],
+        "ranking": [
+          "v_model",
+          "spiral",
+          "waterfall",
+          "agile_v_model_hybrid",
+          "devsecops",
+          "agile_devsecops_hybrid",
+          "agile"
+        ]
+      },
+      "panel_top": "v_model",
+      "panel_top_in_reqpilot_top2": false,
+      "panellists_preferring_reqpilot_top": 0,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 5,
+        "expected_frequency_of_change": 4,
+        "legacy_system_dependence": 5,
+        "need_for_continuous_delivery": 4,
+        "need_for_formal_verification": 5,
+        "project_complexity": 4,
+        "regulatory_criticality": 4,
+        "requirement_stability": 2,
+        "security_risk": 1,
+        "stakeholder_availability": 3,
+        "system_size": 4,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "agile_v_model_hybrid",
+        "spiral",
+        "agile_devsecops_hybrid",
+        "v_model",
+        "devsecops",
+        "waterfall",
+        "agile"
+      ],
+      "reqpilot_scores": {
+        "agile": 47.22,
+        "agile_devsecops_hybrid": 62.69,
+        "agile_v_model_hybrid": 80.0,
+        "devsecops": 56.6,
+        "spiral": 63.64,
+        "v_model": 60.98,
+        "waterfall": 53.79
+      },
+      "reqpilot_top": "agile_v_model_hybrid",
+      "rules_triggered": [
+        "R4-boost-hybrid-regulated-evolving",
+        "R1-veto-waterfall-regulated-unstable",
+        "R2-require-v-model-formal-critical"
+      ],
+      "spearman_rho": 0.3571,
+      "top1_agrees": false,
+      "top1_in_panel_top2": false
+    },
+    {
+      "agrees_with_plurality": false,
+      "case_id": "C11",
+      "kendall_tau": 0.7143,
+      "pairwise_agreement": 0.8571,
+      "panel": {
+        "borda": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 5,
+          "agile_v_model_hybrid": 20,
+          "devsecops": 10,
+          "spiral": 15,
+          "v_model": 30,
+          "waterfall": 25
+        },
+        "case_id": "C11",
+        "consensus_strength": 1.0,
+        "first_place_votes": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 0,
+          "agile_v_model_hybrid": 0,
+          "devsecops": 0,
+          "spiral": 0,
+          "v_model": 5,
+          "waterfall": 0
+        },
+        "kendall_w": 1.0,
+        "mean_confidence": 4.8,
+        "plurality": [
+          "v_model"
+        ],
+        "ranking": [
+          "v_model",
+          "waterfall",
+          "agile_v_model_hybrid",
+          "spiral",
+          "devsecops",
+          "agile_devsecops_hybrid",
+          "agile"
+        ]
+      },
+      "panel_top": "v_model",
+      "panel_top_in_reqpilot_top2": true,
+      "panellists_preferring_reqpilot_top": 0,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 5,
+        "expected_frequency_of_change": 3,
+        "legacy_system_dependence": 5,
+        "need_for_continuous_delivery": 4,
+        "need_for_formal_verification": 5,
+        "project_complexity": 3,
+        "regulatory_criticality": 5,
+        "requirement_stability": 3,
+        "security_risk": 1,
+        "stakeholder_availability": 5,
+        "system_size": 3,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "agile_v_model_hybrid",
+        "v_model",
+        "waterfall",
+        "devsecops",
+        "spiral",
+        "agile_devsecops_hybrid",
+        "agile"
+      ],
+      "reqpilot_scores": {
+        "agile": 41.67,
+        "agile_devsecops_hybrid": 53.85,
+        "agile_v_model_hybrid": 77.78,
+        "devsecops": 56.6,
+        "spiral": 56.36,
+        "v_model": 69.51,
+        "waterfall": 63.64
+      },
+      "reqpilot_top": "agile_v_model_hybrid",
+      "rules_triggered": [
+        "R2-require-v-model-formal-critical"
+      ],
+      "spearman_rho": 0.8571,
+      "top1_agrees": false,
+      "top1_in_panel_top2": false
+    },
+    {
+      "agrees_with_plurality": false,
+      "case_id": "C12",
+      "kendall_tau": 0.4286,
+      "pairwise_agreement": 0.7143,
+      "panel": {
+        "borda": {
+          "agile": 1,
+          "agile_devsecops_hybrid": 14,
+          "agile_v_model_hybrid": 27,
+          "devsecops": 7,
+          "spiral": 28,
+          "v_model": 20,
+          "waterfall": 8
+        },
+        "case_id": "C12",
+        "consensus_strength": 0.6,
+        "first_place_votes": {
+          "agile": 0,
+          "agile_devsecops_hybrid": 0,
+          "agile_v_model_hybrid": 2,
+          "devsecops": 0,
+          "spiral": 3,
+          "v_model": 0,
+          "waterfall": 0
+        },
+        "kendall_w": 0.9257,
+        "mean_confidence": 3.4,
+        "plurality": [
+          "spiral"
+        ],
+        "ranking": [
+          "spiral",
+          "agile_v_model_hybrid",
+          "v_model",
+          "agile_devsecops_hybrid",
+          "waterfall",
+          "devsecops",
+          "agile"
+        ]
+      },
+      "panel_top": "spiral",
+      "panel_top_in_reqpilot_top2": false,
+      "panellists_preferring_reqpilot_top": 2,
+      "reqpilot_profile": {
+        "budget_and_schedule_constraints": 5,
+        "consequences_of_failure": 5,
+        "expected_frequency_of_change": 5,
+        "legacy_system_dependence": 5,
+        "need_for_continuous_delivery": 5,
+        "need_for_formal_verification": 5,
+        "project_complexity": 4,
+        "regulatory_criticality": 5,
+        "requirement_stability": 1,
+        "security_risk": 1,
+        "stakeholder_availability": 3,
+        "system_size": 4,
+        "testing_and_documentation_requirements": 5
+      },
+      "reqpilot_ranking": [
+        "agile_v_model_hybrid",
+        "agile_devsecops_hybrid",
+        "spiral",
+        "devsecops",
+        "v_model",
+        "agile",
+        "waterfall"
+      ],
+      "reqpilot_scores": {
+        "agile": 54.86,
+        "agile_devsecops_hybrid": 75.0,
+        "agile_v_model_hybrid": 88.33,
+        "devsecops": 68.87,
+        "spiral": 70.0,
+        "v_model": 56.1,
+        "waterfall": 43.94
+      },
+      "reqpilot_top": "agile_v_model_hybrid",
+      "rules_triggered": [
+        "R4-boost-hybrid-regulated-evolving",
+        "R1-veto-waterfall-regulated-unstable",
+        "R2-require-v-model-formal-critical"
+      ],
+      "spearman_rho": 0.6071,
+      "top1_agrees": false,
+      "top1_in_panel_top2": true
+    }
+  ],
+  "evaluated_at": "2026-09-25T21:14:13+00:00",
+  "manifest_sha256": "3486a56fcb6cb44aaca340f27680e5b172d417b7e874a071db3a900922a753d5",
+  "statement": "E9 measures agreement between ReqPilot and a synthetic AI-generated expert-panel simulation. It is an engineering benchmark, not independent human-expert validation.",
+  "summary": {
+    "agreement_with_panel_plurality": {
+      "count": 2,
+      "of": 12,
+      "rate": 0.1667
+    },
+    "cases": 12,
+    "disagreement_cases": [
+      "C01",
+      "C02",
+      "C04",
+      "C06",
+      "C07",
+      "C08",
+      "C09",
+      "C10",
+      "C11",
+      "C12"
+    ],
+    "e9_top1_agreement": {
+      "count": 2,
+      "of": 12,
+      "rate": 0.1667
+    },
+    "mean_kendall_tau": 0.4365,
+    "mean_pairwise_agreement": 0.7182,
+    "mean_panel_consensus_strength": 0.8,
+    "mean_panel_kendall_w": 0.9031,
+    "mean_spearman_rho": 0.5327,
+    "panel_top_in_reqpilot_top2": {
+      "count": 3,
+      "of": 12,
+      "rate": 0.25
+    },
+    "top1_distribution": {
+      "panel": {
+        "agile": 1,
+        "agile_devsecops_hybrid": 2,
+        "agile_v_model_hybrid": 1,
+        "spiral": 2,
+        "v_model": 6
+      },
+      "reqpilot": {
+        "agile": 1,
+        "agile_v_model_hybrid": 10,
+        "devsecops": 1
+      }
+    },
+    "top1_in_panel_top2": {
+      "count": 5,
+      "of": 12,
+      "rate": 0.4167
+    },
+    "top1_supported_by_at_least_one_panellist": {
+      "count": 4,
+      "of": 12
+    }
+  },
+  "system_under_test": {
+    "matches_ruleset_frozen_with_the_benchmark": true,
+    "path": "deterministic: P7 matrix + I.6 aggregates, P9 derivation, MCDA, rule pass; no model call",
+    "ruleset_ref": "sdlc_rules@1.0.0#41730a927957",
+    "sdlc_rules_sha256": "41730a927957ecabd369f2ee6dc3aca3da242b1e5201d83a7fb6685643340904"
+  },
+  "target": null,
+  "target_note": "No approved numeric target exists for E9 (Phase 0 O.1 says targets for E2-E9 are set from measured behaviour, not guessed). This is a first measurement against a synthetic AI-generated panel - not a threshold that was met, and not human-expert validation.",
+  "validation_status": "synthetic; the panel is AI-generated personas, not real experts; not independently validated; not expert-validated; an engineering benchmark only"
+}
