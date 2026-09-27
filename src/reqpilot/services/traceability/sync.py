@@ -18,6 +18,10 @@ requirement versions, a successor gets its own edges and the predecessor's stay
 
 Artefact edges (``RENDERED_IN``, ``CONTAINS``, ``CITES``) are written by the
 artefact service at generation time, not here.
+
+From P10 the generated workflow's edges (N.2 #24-#26 and the two P10 additions)
+are derived from its persisted provenance (``workflow_source``) - never from a
+request - by :meth:`TraceGraphSync.workflow_edges`.
 """
 
 from __future__ import annotations
@@ -71,6 +75,19 @@ from reqpilot.services.audit import AuditService
 
 N = TraceNodeType
 L = TraceLinkType
+
+#: P10: (element type, source type) of a ``workflow_source`` row -> its trace triple.
+_WORKFLOW_EDGES: dict[tuple[str, str], tuple[TraceNodeType, TraceLinkType, TraceNodeType]] = {
+    ("workflow", "sdlc_candidate"): (N.SDLC_CANDIDATE, L.REALISED_AS, N.WORKFLOW),
+    ("gate", "compliance_mapping"): (N.COMPLIANCE_MAPPING, L.REQUIRES_CHECKPOINT, N.WORKFLOW_GATE),
+    ("activity", "risk"): (N.RISK, L.REQUIRES_ACTIVITY, N.WORKFLOW_ACTIVITY),
+    ("activity", "risk_mitigation"): (N.RISK_MITIGATION, L.REQUIRES_ACTIVITY, N.WORKFLOW_ACTIVITY),
+    ("activity", "security_privacy_finding"): (
+        N.SECURITY_PRIVACY_FINDING,
+        L.REQUIRES_ACTIVITY,
+        N.WORKFLOW_ACTIVITY,
+    ),
+}
 
 #: The subject types whose APPROVE decisions become ``APPROVED_BY`` edges.
 _DECISION_SUBJECTS: dict[str, TraceNodeType] = {
@@ -426,6 +443,7 @@ class TraceGraphSync:
 
         self._evidence_edges(project_id, cited_evidence, edges)
         edges.extend(self.sdlc_edges(project_id))
+        edges.extend(self.workflow_edges(project_id))
         return edges, unresolved
 
     def _source_edges(
@@ -666,6 +684,54 @@ class TraceGraphSync:
                                 "sdlc_candidate.contributions",
                             )
                         )
+        return out
+
+    def workflow_edges(
+        self, project_id: ProjectId, workflow_ids: Iterable[uuid.UUID] | None = None
+    ) -> list[Edge]:
+        """P10: the edges a generated workflow's recorded provenance supports.
+
+        ``sdlc_candidate REALISED_AS workflow`` (N.2 #24), ``compliance_mapping
+        REQUIRES_CHECKPOINT workflow_gate`` (#25), ``risk REQUIRES_ACTIVITY
+        workflow_activity`` (#26), and - P10 - the mitigation and the derived
+        security requirement behind an activity. Each is built from a
+        ``workflow_source`` row the generator wrote from an eligible record; a
+        client can name none of them.
+        """
+        from reqpilot.domain.models.workflow import WorkflowSource
+
+        wanted = set(workflow_ids) if workflow_ids is not None else None
+        rows = [
+            r
+            for r in self._rows(WorkflowSource, project_id)
+            if wanted is None or r.workflow_id in wanted
+        ]
+        out: list[Edge] = []
+        for row in sorted(
+            rows,
+            key=lambda r: (
+                str(r.workflow_id),
+                r.element_type,
+                str(r.element_id),
+                r.source_type,
+                str(r.source_id),
+            ),
+        ):
+            triple = _WORKFLOW_EDGES.get((row.element_type, row.source_type))
+            if triple is None:
+                continue
+            from_type, link, to_type = triple
+            out.append(
+                Edge(
+                    from_type,
+                    str(row.source_id),
+                    link,
+                    to_type,
+                    str(row.element_id),
+                    None,
+                    "workflow_source",
+                )
+            )
         return out
 
     def _evidence_edges(

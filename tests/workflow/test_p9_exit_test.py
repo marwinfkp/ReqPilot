@@ -286,6 +286,10 @@ def test_p9_exit_story(world: P9World) -> None:
         world.decide(by_role[Role.ARCHITECT], ApprovalDecisionType.REJECT, justification="late")
 
     # -- no P10 ------------------------------------------------------------------------------
-    from reqpilot.domain.models import Base
+    # The workflow tables exist from P10; the P9 story itself generates no workflow -
+    # that is a separate, human-requested step after G6 (tests/workflow/test_p10_exit_test.py).
+    from reqpilot.domain.models.workflow import Workflow
 
-    assert not [t for t in Base.metadata.tables if "workflow" in t], "no P10 workflow"
+    assert not session.scalars(select(Workflow).where(Workflow.project_id == pid)).all(), (
+        "the P9 story generates no P10 workflow"
+    )

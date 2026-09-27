@@ -17,10 +17,12 @@ approval, traceability and documents phase (P8) adds the typed trace graph
 (``traceability_link``) and the generated artefacts (``artifact``,
 ``artifact_version``, ``artifact_section``). The SDLC recommendation phase (P9)
 adds ``sdlc_run``, ``sdlc_factor``, ``sdlc_candidate`` and
-``sdlc_rule_application``.
+``sdlc_rule_application``. The workflow-generation phase (P10) adds ``workflow``,
+``workflow_phase``, ``workflow_activity``, ``workflow_gate``, the append-only
+provenance ``workflow_source`` and the append-only change log ``workflow_change``.
 
-Tables belonging to later roadmap phases - workflow, evaluation - are still
-deliberately absent. A test
+Tables belonging to later roadmap phases - evaluation - are still deliberately
+absent. A test
 asserts that the migrations create nothing beyond the tables named here.
 """
 
@@ -73,6 +75,14 @@ from reqpilot.domain.models.risk import (
 from reqpilot.domain.models.runs import AgentRun, GraphRun
 from reqpilot.domain.models.sdlc import SdlcCandidate, SdlcFactor, SdlcRuleApplication, SdlcRun
 from reqpilot.domain.models.traceability import TraceabilityLink
+from reqpilot.domain.models.workflow import (
+    Workflow,
+    WorkflowActivity,
+    WorkflowChange,
+    WorkflowGate,
+    WorkflowPhase,
+    WorkflowSource,
+)
 
 __all__ = [
     "AcceptanceCriterion",
@@ -126,4 +136,10 @@ __all__ = [
     "TraceabilityLink",
     "User",
     "Utterance",
+    "Workflow",
+    "WorkflowActivity",
+    "WorkflowChange",
+    "WorkflowGate",
+    "WorkflowPhase",
+    "WorkflowSource",
 ]

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Project workflow - {{ project.name }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}">back to project</a>
+  <a href="/ui/projects/{{ project.id }}/sdlc">SDLC recommendation</a>
+  <a href="/ui/projects/{{ project.id }}/tasks">approval queue (G1-G8)</a>
+{% endblock %}
+{% block content %}
+<h1>Project workflow</h1>
+<p class="note warn"><b>How to read this.</b> {{ notice }}</p>
+
+{% if refused %}
+<p class="note warn"><b>Generation refused.</b> Nothing was stored. Codes:
+  {% for c in refused %}<span class="mono">{{ c }}</span>{% if not loop.last %}, {% endif %}{% endfor %}.
+  A workflow is generated only from an SDLC selection that passed G6, while no in-scope HIGH risk
+  awaits G8 and no derived security requirement awaits G3.</p>
+{% endif %}
+
+{% if may_generate %}
+<h2>Generate the workflow of a G6 selection</h2>
+{% if selected_runs %}
+<table>
+  <tr><th>SDLC run</th><th>Selected at G6</th><th>Selected</th><th></th></tr>
+  {% for r in selected_runs %}
+  <tr>
+    <td class="mono"><a href="/ui/sdlc-runs/{{ r.id }}">{{ r.id|string|truncate(8, True, "") }}</a></td>
+    <td><b class="mono">{{ r.selected_candidate }}</b></td>
+    <td>{{ r.selected_at }}</td>
+    <td><form method="post" action="/ui/sdlc-runs/{{ r.id }}/workflow">
+      <button type="submit" class="primary">Generate workflow</button></form></td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="muted">Generating twice with the same approved inputs returns the same workflow; changed
+inputs produce a new workflow that supersedes the current one, which is kept with its change log.</p>
+{% else %}
+<p class="muted">No SDLC run has passed G6 yet: the Project Manager, Architect, Security Reviewer
+and Compliance Officer must all approve a recommendation first.</p>
+{% endif %}
+{% endif %}
+
+<h2>Workflows</h2>
+{% if workflows %}
+<table>
+  <tr><th>Workflow</th><th>SDLC</th><th>Status</th><th>Revision</th><th>Open items</th><th>Generated</th></tr>
+  {% for w in workflows|reverse %}
+  <tr>
+    <td class="mono"><a href="/ui/workflows/{{ w.id }}">{{ w.id|string|truncate(8, True, "") }}</a></td>
+    <td class="mono">{{ w.candidate_key }}</td>
+    <td>{{ w.status.value }}</td>
+    <td>{{ w.revision }}</td>
+    <td>{{ (w.open_items or [])|length }}</td>
+    <td>{{ w.created_at }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="muted">No workflow has been generated for this project.</p>
+{% endif %}
+{% endblock %}

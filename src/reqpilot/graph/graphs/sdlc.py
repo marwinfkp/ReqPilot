@@ -6,6 +6,15 @@
                                       +-> generate_explanation            (mode "explain": a retry)
                                       +-> END                             (inputs not approved)
 
+    START -> generate_workflow -+-> emit_artefacts -> END    (mode "workflow", P10)
+                                +-> END                      (refused: G6 not passed, ...)
+
+The ``workflow`` mode is architecture C.5's ``generate_workflow -> emit_artefacts``
+after ``await_g6``. P9 decides G6 through the approval service rather than a graph
+interrupt, so the workflow is a separate graph run, started by a human once G6 has
+passed - and ``generate_workflow`` verifies G6 from the persisted approval records,
+never from anything the request carries.
+
 Every edge is deterministic: the routers read flags the nodes set from
 persisted, validated values - never model text. The ranking is persisted by
 ``apply_rules_and_mcda`` before ``generate_explanation`` runs, so an explanation
@@ -25,6 +34,8 @@ from reqpilot.graph.routers import (
     route_after_collect,
     route_after_explanation,
     route_after_scoring,
+    route_after_workflow,
+    route_sdlc_start,
 )
 from reqpilot.graph.state import SDLCState
 
@@ -36,6 +47,9 @@ NODE_NAMES = (
     "apply_rules_and_mcda",
     "generate_explanation",
     "raise_g6",
+    # P10 (architecture C.5, after ``await_g6``): the workflow of a G6 selection.
+    "generate_workflow",
+    "emit_artefacts",
 )
 
 
@@ -44,7 +58,11 @@ def build_sdlc_graph(nodes: SdlcNodes, checkpointer: Any | None = None) -> Any:
     for name in NODE_NAMES:
         graph.add_node(name, getattr(nodes, name))
 
-    graph.add_edge(START, "collect_factor_evidence")
+    graph.add_conditional_edges(
+        START,
+        route_sdlc_start,
+        {"collect": "collect_factor_evidence", "workflow": "generate_workflow"},
+    )
     graph.add_conditional_edges(
         "collect_factor_evidence",
         route_after_collect,
@@ -62,4 +80,8 @@ def build_sdlc_graph(nodes: SdlcNodes, checkpointer: Any | None = None) -> Any:
         {"raise_g6": "raise_g6", "end": END},
     )
     graph.add_edge("raise_g6", END)
+    graph.add_conditional_edges(
+        "generate_workflow", route_after_workflow, {"emit": "emit_artefacts", "end": END}
+    )
+    graph.add_edge("emit_artefacts", END)
     return graph.compile(checkpointer=checkpointer)

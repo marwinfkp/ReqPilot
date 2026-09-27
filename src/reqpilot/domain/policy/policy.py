@@ -75,6 +75,16 @@ The design rules enforced here rather than trusted to callers:
     set a ranking: G6 is decided per gate (rule 4) by the Project Manager, the
     Architect, the Security Reviewer and the Compliance Officer - all four. The
     Architect role (P9) reads what the Project Manager reads and authors nothing.
+13. **A project workflow is generated from a G6 selection, edited by the Project
+    Manager, and gates nothing in ReqPilot.** From P10 an analyst or the Project
+    Manager asks for the workflow of a G6-selected SDLC run
+    (``WORKFLOW_GENERATE``, human only); the pipeline derives, validates and
+    records it in the analyst's name (``WORKFLOW_RECORD``). Only the Project
+    Manager edits it (``WORKFLOW_EDIT``, human only; ``FR-WFL-007``), and every
+    edit is logged. Reading and exporting follow the SDLC readers. Nothing in a
+    workflow approves, baselines or decides anything in ReqPilot: its gates -
+    production readiness included - are gates of the generated project's own
+    process (architecture M.4), and no action here decides G1-G8.
 """
 
 from __future__ import annotations
@@ -488,6 +498,34 @@ _ACTION_GRANTS: dict[Action, frozenset[Role]] = {
     ),
     Action.SDLC_FACTOR_OVERRIDE: frozenset({Role.ANALYST, Role.PROJECT_MANAGER}),
     Action.SDLC_EXPLAIN: frozenset({Role.ANALYST}),
+    # --- workflow generation (P10) ------------------------------------------
+    # The analyst (who owns the pipeline) or the Project Manager (who owns the
+    # workflow, F.1) asks for it; the pipeline records it in the analyst's name;
+    # only the Project Manager edits it (FR-WFL-007).
+    Action.WORKFLOW_GENERATE: frozenset({Role.ANALYST, Role.PROJECT_MANAGER}),
+    Action.WORKFLOW_RECORD: frozenset({Role.ANALYST}),
+    Action.WORKFLOW_READ: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+        }
+    ),
+    Action.WORKFLOW_EDIT: frozenset({Role.PROJECT_MANAGER}),
+    # Listed with the Architect explicitly: the P9 derivation grants the Architect
+    # the Project Manager's ``*.read`` actions and ``ARTIFACT_EXPORT`` only.
+    Action.WORKFLOW_EXPORT: frozenset(
+        {
+            Role.ANALYST,
+            Role.COMPLIANCE_OFFICER,
+            Role.SECURITY_REVIEWER,
+            Role.PROJECT_MANAGER,
+            Role.AUDITOR,
+            Role.ARCHITECT,
+        }
+    ),
 }
 
 #: P9: the Architect is a reviewing role (a G6 approver). It is granted every
@@ -541,6 +579,8 @@ _AUDITOR_READ_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.ARTIFACT_READ,
         Action.ARTIFACT_EXPORT,
         Action.SDLC_READ,
+        Action.WORKFLOW_READ,
+        Action.WORKFLOW_EXPORT,
     }
 )
 
@@ -588,6 +628,9 @@ _HUMAN_ONLY_ACTIONS: frozenset[Action] = frozenset(
         Action.SDLC_RUN_START,
         Action.SDLC_FACTOR_OVERRIDE,
         Action.SDLC_EXPLAIN,
+        # Rule 13 (P10): asking for a workflow and editing it are human.
+        Action.WORKFLOW_GENERATE,
+        Action.WORKFLOW_EDIT,
     }
 )
 

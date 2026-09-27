@@ -11,7 +11,8 @@
 <p>Status <b>{{ run.status.value }}</b>.
   Computed first: <b class="mono">{{ run.top_candidate }}</b>;
   runner-up <span class="mono">{{ run.runner_up_candidate or "-" }}</span>.
-  {% if run.selected_candidate %}<b>Selected at G6: <span class="mono">{{ run.selected_candidate }}</span></b> ({{ run.selected_at }}).{% endif %}
+  {% if run.selected_candidate %}<b>Selected at G6: <span class="mono">{{ run.selected_candidate }}</span></b> ({{ run.selected_at }}).
+  <a href="/ui/projects/{{ project.id }}/workflows">Project workflow (P10)</a>.{% endif %}
 </p>
 <p class="muted">Baseline <a class="mono" href="/ui/baselines/{{ run.baseline_id }}">{{ run.baseline_id }}</a>
   &middot; ruleset <span class="mono">{{ run.ruleset_ref }}</span> &middot; weights {{ run.weights_version }}

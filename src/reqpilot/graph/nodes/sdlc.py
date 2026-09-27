@@ -8,6 +8,8 @@ Node                         Kind               Role          Writes
 ``apply_rules_and_mcda``     **deterministic**  SDLC (#10)    run, factors, candidates, rules
 ``generate_explanation``     LLM + check        SDLC (#10)    explanation, discrepancies
 ``raise_g6``                 **deterministic**  Coordinator   four G6 tasks
+``generate_workflow`` (P10)  **deterministic**  M8            workflow, children, provenance
+``emit_artefacts`` (P10)     **deterministic**  M8            nothing (render check, hashes)
 ===========================  =================  ============  ================================
 
 "The LLM proposes; deterministic code disposes." The ranking is computed and
@@ -58,6 +60,7 @@ from reqpilot.domain.sdlc.consistency import Discrepancy, check_explanation
 from reqpilot.domain.sdlc.factors import FactorId
 from reqpilot.domain.sdlc.profile import OverrideRecord, ProposalDecision, ranking_hash
 from reqpilot.domain.sdlc.scoring import ScoringResult, score_candidates
+from reqpilot.domain.workflow.templates import WorkflowTemplates
 from reqpilot.graph.state import SDLCState
 from reqpilot.llm.gateway import LLMGateway
 from reqpilot.llm.types import StructuredResult
@@ -69,6 +72,7 @@ from reqpilot.services.extraction import RunLog
 from reqpilot.services.sdlc.evidence import CollectedEvidence, SdlcEvidenceService
 from reqpilot.services.sdlc.service import Computed, ExplanationOutcome, SdlcService
 from reqpilot.services.traceability.scope import ScopeService
+from reqpilot.services.workflow.service import WorkflowService
 
 ROLE = AgentRole.SDLC_SELECTION
 
@@ -90,6 +94,8 @@ class SdlcContext:
     evidence: CollectedEvidence | None = None
     proposals: dict[FactorId, ProposalDecision] = field(default_factory=dict)
     computed: Computed | None = None
+    #: P10: the workflow templates (``None`` = the packaged, versioned file).
+    workflow_templates: WorkflowTemplates | None = None
 
     @property
     def project_id(self) -> ProjectId:
@@ -472,3 +478,86 @@ class SdlcNodes:
         tasks = self.service.raise_g6(ctx.project_id, run)
         ctx.log.node_completed(node, g6_tasks=len(tasks))
         return {"current_node": node, "g6_task_ids": [str(t.id) for t in tasks]}
+
+    # ------------------------------------------------------------------
+    # 6. generate_workflow (P10; deterministic - no model call)
+    # ------------------------------------------------------------------
+    def _workflows(self) -> WorkflowService:
+        ctx = self.ctx
+        return WorkflowService(
+            ctx.session,
+            ctx.actor,
+            templates=ctx.workflow_templates,
+            sdlc_rules=ctx.rules,
+            risk_rules=ctx.risk_rules,
+        )
+
+    def generate_workflow(self, state: SDLCState) -> dict[str, Any]:
+        """The G6-selected run's project workflow (``FR-WFL-001``..``-006``).
+
+        G6 is verified inside the service from the persisted approval records; the
+        state carries only the run id the human named. A refusal is recorded and
+        ends the run - nothing is stored, nothing is repaired.
+        """
+        node, ctx = "generate_workflow", self.ctx
+        ctx.log.node_started(node)
+        outcome = self._workflows().generate(
+            ctx.project_id,
+            uuid.UUID(str(state["sdlc_run_id"])),
+            initiator=ctx.initiator,
+            graph_run_id=uuid.UUID(str(state["run_id"])),
+        )
+        if outcome.refused or outcome.workflow is None:
+            codes = sorted({f["code"] for f in outcome.findings})
+            ctx.log.node_failed(node, "workflow_refused")
+            return {
+                "current_node": node,
+                "failed": True,
+                "workflow_findings": list(outcome.findings),
+                "errors": _error(node, "workflow generation refused: " + ", ".join(codes)),
+            }
+        workflow = outcome.workflow
+        ctx.log.node_completed(
+            node,
+            workflow_id=str(workflow.id),
+            reused=outcome.reused,
+            status=str(workflow.status),
+            generated_hash=workflow.generated_hash,
+        )
+        return {
+            "current_node": node,
+            "workflow_id": str(workflow.id),
+            "workflow_status": str(workflow.status),
+            "workflow_reused": outcome.reused,
+        }
+
+    # ------------------------------------------------------------------
+    # 7. emit_artefacts (P10; FR-WFL-008 - the stored workflow renders)
+    # ------------------------------------------------------------------
+    def emit_artefacts(self, state: SDLCState) -> dict[str, Any]:
+        """Render the *stored* workflow once, as Markdown and DOCX, and record the hashes.
+
+        Nothing is stored: an export is always rendered from the persisted workflow
+        on request. This proves, at generation time, that what was stored is exactly
+        what an export will contain.
+        """
+        from reqpilot.artifacts.docx import render_docx
+        from reqpilot.artifacts.markdown import render_markdown
+        from reqpilot.domain.models.workflow import Workflow
+        from reqpilot.services.documents.service import sha256_bytes
+
+        node, ctx = "emit_artefacts", self.ctx
+        ctx.log.node_started(node)
+        service = self._workflows()
+        workflow = service.get(ctx.project_id, uuid.UUID(str(state["workflow_id"])))
+        assert isinstance(workflow, Workflow)
+        document = service.document(ctx.project_id, workflow)
+        markdown = render_markdown(document).encode("utf-8")
+        docx = render_docx(document, generated_at=workflow.updated_at)
+        ctx.log.node_completed(
+            node,
+            markdown_sha256=sha256_bytes(markdown),
+            docx_sha256=sha256_bytes(docx),
+            revision=workflow.revision,
+        )
+        return {"current_node": node}

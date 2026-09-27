@@ -275,3 +275,18 @@ class SdlcError(ReqPilotError):
     computed from an unapproved baseline or an ungoverned risk register), when an
     override is malformed, or when a run's lifecycle does not allow the request.
     """
+
+
+class WorkflowError(ReqPilotError):
+    """A project workflow refused in the current state (roadmap phase P10).
+
+    Raised when the SDLC run has not passed G6, when a source it must derive from
+    is not governed (a pending G8 or G2/G3), when the generated or edited
+    workflow fails deterministic validation (fails closed: nothing is stored),
+    or when an edit would remove a mandatory element or its provenance.
+    ``findings`` carries the validation codes, so a caller can show them.
+    """
+
+    def __init__(self, message: str, findings: tuple[dict[str, str], ...] = ()) -> None:
+        super().__init__(message)
+        self.findings = findings

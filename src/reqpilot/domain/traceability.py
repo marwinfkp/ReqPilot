@@ -21,8 +21,13 @@ needs to make the full ``FR-TRC-001`` chain navigable. Every addition is marked
   requirement version. The triple is not allowlisted, so no edge can pretend it.
 * N.2 #20-#23 (SDLC factors, candidates and the G6 decision) arrive with P9 and
   are marked ``N.2 #n``; the edges P9 adds so that every factor's evidence is
-  navigable are marked ``P9``. N.2 #24-#26 belong to P10 (workflow) and are
-  absent.
+  navigable are marked ``P9``.
+* N.2 #24-#26 (the generated workflow) arrive with P10 and are marked ``N.2 #n``.
+  N.2 #26 names ``risk REQUIRES_ACTIVITY workflow_activity``; P10 adds two edges
+  of the same link type, marked ``P10``, so that the *mitigation* an activity
+  implements and the *derived security requirement* (a P6 finding) a security
+  activity comes from are navigable too (``FR-WFL-002``). The workflow's phases
+  are ordered rows of the workflow, not trace nodes.
 """
 
 from __future__ import annotations
@@ -60,6 +65,10 @@ class TraceNodeType(StrEnum):
     SDLC_RUN = "sdlc_run"
     SDLC_FACTOR = "sdlc_factor"
     SDLC_CANDIDATE = "sdlc_candidate"
+    # P10: the generated project workflow (architecture G.8, N.2 #24-#26).
+    WORKFLOW = "workflow"
+    WORKFLOW_ACTIVITY = "workflow_activity"
+    WORKFLOW_GATE = "workflow_gate"
 
 
 class TraceLinkType(StrEnum):
@@ -92,6 +101,10 @@ class TraceLinkType(StrEnum):
     # P9 (architecture N.2 #20-#22).
     AGGREGATED_INTO = "AGGREGATED_INTO"
     INFORMED = "INFORMED"
+    # P10 (architecture N.2 #24-#26).
+    REALISED_AS = "REALISED_AS"
+    REQUIRES_CHECKPOINT = "REQUIRES_CHECKPOINT"
+    REQUIRES_ACTIVITY = "REQUIRES_ACTIVITY"
 
 
 N = TraceNodeType
@@ -164,7 +177,24 @@ ALLOWED_TRIPLES: dict[tuple[TraceNodeType, TraceLinkType, TraceNodeType], str] =
     (N.BASELINE, L.INFORMED, N.SDLC_RUN): "P9",
     (N.SDLC_RUN, L.CONTAINS, N.SDLC_FACTOR): "P9",
     (N.SDLC_RUN, L.CONTAINS, N.SDLC_CANDIDATE): "P9",
+    # Workflow generation (P10): the selected candidate realised as the project
+    # workflow, and the records that made its checkpoints and activities mandatory.
+    (N.SDLC_CANDIDATE, L.REALISED_AS, N.WORKFLOW): "N.2 #24",
+    (N.COMPLIANCE_MAPPING, L.REQUIRES_CHECKPOINT, N.WORKFLOW_GATE): "N.2 #25",
+    (N.RISK, L.REQUIRES_ACTIVITY, N.WORKFLOW_ACTIVITY): "N.2 #26",
+    (N.RISK_MITIGATION, L.REQUIRES_ACTIVITY, N.WORKFLOW_ACTIVITY): "P10",
+    (N.SECURITY_PRIVACY_FINDING, L.REQUIRES_ACTIVITY, N.WORKFLOW_ACTIVITY): "P10",
 }
+
+#: The triples P10 added, named explicitly so that each migration can restore the
+#: allowlist exactly as its own phase left it.
+P10_TRIPLES: frozenset[tuple[TraceNodeType, TraceLinkType, TraceNodeType]] = frozenset(
+    triple
+    for triple in ALLOWED_TRIPLES
+    if TraceNodeType.WORKFLOW in (triple[0], triple[2])
+    or TraceNodeType.WORKFLOW_ACTIVITY in (triple[0], triple[2])
+    or TraceNodeType.WORKFLOW_GATE in (triple[0], triple[2])
+)
 
 
 def triple_key(from_type: str, link_type: str, to_type: str) -> str:
@@ -182,22 +212,40 @@ def is_allowed(from_type: str, link_type: str, to_type: str) -> bool:
     return triple_key(from_type, link_type, to_type) in ALLOWED_TRIPLE_KEYS
 
 
+def is_p10_triple(
+    from_type: TraceNodeType, link_type: TraceLinkType, to_type: TraceNodeType
+) -> bool:
+    """Whether a triple arrived with P10 (for migration 0012's downgrade)."""
+    return (from_type, link_type, to_type) in P10_TRIPLES
+
+
 def is_p9_triple(
     from_type: TraceNodeType, link_type: TraceLinkType, to_type: TraceNodeType
 ) -> bool:
-    """Whether a triple arrived with P9 (for the migration's downgrade)."""
+    """Whether a triple arrived with P9 **or later** (for migration 0011's downgrade).
+
+    Migration 0011's downgrade restores the P8 allowlist by excluding these. From
+    P10 that must exclude the P10 triples too - two of which (N.2 #25, #26) touch
+    no SDLC node - or a downgrade to 0010 would leave workflow triples in the P8
+    check.
+    """
     sdlc = {N.SDLC_RUN, N.SDLC_FACTOR, N.SDLC_CANDIDATE}
-    return from_type in sdlc or to_type in sdlc
+    return from_type in sdlc or to_type in sdlc or is_p10_triple(from_type, link_type, to_type)
 
 
-def allowed_triple_check_sql(*, before_p9: bool = False) -> str:
+def allowed_triple_check_sql(*, before_p9: bool = False, before_p10: bool = False) -> str:
     """``CHECK`` expression pinning every row to the allowlist (architecture N.1).
 
     Portable across SQLite and PostgreSQL: string concatenation and ``IN``.
     ``before_p9`` gives the P8 allowlist, which migration 0011 restores on
-    downgrade.
+    downgrade; ``before_p10`` gives the P9 allowlist, which migration 0012
+    restores on downgrade.
     """
-    triples = [triple for triple in ALLOWED_TRIPLES if not (before_p9 and is_p9_triple(*triple))]
+    triples = [
+        triple
+        for triple in ALLOWED_TRIPLES
+        if not (before_p9 and is_p9_triple(*triple)) and not (before_p10 and is_p10_triple(*triple))
+    ]
     keys = ", ".join(
         f"'{k}'" for k in sorted(triple_key(str(f), str(link), str(t)) for (f, link, t) in triples)
     )

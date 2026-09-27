@@ -51,8 +51,11 @@ ANALYSIS_GRAPH = "analysis_graph"
 #: From P9, overriding an SDLC factor triggers a full recompute of the
 #: recommendation (architecture L.6): a Project Manager may override a factor
 #: without being able to start runs, and the recompute runs as its system actor.
+#: From P10, asking for the project workflow of a G6-selected run triggers the
+#: ``sdlc_graph`` workflow mode; the Project Manager, who owns the workflow, may
+#: ask for it without being able to start runs.
 TRIGGERING_ACTIONS: frozenset[Action] = frozenset(
-    {Action.CLARIFICATION_ANSWER, Action.SDLC_FACTOR_OVERRIDE}
+    {Action.CLARIFICATION_ANSWER, Action.SDLC_FACTOR_OVERRIDE, Action.WORKFLOW_GENERATE}
 )
 
 

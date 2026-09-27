@@ -1,0 +1,940 @@
+# Project workflow templates (roadmap phase P10; FR-WFL-001..-006; architecture C.5
+# `generate_workflow`, G.8, M.4, N.2 #24-#26).
+#
+# Versioned data, not code (DQ-03). Every generated workflow records this file's
+# version and content hash, so a template change never silently alters a workflow
+# that was already generated or edited.
+#
+# PROVENANCE. The problem statement fixes WHAT a generated workflow contains
+# ([PS §15]: phases, activities, roles, deliverables, security activities,
+# testing requirements, compliance checkpoints, human-approval gates, entry and
+# exit criteria, traceability requirements) and gives one example ("threat
+# modelling during design, static security testing during implementation,
+# transaction-integrity testing during validation, and compliance approval before
+# deployment"). [PS §14] and P9's candidate definitions fix WHICH models exist,
+# including the two hybrids. NO APPROVED SOURCE FIXES A PHASE LIST, A ROLE, A
+# DELIVERABLE OR A CRITERION: every one below is a project/engineering decision
+# ([PROJ]) taken in P10, written down so that it can be reviewed and changed as
+# data. The phase structures follow the standard shape of each model; they are
+# deliberately different structures, not one sequence with renamed phases.
+#
+# WHAT IS NOT HERE. Nothing in this file is project content. The project-specific
+# part of a workflow - its compliance checkpoints, its security activities, its
+# HIGH-risk treatment activities, the phase criteria that name them - is derived
+# by code from the project's own approved records (compliance mappings, derived
+# security requirements, the risk register) and placed using the `placement`
+# tables below. A template alone never produces a checkpoint or a risk activity.
+#
+# The roles are roles in the TARGET project's team. They are not ReqPilot's RBAC
+# roles, and the gates are gates of the target project's process - not ReqPilot
+# gates G1-G8 (architecture M.1, M.4).
+
+name: workflow_templates
+version: "1.0.0"
+description: >
+  Phase structures for the seven P9 SDLC candidates, the target-project role
+  vocabulary, and the placement of project-derived checkpoints, security
+  activities, risk treatments and the production-readiness gate.
+
+rules:
+  # --- vocabulary ---------------------------------------------------------
+  roles:
+    project_manager: Project manager
+    product_owner: Product owner
+    business_analyst: Business analyst
+    software_architect: Software architect
+    developer: Developer
+    qa_engineer: QA / test engineer
+    security_engineer: Security engineer
+    compliance_officer: Compliance officer
+    data_protection_officer: Data protection officer
+    operations_engineer: Operations engineer
+    release_manager: Release manager
+
+  # Every template must host each placement stage in some phase.
+  stages: [requirements, design, implementation, verification, validation, release, operations]
+  placement_stages: [requirements, design, implementation, verification, validation, release]
+
+  # --- project-derived elements -------------------------------------------
+  # Security activities per P6 control family (a derived security/privacy
+  # requirement's family). One activity per (family, entry) is generated when the
+  # project has at least one eligible finding of that family; every such finding
+  # is linked to it. `testing` adds a phase testing requirement at its stage.
+  security_baseline:
+    # Generated when the project has any eligible derived security/privacy
+    # requirement - the problem statement's own example for financial systems.
+    - key: threat_modelling
+      stage: design
+      name: Threat modelling of the system and its trust boundaries
+      description: >-
+        Model threats against the components, data flows and trust boundaries that
+        the project's derived security and privacy requirements concern, and record
+        the design countermeasures chosen for each.
+      roles: [security_engineer, software_architect]
+      deliverables: [Threat model, Security design decisions record]
+    - key: static_security_testing
+      stage: implementation
+      name: Static application security testing
+      description: >-
+        Run static security analysis on every change and treat findings above the
+        agreed severity threshold as build failures.
+      roles: [developer, security_engineer]
+      deliverables: [Static analysis reports]
+  security_families:
+    authentication:
+      stage: design
+      name: Design review of authentication controls
+      description: Review the authentication design against the project's derived authentication requirements (for example multi-factor authentication and lockout).
+      roles: [security_engineer, software_architect]
+      deliverables: [Authentication design review record]
+      testing:
+        stage: verification
+        requirement: Authentication testing - positive and negative cases for every derived authentication requirement, including second-factor and lockout paths.
+    authorisation:
+      stage: design
+      name: Design review of authorisation and segregation of duties
+      description: Review role and permission design against the derived authorisation requirements.
+      roles: [security_engineer, software_architect]
+      deliverables: [Authorisation model review record]
+      testing:
+        stage: verification
+        requirement: Authorisation testing - every role and privileged operation named in the derived authorisation requirements.
+    cryptography:
+      stage: design
+      name: Cryptography design review
+      description: Review key management, algorithms and data-at-rest / in-transit protection against the derived cryptography requirements.
+      roles: [security_engineer, software_architect]
+      deliverables: [Cryptography design review record]
+      testing:
+        stage: verification
+        requirement: Cryptographic configuration testing for every protected data flow and store.
+    audit_logging:
+      stage: implementation
+      name: Implement and review audit logging
+      description: Implement the audit events the derived audit-logging requirements name, with tamper evidence where required.
+      roles: [developer, security_engineer]
+      deliverables: [Audit event catalogue]
+      testing:
+        stage: verification
+        requirement: Audit-logging testing - every required event is emitted, complete and protected.
+    session_management:
+      stage: implementation
+      name: Implement session management controls
+      description: Implement idle timeout, session binding and termination as the derived session-management requirements state.
+      roles: [developer, security_engineer]
+      deliverables: [Session management configuration]
+      testing:
+        stage: verification
+        requirement: Session-management testing - idle timeout, re-authentication and session termination.
+    transaction_integrity:
+      stage: design
+      name: Design transaction-integrity controls
+      description: Design idempotency, reconciliation and tamper detection for the transactions the derived transaction-integrity requirements concern.
+      roles: [software_architect, security_engineer]
+      deliverables: [Transaction-integrity design]
+      testing:
+        stage: validation
+        requirement: Transaction-integrity testing - duplicate, partial, replayed and concurrent transactions are detected and reconciled.
+    fraud_controls:
+      stage: design
+      name: Design fraud-control hooks
+      description: Design the monitoring and hold points the derived fraud-control requirements name.
+      roles: [software_architect, security_engineer]
+      deliverables: [Fraud-control design]
+      testing:
+        stage: validation
+        requirement: Fraud-control scenario testing for every derived fraud-control requirement.
+    data_minimisation:
+      stage: design
+      name: Data minimisation review
+      description: Review the data model and flows so that only the data the derived privacy requirements allow is collected and kept.
+      roles: [data_protection_officer, software_architect]
+      deliverables: [Data inventory and minimisation review]
+      testing:
+        stage: verification
+        requirement: Data-minimisation checks - no field outside the approved data inventory is captured or stored.
+    consent:
+      stage: design
+      name: Consent capture design
+      description: Design consent capture, recording and withdrawal as the derived consent requirements state.
+      roles: [data_protection_officer, software_architect]
+      deliverables: [Consent design]
+      testing:
+        stage: validation
+        requirement: Consent testing - capture, evidence and withdrawal paths.
+    retention:
+      stage: design
+      name: Retention schedule design
+      description: Design retention periods, archival and disposal for the records the derived retention requirements concern.
+      roles: [data_protection_officer, software_architect]
+      deliverables: [Retention schedule design]
+      testing:
+        stage: verification
+        requirement: Retention testing - records are kept for the required period and disposed of afterwards, including across storage migrations.
+    subject_rights:
+      stage: design
+      name: Data-subject rights handling design
+      description: Design access, correction and erasure handling as the derived subject-rights requirements state.
+      roles: [data_protection_officer, software_architect]
+      deliverables: [Subject-rights handling design]
+      testing:
+        stage: validation
+        requirement: Subject-rights testing - access, correction and erasure requests end to end.
+
+  # Compliance checkpoints per obligation kind of the project's own mappings
+  # (FR-WFL-003). One checkpoint per mapped checklist control; every eligible
+  # mapping of that control is linked to it (N.2 #25).
+  checkpoints:
+    control:
+      stage: verification
+      name: "Compliance checkpoint: {control_title}"
+      purpose: Confirm, with evidence, that the requirement(s) mapped to this candidate control are implemented and tested as specified.
+      approver_roles: [compliance_officer]
+      required_evidence:
+        - Test results for every mapped requirement
+        - Implementation evidence for the mapped control
+      entry_criteria: [The mapped requirement(s) are implemented and their tests have run]
+      exit_criteria: [The compliance officer's decision on this checkpoint is recorded with its evidence]
+    approval_checkpoint:
+      stage: release
+      name: "Compliance approval before deployment: {control_title}"
+      purpose: A human approval the mapped checklist entry names, taken before the system is deployed.
+      approver_roles: [compliance_officer, project_manager]
+      required_evidence:
+        - The approval record the mapped checklist entry names
+        - Evidence that the mapped requirement(s) are implemented
+      entry_criteria: [Acceptance testing of the mapped requirement(s) is complete]
+      exit_criteria: [Both approvers' decisions are recorded before deployment]
+    audit_checkpoint:
+      stage: validation
+      name: "Audit checkpoint: {control_title}"
+      purpose: Confirm that the audit evidence the mapped checklist entry names is produced and retrievable.
+      approver_roles: [compliance_officer]
+      required_evidence: [Audit trail extract for the mapped requirement(s)]
+      entry_criteria: [The mapped requirement(s) are deployed to the validation environment]
+      exit_criteria: [The compliance officer's decision on this checkpoint is recorded with its evidence]
+    retention_obligation:
+      stage: verification
+      name: "Retention checkpoint: {control_title}"
+      purpose: Confirm that the retention obligation the mapped checklist entry names is implemented and tested.
+      approver_roles: [compliance_officer, data_protection_officer]
+      required_evidence:
+        - Retention configuration for the mapped records
+        - Retention test results
+      entry_criteria: [Retention behaviour of the mapped requirement(s) is implemented]
+      exit_criteria: [Both approvers' decisions are recorded with the retention test results]
+    reporting_obligation:
+      stage: release
+      name: "Reporting checkpoint: {control_title}"
+      purpose: Confirm that the reporting obligation the mapped checklist entry names can be met from the deployed system.
+      approver_roles: [compliance_officer]
+      required_evidence: [A sample report produced from the system under test]
+      entry_criteria: [The mapped reporting function passed acceptance testing]
+      exit_criteria: [The compliance officer's decision on this checkpoint is recorded before deployment]
+
+  # HIGH-severity risks of the register (FR-WFL-002; N.2 #26). Each recorded,
+  # non-rejected mitigation becomes an implementation activity and a verification
+  # activity; a HIGH risk without a mitigation gets a treatment-definition
+  # activity and an open item - never an invented mitigation.
+  risk_treatment:
+    implement:
+      stage: implementation
+      name: "Implement mitigation for HIGH risk: {risk_title}"
+      roles: [developer, security_engineer]
+      deliverables: [Implemented mitigation, linked change records]
+    verify:
+      stage: verification
+      name: "Verify mitigation for HIGH risk: {risk_title}"
+      roles: [qa_engineer, security_engineer]
+      deliverables: [Mitigation test results]
+    undefined:
+      stage: design
+      name: "Define a treatment for HIGH risk: {risk_title}"
+      description: >-
+        The risk register records no mitigation for this HIGH risk. The risk owner
+        defines one before the design exit; nothing is assumed here.
+      roles: [project_manager, security_engineer]
+      deliverables: [Recorded risk treatment]
+
+  # [PS §16] category 8 - satisfied inside the generated workflow (FR-WFL-003;
+  # architecture M.4). A gate of the target project's process, not a ReqPilot gate.
+  production_readiness:
+    stage: release
+    key: production_readiness
+    name: Production-readiness approval
+    purpose: >-
+      The human decision that the system may go into production. It is a gate of
+      this project's own process; ReqPilot records it as part of the generated
+      workflow and does not operate the deployment.
+    approver_roles: [project_manager, product_owner, security_engineer, compliance_officer, operations_engineer]
+    required_evidence:
+      - Acceptance test report
+      - Security test report, including the static and dynamic analysis results
+      - Operational runbook and rollback plan
+    entry_criteria:
+      - Acceptance testing complete and its report issued
+      - Deployment and rollback plan rehearsed in a production-like environment
+    exit_criteria:
+      - Every approver's decision recorded, with any conditions attached
+      - A deployment window agreed
+
+  # --- the seven SDLC templates (keys = the P9 candidate keys) --------------
+  # `composition` must equal the SDLC models named in the P9 candidate's
+  # attributes; the loader and a test enforce it. `placement` names the phase that
+  # hosts each project-derived element of a stage.
+  templates:
+    waterfall:
+      label: Waterfall
+      composition: [waterfall]
+      approach: >-
+        Sequential phases, each completed and signed off before the next begins.
+        The approved requirement baseline is the specification.
+      placement: {requirements: requirements, design: design, implementation: implementation,
+                  verification: system_testing, validation: acceptance, release: deployment}
+      phases:
+        - key: requirements
+          name: Requirements specification
+          stages: [requirements]
+          description: Confirm the approved requirement baseline as the signed-off specification.
+          roles: [business_analyst, product_owner, project_manager]
+          deliverables: [Software requirements specification (from the approved baseline), Requirements traceability matrix]
+          entry_criteria: [The requirement baseline has passed G1 in ReqPilot]
+          exit_criteria: [Specification sign-off recorded]
+          testing: [Review every acceptance criterion for testability]
+          traceability: [Every specified requirement is an exact baselined requirement version]
+          activities:
+            - {key: spec_walkthrough, name: Specification walkthrough with stakeholders, roles: [business_analyst, product_owner], deliverables: [Walkthrough record]}
+          gates:
+            - key: specification_signoff
+              name: Specification sign-off
+              purpose: Freeze the specification before design starts.
+              approver_roles: [product_owner, project_manager]
+              required_evidence: [Specification walkthrough record]
+              entry_criteria: [Walkthrough complete]
+              exit_criteria: [Sign-off recorded]
+        - key: design
+          name: System and detailed design
+          stages: [design]
+          description: Produce the complete system and detailed design from the frozen specification.
+          roles: [software_architect, security_engineer]
+          deliverables: [System design document, Detailed design document]
+          entry_criteria: [Specification sign-off recorded]
+          exit_criteria: [Design review recorded]
+          testing: [Derive the system test plan from the design]
+          traceability: [Every design element cites the requirement versions it realises]
+          activities:
+            - {key: system_design, name: Produce the system design, roles: [software_architect], deliverables: [System design document]}
+            - {key: test_planning, name: Write the system test plan, roles: [qa_engineer], deliverables: [System test plan]}
+          gates:
+            - key: design_review
+              name: Design review approval
+              purpose: Approve the design before implementation starts.
+              approver_roles: [software_architect, project_manager]
+              required_evidence: [Design documents, System test plan]
+              entry_criteria: [Design documents complete]
+              exit_criteria: [Design review decision recorded]
+        - key: implementation
+          name: Implementation
+          stages: [implementation]
+          description: Build the system to the approved design.
+          roles: [developer]
+          deliverables: [Source code, Unit test results]
+          entry_criteria: [Design review decision recorded]
+          exit_criteria: [All planned components built and unit tested]
+          testing: [Unit testing of every component]
+          traceability: [Every change references the requirement versions it implements]
+          activities:
+            - {key: build_components, name: Build components to the design, roles: [developer], deliverables: [Source code]}
+            - {key: unit_testing, name: Unit testing, roles: [developer], deliverables: [Unit test results]}
+        - key: system_testing
+          name: Integration and system testing
+          stages: [verification]
+          description: Integrate the components and verify the system against the specification.
+          roles: [qa_engineer]
+          deliverables: [Integration test results, System test report]
+          entry_criteria: [Implementation complete and unit tested]
+          exit_criteria: [System test report issued with no open critical defect]
+          testing: [Integration testing, System testing against every specified requirement]
+          traceability: [Every system test cites the requirement versions it verifies]
+          activities:
+            - {key: integration_testing, name: Integration testing, roles: [qa_engineer, developer], deliverables: [Integration test results]}
+            - {key: system_test_execution, name: System test execution, roles: [qa_engineer], deliverables: [System test report]}
+        - key: acceptance
+          name: Acceptance testing
+          stages: [validation]
+          description: Validate the system with its users against the acceptance criteria.
+          roles: [product_owner, qa_engineer]
+          deliverables: [Acceptance test report]
+          entry_criteria: [System test report issued]
+          exit_criteria: [Acceptance decision recorded]
+          testing: [User acceptance testing against every acceptance criterion]
+          traceability: [Every acceptance test cites the acceptance criteria and requirement versions it validates]
+          activities:
+            - {key: acceptance_testing, name: User acceptance testing, roles: [product_owner, qa_engineer], deliverables: [Acceptance test report]}
+        - key: deployment
+          name: Deployment and handover
+          stages: [release, operations]
+          description: Deploy the accepted system and hand it over to operations.
+          roles: [release_manager, operations_engineer]
+          deliverables: [Release notes, Operational handover pack]
+          entry_criteria: [Acceptance decision recorded]
+          exit_criteria: [System in production and handed over]
+          testing: [Post-deployment smoke testing]
+          traceability: [The release notes list the requirement versions released]
+          activities:
+            - {key: deploy, name: Deploy to production, roles: [release_manager], deliverables: [Deployment record]}
+            - {key: handover, name: Handover to operations, roles: [operations_engineer], deliverables: [Operational handover pack]}
+
+    v_model:
+      label: V-Model
+      composition: [v_model]
+      approach: >-
+        Each specification level on the left of the V is paired with the test level
+        on the right that verifies it; every test level's plan is written while its
+        specification level is produced.
+      placement: {requirements: requirements, design: architecture_design, implementation: coding,
+                  verification: system_testing, validation: acceptance_testing, release: release}
+      phases:
+        - key: requirements
+          name: Requirements analysis
+          stages: [requirements]
+          description: Confirm the approved baseline and write the acceptance test plan that will validate it.
+          roles: [business_analyst, product_owner]
+          deliverables: [Software requirements specification (from the approved baseline), Acceptance test plan]
+          entry_criteria: [The requirement baseline has passed G1 in ReqPilot]
+          exit_criteria: [Acceptance test plan covers every acceptance criterion]
+          testing: [Acceptance test planning for every requirement]
+          traceability: [Every acceptance test case cites its requirement version]
+          activities:
+            - {key: acceptance_test_planning, name: Acceptance test planning, roles: [qa_engineer, product_owner], deliverables: [Acceptance test plan]}
+        - key: system_design
+          name: System design
+          stages: [design]
+          description: Specify the system's behaviour and interfaces, and plan the system tests that verify them.
+          roles: [software_architect]
+          deliverables: [System design specification, System test plan]
+          entry_criteria: [Acceptance test plan complete]
+          exit_criteria: [System test plan covers the system design]
+          testing: [System test planning]
+          traceability: [Every system design element cites the requirement versions it realises]
+          activities:
+            - {key: system_specification, name: System specification, roles: [software_architect], deliverables: [System design specification]}
+            - {key: system_test_planning, name: System test planning, roles: [qa_engineer], deliverables: [System test plan]}
+        - key: architecture_design
+          name: Architecture design
+          stages: [design]
+          description: Decompose the system into components and interfaces, and plan the integration tests.
+          roles: [software_architect, security_engineer]
+          deliverables: [Architecture specification, Integration test plan]
+          entry_criteria: [System design complete]
+          exit_criteria: [Architecture review decision recorded]
+          testing: [Integration test planning]
+          traceability: [Every component cites the system design elements it realises]
+          activities:
+            - {key: architecture_specification, name: Architecture specification, roles: [software_architect], deliverables: [Architecture specification]}
+            - {key: integration_test_planning, name: Integration test planning, roles: [qa_engineer], deliverables: [Integration test plan]}
+          gates:
+            - key: architecture_review
+              name: Architecture review approval
+              purpose: Approve the architecture before module design starts.
+              approver_roles: [software_architect, project_manager]
+              required_evidence: [Architecture specification, Integration test plan]
+              entry_criteria: [Architecture specification complete]
+              exit_criteria: [Architecture review decision recorded]
+        - key: module_design
+          name: Module design
+          stages: [design]
+          description: Specify each module in detail, and plan the unit tests.
+          roles: [software_architect, developer]
+          deliverables: [Module specifications, Unit test plans]
+          entry_criteria: [Architecture review decision recorded]
+          exit_criteria: [Every module has a specification and a unit test plan]
+          testing: [Unit test planning]
+          traceability: [Every module cites the component it belongs to]
+          activities:
+            - {key: module_specification, name: Module specification, roles: [developer], deliverables: [Module specifications]}
+        - key: coding
+          name: Coding
+          stages: [implementation]
+          description: Implement the modules to their specifications - the bottom of the V.
+          roles: [developer]
+          deliverables: [Source code]
+          entry_criteria: [Module specifications complete]
+          exit_criteria: [All modules implemented and peer reviewed]
+          testing: [Peer review of every change]
+          traceability: [Every change references the module specification it implements]
+          activities:
+            - {key: implement_modules, name: Implement modules, roles: [developer], deliverables: [Source code]}
+            - {key: code_review, name: Code review, roles: [developer], deliverables: [Review records]}
+        - key: unit_testing
+          name: Unit testing
+          stages: [verification]
+          verifies: module_design
+          description: Verify each module against its module specification.
+          roles: [developer]
+          deliverables: [Unit test results]
+          entry_criteria: [All modules implemented]
+          exit_criteria: [Unit test plans executed with no open critical defect]
+          testing: [Unit testing per the unit test plans]
+          traceability: [Every unit test result cites its module specification]
+          activities:
+            - {key: unit_test_execution, name: Unit test execution, roles: [developer], deliverables: [Unit test results]}
+        - key: integration_testing
+          name: Integration testing
+          stages: [verification]
+          verifies: architecture_design
+          description: Verify component interfaces against the architecture specification.
+          roles: [qa_engineer, developer]
+          deliverables: [Integration test results]
+          entry_criteria: [Unit testing complete]
+          exit_criteria: [Integration test plan executed with no open critical defect]
+          testing: [Integration testing per the integration test plan]
+          traceability: [Every integration test result cites the interfaces it verifies]
+          activities:
+            - {key: integration_test_execution, name: Integration test execution, roles: [qa_engineer], deliverables: [Integration test results]}
+        - key: system_testing
+          name: System testing
+          stages: [verification]
+          verifies: system_design
+          description: Verify the integrated system against the system design specification.
+          roles: [qa_engineer]
+          deliverables: [System test report]
+          entry_criteria: [Integration testing complete]
+          exit_criteria: [System test report issued with no open critical defect]
+          testing: [System testing per the system test plan, including security testing]
+          traceability: [Every system test result cites the requirement versions it verifies]
+          activities:
+            - {key: system_test_execution, name: System test execution, roles: [qa_engineer], deliverables: [System test report]}
+        - key: acceptance_testing
+          name: Acceptance testing
+          stages: [validation]
+          verifies: requirements
+          description: Validate the system against the requirements and their acceptance criteria.
+          roles: [product_owner, qa_engineer]
+          deliverables: [Acceptance test report]
+          entry_criteria: [System test report issued]
+          exit_criteria: [Acceptance decision recorded]
+          testing: [Acceptance testing per the acceptance test plan]
+          traceability: [Every acceptance test result cites its requirement version and acceptance criteria]
+          activities:
+            - {key: acceptance_test_execution, name: Acceptance test execution, roles: [product_owner, qa_engineer], deliverables: [Acceptance test report]}
+        - key: release
+          name: Release
+          stages: [release, operations]
+          description: Release the validated system into production.
+          roles: [release_manager, operations_engineer]
+          deliverables: [Release notes, Operational handover pack]
+          entry_criteria: [Acceptance decision recorded]
+          exit_criteria: [System in production and handed over]
+          testing: [Post-deployment smoke testing]
+          traceability: [The release notes list the requirement versions released]
+          activities:
+            - {key: deploy, name: Deploy to production, roles: [release_manager], deliverables: [Deployment record]}
+
+    spiral:
+      label: Spiral
+      composition: [spiral]
+      approach: >-
+        Risk-driven cycles. Each cycle sets objectives, analyses and resolves the
+        largest remaining risks (with prototypes where useful), builds and tests an
+        increment, and is reviewed before the next cycle is planned.
+      placement: {requirements: objectives, design: risk_analysis, implementation: engineering,
+                  verification: engineering, validation: evaluation, release: release}
+      phases:
+        - key: objectives
+          name: Determine objectives, alternatives and constraints
+          stages: [requirements]
+          cycle: Repeated at the start of every spiral cycle
+          description: Set the cycle's objectives from the approved baseline and the open risks.
+          roles: [project_manager, business_analyst, product_owner]
+          deliverables: [Cycle plan with objectives and constraints]
+          entry_criteria: [The requirement baseline has passed G1 in ReqPilot, or the previous cycle review is recorded]
+          exit_criteria: [Cycle plan agreed]
+          testing: [Define the cycle's acceptance criteria]
+          traceability: [The cycle plan lists the requirement versions and risks it addresses]
+          activities:
+            - {key: cycle_planning, name: Cycle planning, roles: [project_manager, product_owner], deliverables: [Cycle plan]}
+        - key: risk_analysis
+          name: Risk analysis and prototyping
+          stages: [design]
+          cycle: Repeated in every spiral cycle
+          description: Identify and resolve the cycle's largest risks; prototype where uncertainty is high.
+          roles: [software_architect, security_engineer]
+          deliverables: [Updated risk assessment, Prototype results, Design increment]
+          entry_criteria: [Cycle plan agreed]
+          exit_criteria: [Every risk the cycle targeted has a recorded resolution or treatment]
+          testing: [Prototype evaluation against the cycle objectives]
+          traceability: [Every design decision cites the risk or requirement version it answers]
+          activities:
+            - {key: risk_resolution, name: Resolve the cycle's risks, roles: [software_architect, security_engineer], deliverables: [Updated risk assessment]}
+            - {key: prototyping, name: Prototype high-uncertainty elements, roles: [developer, software_architect], deliverables: [Prototype results]}
+        - key: engineering
+          name: Engineering - build and test the increment
+          stages: [implementation, verification]
+          cycle: Repeated in every spiral cycle
+          description: Build the cycle's increment and verify it.
+          roles: [developer, qa_engineer]
+          deliverables: [Increment source code, Increment test results]
+          entry_criteria: [Risk analysis exit criteria met]
+          exit_criteria: [Increment built and verified with no open critical defect]
+          testing: [Unit, integration and system testing of the increment]
+          traceability: [Every test result cites the requirement versions it verifies]
+          activities:
+            - {key: build_increment, name: Build the increment, roles: [developer], deliverables: [Increment source code]}
+            - {key: verify_increment, name: Verify the increment, roles: [qa_engineer], deliverables: [Increment test results]}
+        - key: evaluation
+          name: Evaluation and next-cycle planning
+          stages: [validation]
+          cycle: Closes every spiral cycle
+          description: Stakeholders evaluate the increment; the cycle review decides whether to continue.
+          roles: [product_owner, project_manager]
+          deliverables: [Cycle review record]
+          entry_criteria: [Increment verified]
+          exit_criteria: [Cycle review decision recorded]
+          testing: [Stakeholder evaluation of the increment against the cycle's acceptance criteria]
+          traceability: [The cycle review lists the requirement versions validated in this cycle]
+          activities:
+            - {key: stakeholder_evaluation, name: Stakeholder evaluation, roles: [product_owner], deliverables: [Evaluation record]}
+          gates:
+            - key: cycle_review
+              name: Cycle review - continue, adjust or stop
+              purpose: Decide whether to run another cycle, change course or proceed to release.
+              approver_roles: [project_manager, product_owner]
+              required_evidence: [Cycle review record, Updated risk assessment]
+              entry_criteria: [Stakeholder evaluation complete]
+              exit_criteria: [Decision recorded]
+        - key: release
+          name: Release
+          stages: [release, operations]
+          description: Release the system once the cycle review decides to proceed.
+          roles: [release_manager, operations_engineer]
+          deliverables: [Release notes, Operational handover pack]
+          entry_criteria: [Cycle review decision to release recorded]
+          exit_criteria: [System in production and handed over]
+          testing: [Post-deployment smoke testing]
+          traceability: [The release notes list the requirement versions released]
+          activities:
+            - {key: deploy, name: Deploy to production, roles: [release_manager], deliverables: [Deployment record]}
+
+    agile:
+      label: Agile
+      composition: [agile]
+      approach: >-
+        Iterative delivery in short sprints from a prioritised backlog built from
+        the approved baseline, with a working increment reviewed every sprint.
+      placement: {requirements: inception, design: iterations, implementation: iterations,
+                  verification: iterations, validation: release_validation, release: release}
+      phases:
+        - key: inception
+          name: Inception and backlog preparation
+          stages: [requirements]
+          description: Turn the approved baseline into a prioritised backlog with definitions of ready and done.
+          roles: [product_owner, business_analyst]
+          deliverables: [Product backlog, Definition of ready, Definition of done]
+          entry_criteria: [The requirement baseline has passed G1 in ReqPilot]
+          exit_criteria: [Backlog items for the first sprints meet the definition of ready]
+          testing: [Every backlog item carries testable acceptance criteria]
+          traceability: [Every backlog item cites its requirement version]
+          activities:
+            - {key: backlog_creation, name: Create the backlog from the approved baseline, roles: [product_owner, business_analyst], deliverables: [Product backlog]}
+        - key: iterations
+          name: Iterative delivery (sprints)
+          stages: [design, implementation, verification]
+          cycle: Repeated every sprint
+          description: Plan, design, build and test a potentially releasable increment each sprint.
+          roles: [developer, qa_engineer, product_owner]
+          deliverables: [Sprint increment, Sprint test results, Sprint review record]
+          entry_criteria: [Sprint backlog items meet the definition of ready]
+          exit_criteria: [Sprint increment meets the definition of done]
+          testing: [Automated unit and integration tests run on every change, Sprint regression testing]
+          traceability: [Every completed backlog item cites its requirement version and test results]
+          activities:
+            - {key: sprint_planning, name: Sprint planning, roles: [product_owner, developer], deliverables: [Sprint backlog]}
+            - {key: sprint_development, name: Develop and test backlog items, roles: [developer, qa_engineer], deliverables: [Sprint increment]}
+            - {key: sprint_review, name: Sprint review and retrospective, roles: [product_owner, developer], deliverables: [Sprint review record]}
+        - key: release_validation
+          name: Release validation
+          stages: [validation]
+          description: Validate the accumulated increments as a release candidate.
+          roles: [product_owner, qa_engineer]
+          deliverables: [Release acceptance report]
+          entry_criteria: [Release scope complete to the definition of done]
+          exit_criteria: [Release acceptance decision recorded]
+          testing: [Release acceptance testing, End-to-end regression testing]
+          traceability: [The release acceptance report lists the requirement versions validated]
+          activities:
+            - {key: release_acceptance, name: Release acceptance testing, roles: [product_owner, qa_engineer], deliverables: [Release acceptance report]}
+        - key: release
+          name: Release
+          stages: [release, operations]
+          description: Release the validated increment into production.
+          roles: [release_manager, operations_engineer]
+          deliverables: [Release notes]
+          entry_criteria: [Release acceptance decision recorded]
+          exit_criteria: [Release in production]
+          testing: [Post-deployment smoke testing]
+          traceability: [The release notes list the requirement versions released]
+          activities:
+            - {key: deploy, name: Deploy the release, roles: [release_manager], deliverables: [Deployment record]}
+
+    devsecops:
+      label: DevSecOps
+      composition: [devsecops]
+      approach: >-
+        Continuous delivery through an automated pipeline in which security checks
+        are part of every stage, from planning to operation.
+      placement: {requirements: plan, design: plan, implementation: build,
+                  verification: continuous_testing, validation: pre_production, release: release}
+      phases:
+        - key: plan
+          name: Plan and threat model
+          stages: [requirements, design]
+          cycle: Repeated for every increment
+          description: Plan the increment from the approved baseline and threat-model it.
+          roles: [product_owner, software_architect, security_engineer]
+          deliverables: [Increment plan, Threat model update]
+          entry_criteria: [The requirement baseline has passed G1 in ReqPilot]
+          exit_criteria: [Increment plan and threat model update agreed]
+          testing: [Security acceptance criteria written for every planned item]
+          traceability: [Every planned item cites its requirement version]
+          activities:
+            - {key: increment_planning, name: Increment planning, roles: [product_owner], deliverables: [Increment plan]}
+        - key: build
+          name: Code and build with pipeline security checks
+          stages: [implementation]
+          cycle: Continuous
+          description: Every change is built by the pipeline with automated security checks as blocking steps.
+          roles: [developer, security_engineer]
+          deliverables: [Pipeline build records, Dependency and secret scan reports]
+          entry_criteria: [Increment plan agreed]
+          exit_criteria: [Pipeline green with no blocking security finding]
+          testing: [Unit tests, Dependency (software composition) scanning, Secret scanning]
+          traceability: [Every change references the requirement version it implements]
+          activities:
+            - {key: pipeline_build, name: Pipeline build of every change, roles: [developer], deliverables: [Pipeline build records]}
+            - {key: dependency_scanning, name: Dependency and secret scanning, roles: [security_engineer], deliverables: [Scan reports]}
+        - key: continuous_testing
+          name: Continuous testing
+          stages: [verification]
+          cycle: Continuous
+          description: Automated functional and security testing of every build in a test environment.
+          roles: [qa_engineer, security_engineer]
+          deliverables: [Automated test results, Dynamic security test results]
+          entry_criteria: [Build pipeline green]
+          exit_criteria: [Automated and security test suites pass]
+          testing: [Automated integration and system tests, Dynamic application security testing]
+          traceability: [Every automated test cites the requirement versions it verifies]
+          activities:
+            - {key: automated_testing, name: Automated test execution, roles: [qa_engineer], deliverables: [Automated test results]}
+            - {key: dynamic_security_testing, name: Dynamic application security testing, roles: [security_engineer], deliverables: [Dynamic security test results]}
+        - key: pre_production
+          name: Pre-production validation
+          stages: [validation]
+          description: Validate the release candidate in a production-like environment.
+          roles: [product_owner, qa_engineer, operations_engineer]
+          deliverables: [Pre-production validation report]
+          entry_criteria: [Continuous testing passed for the release candidate]
+          exit_criteria: [Validation decision recorded]
+          testing: [Acceptance testing in a production-like environment]
+          traceability: [The validation report lists the requirement versions validated]
+          activities:
+            - {key: staging_validation, name: Staging validation, roles: [product_owner, qa_engineer], deliverables: [Pre-production validation report]}
+        - key: release
+          name: Release and deploy
+          stages: [release]
+          description: Deploy through the pipeline with a rollback path.
+          roles: [release_manager, operations_engineer]
+          deliverables: [Deployment record, Release notes]
+          entry_criteria: [Validation decision recorded]
+          exit_criteria: [Release in production]
+          testing: [Post-deployment smoke testing]
+          traceability: [The release notes list the requirement versions released]
+          activities:
+            - {key: pipeline_deploy, name: Pipeline deployment, roles: [release_manager], deliverables: [Deployment record]}
+        - key: operate
+          name: Operate and monitor
+          stages: [operations]
+          cycle: Continuous
+          description: Monitor the running system and feed security events back into planning.
+          roles: [operations_engineer, security_engineer]
+          deliverables: [Monitoring and incident records]
+          entry_criteria: [Release in production]
+          exit_criteria: [Operational metrics and security events reviewed each increment]
+          testing: [Continuous security monitoring]
+          traceability: [Every incident cites the release and requirement versions involved]
+          activities:
+            - {key: monitoring, name: Security and operational monitoring, roles: [operations_engineer, security_engineer], deliverables: [Monitoring records]}
+
+    agile_v_model_hybrid:
+      label: Agile-V-Model hybrid
+      composition: [agile, v_model]
+      approach: >-
+        The V-Model's paired specification and test levels frame the release, and
+        the implementation between them is delivered in agile sprints; each system
+        test level still verifies the specification level it is paired with.
+      placement: {requirements: requirements, design: system_design, implementation: sprints,
+                  verification: system_testing, validation: acceptance_testing, release: release}
+      phases:
+        - key: requirements
+          name: Requirements and acceptance test plan
+          stages: [requirements]
+          description: Confirm the approved baseline and plan the acceptance tests that validate it.
+          roles: [business_analyst, product_owner]
+          deliverables: [Software requirements specification (from the approved baseline), Acceptance test plan, Initial product backlog]
+          entry_criteria: [The requirement baseline has passed G1 in ReqPilot]
+          exit_criteria: [Acceptance test plan covers every acceptance criterion]
+          testing: [Acceptance test planning for every requirement]
+          traceability: [Every acceptance test case and backlog item cites its requirement version]
+          activities:
+            - {key: acceptance_test_planning, name: Acceptance test planning, roles: [qa_engineer, product_owner], deliverables: [Acceptance test plan]}
+            - {key: backlog_creation, name: Create the backlog from the approved baseline, roles: [product_owner], deliverables: [Initial product backlog]}
+        - key: system_design
+          name: System and architecture design with test plans
+          stages: [design]
+          description: Specify the system and its architecture, and plan the system and integration tests paired with them.
+          roles: [software_architect, security_engineer]
+          deliverables: [System and architecture specification, System test plan, Integration test plan]
+          entry_criteria: [Acceptance test plan complete]
+          exit_criteria: [Design review decision recorded]
+          testing: [System and integration test planning]
+          traceability: [Every design element cites the requirement versions it realises]
+          activities:
+            - {key: system_specification, name: System and architecture specification, roles: [software_architect], deliverables: [System and architecture specification]}
+            - {key: system_test_planning, name: System and integration test planning, roles: [qa_engineer], deliverables: [System test plan, Integration test plan]}
+          gates:
+            - key: design_review
+              name: Design review approval
+              purpose: Approve the system design, which frames every sprint that follows.
+              approver_roles: [software_architect, project_manager]
+              required_evidence: [System and architecture specification, System test plan]
+              entry_criteria: [Specification and test plans complete]
+              exit_criteria: [Design review decision recorded]
+        - key: sprints
+          name: Incremental delivery in sprints
+          stages: [implementation]
+          cycle: Repeated every sprint
+          description: Implement the design in sprints; each sprint's items are unit and integration tested against the design.
+          roles: [developer, qa_engineer, product_owner]
+          deliverables: [Sprint increments, Unit and integration test results]
+          entry_criteria: [Design review decision recorded]
+          exit_criteria: [All planned backlog items meet the definition of done]
+          testing: [Unit testing and integration testing of every sprint increment]
+          traceability: [Every completed backlog item cites its requirement version and test results]
+          activities:
+            - {key: sprint_planning, name: Sprint planning, roles: [product_owner, developer], deliverables: [Sprint backlog]}
+            - {key: sprint_development, name: Develop, unit test and integrate backlog items, roles: [developer, qa_engineer], deliverables: [Sprint increment]}
+            - {key: sprint_review, name: Sprint review, roles: [product_owner, developer], deliverables: [Sprint review record]}
+        - key: system_testing
+          name: System verification
+          stages: [verification]
+          verifies: system_design
+          description: Verify the integrated increments against the system design specification.
+          roles: [qa_engineer, security_engineer]
+          deliverables: [System test report]
+          entry_criteria: [All planned sprints complete]
+          exit_criteria: [System test report issued with no open critical defect]
+          testing: [System testing per the system test plan, including security testing]
+          traceability: [Every system test result cites the requirement versions it verifies]
+          activities:
+            - {key: system_test_execution, name: System test execution, roles: [qa_engineer], deliverables: [System test report]}
+        - key: acceptance_testing
+          name: Acceptance validation
+          stages: [validation]
+          verifies: requirements
+          description: Validate the system against the requirements and their acceptance criteria.
+          roles: [product_owner, qa_engineer]
+          deliverables: [Acceptance test report]
+          entry_criteria: [System test report issued]
+          exit_criteria: [Acceptance decision recorded]
+          testing: [Acceptance testing per the acceptance test plan]
+          traceability: [Every acceptance test result cites its requirement version and acceptance criteria]
+          activities:
+            - {key: acceptance_test_execution, name: Acceptance test execution, roles: [product_owner, qa_engineer], deliverables: [Acceptance test report]}
+        - key: release
+          name: Release
+          stages: [release, operations]
+          description: Release the validated system into production.
+          roles: [release_manager, operations_engineer]
+          deliverables: [Release notes, Operational handover pack]
+          entry_criteria: [Acceptance decision recorded]
+          exit_criteria: [System in production and handed over]
+          testing: [Post-deployment smoke testing]
+          traceability: [The release notes list the requirement versions released]
+          activities:
+            - {key: deploy, name: Deploy to production, roles: [release_manager], deliverables: [Deployment record]}
+
+    agile_devsecops_hybrid:
+      label: Agile-DevSecOps hybrid
+      composition: [agile, devsecops]
+      approach: >-
+        Agile sprints delivered through a DevSecOps pipeline: every sprint's changes
+        pass automated security checks, and validation and release are continuous.
+      placement: {requirements: inception, design: inception, implementation: secure_sprints,
+                  verification: secure_sprints, validation: continuous_validation, release: release}
+      phases:
+        - key: inception
+          name: Inception, backlog and threat model
+          stages: [requirements, design]
+          description: Turn the approved baseline into a backlog and threat-model the system before the first sprint.
+          roles: [product_owner, business_analyst, security_engineer, software_architect]
+          deliverables: [Product backlog, Threat model, Pipeline security policy]
+          entry_criteria: [The requirement baseline has passed G1 in ReqPilot]
+          exit_criteria: [Backlog ready for the first sprints and threat model agreed]
+          testing: [Every backlog item carries testable functional and security acceptance criteria]
+          traceability: [Every backlog item cites its requirement version]
+          activities:
+            - {key: backlog_creation, name: Create the backlog from the approved baseline, roles: [product_owner, business_analyst], deliverables: [Product backlog]}
+            - {key: pipeline_security_policy, name: Define the pipeline's blocking security checks, roles: [security_engineer], deliverables: [Pipeline security policy]}
+        - key: secure_sprints
+          name: Secure iterative delivery
+          stages: [design, implementation, verification]
+          cycle: Repeated every sprint
+          description: Each sprint designs, builds and tests backlog items; every change passes the pipeline's security checks.
+          roles: [developer, qa_engineer, security_engineer, product_owner]
+          deliverables: [Sprint increment, Pipeline build and scan records, Sprint test results]
+          entry_criteria: [Sprint backlog items meet the definition of ready]
+          exit_criteria: [Sprint increment meets the definition of done with no blocking security finding]
+          testing: [Automated unit and integration tests, Dependency and secret scanning, Dynamic application security testing]
+          traceability: [Every completed backlog item cites its requirement version, tests and scan results]
+          activities:
+            - {key: sprint_planning, name: Sprint planning with threat-model update, roles: [product_owner, security_engineer], deliverables: [Sprint backlog, Threat model update]}
+            - {key: sprint_development, name: Develop through the secure pipeline, roles: [developer], deliverables: [Sprint increment]}
+            - {key: sprint_security_testing, name: Sprint security testing, roles: [security_engineer, qa_engineer], deliverables: [Security test results]}
+        - key: continuous_validation
+          name: Continuous validation in staging
+          stages: [validation]
+          cycle: Continuous
+          description: Validate each release candidate in a production-like environment.
+          roles: [product_owner, qa_engineer, operations_engineer]
+          deliverables: [Validation report]
+          entry_criteria: [Release candidate built by the pipeline]
+          exit_criteria: [Validation decision recorded]
+          testing: [Acceptance testing in a production-like environment]
+          traceability: [The validation report lists the requirement versions validated]
+          activities:
+            - {key: staging_validation, name: Staging validation, roles: [product_owner, qa_engineer], deliverables: [Validation report]}
+        - key: release
+          name: Release and deploy
+          stages: [release]
+          description: Deploy through the pipeline with a rollback path.
+          roles: [release_manager, operations_engineer]
+          deliverables: [Deployment record, Release notes]
+          entry_criteria: [Validation decision recorded]
+          exit_criteria: [Release in production]
+          testing: [Post-deployment smoke testing]
+          traceability: [The release notes list the requirement versions released]
+          activities:
+            - {key: pipeline_deploy, name: Pipeline deployment, roles: [release_manager], deliverables: [Deployment record]}
+        - key: operate
+          name: Operate and monitor
+          stages: [operations]
+          cycle: Continuous
+          description: Monitor the running system and feed security events back into the backlog.
+          roles: [operations_engineer, security_engineer]
+          deliverables: [Monitoring and incident records]
+          entry_criteria: [Release in production]
+          exit_criteria: [Operational metrics and security events reviewed every sprint]
+          testing: [Continuous security monitoring]
+          traceability: [Every incident cites the release and requirement versions involved]
+          activities:
+            - {key: monitoring, name: Security and operational monitoring, roles: [operations_engineer, security_engineer], deliverables: [Monitoring records]}

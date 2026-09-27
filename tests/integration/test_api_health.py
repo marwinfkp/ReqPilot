@@ -87,7 +87,7 @@ def test_only_current_phase_endpoints_are_exposed() -> None:
         # "/api/v1/risks" arrived with P7 (risk analysis and the register).
         # "/api/v1/artifacts" arrived with P8 (approval, traceability, documents).
         # "/api/v1/sdlc-runs" arrived with P9 (SDLC recommendation).
-        "/api/v1/workflows",
+        # "/api/v1/workflows" arrived with P10 (workflow generation).
         "/api/v1/evaluations",
     )
     premature = [p for p in paths if p.startswith(future_prefixes)]
@@ -124,13 +124,13 @@ def test_current_phase_endpoints_are_present() -> None:
     assert "/api/v1/projects/{project_id}/glossary" in paths
 
 
-def test_p6_to_p9_endpoints_are_present_and_p10_is_not() -> None:
+def test_p6_to_p10_endpoints_are_present() -> None:
     """P6 exposes compliance mappings, gaps, security/privacy findings and the report,
     P7 the risk register, the matrix and the human risk actions, P8 the review
-    queue, the gate fan-out, traceability and artefacts, and P9 the SDLC
-    recommendation. Workflow generation (P10) is still absent, and there is still no
-    endpoint that writes a gate decision other than the one approval path - G6
-    included."""
+    queue, the gate fan-out, traceability and artefacts, P9 the SDLC recommendation,
+    and P10 the generated workflow. There is still no endpoint that writes a gate
+    decision other than the one approval path - G6 included - and no workflow
+    endpoint decides anything."""
     paths = collect_paths(create_app())
     assert "/api/v1/compliance-mappings/{mapping_id}" in paths
     assert "/api/v1/projects/{project_id}/compliance-runs" in paths
@@ -163,8 +163,19 @@ def test_p6_to_p9_endpoints_are_present_and_p10_is_not() -> None:
     assert "/api/v1/sdlc-runs/{run_id}/explanation" in paths
     # No endpoint selects an SDLC, sets a ranking or decides G6 outside the one path.
     assert not [p for p in paths if "select" in p or "ranking" in p]
-    # P10 and later stay absent.
-    assert not [p for p in paths if "workflow" in p]
+    # P10: generate and read a G6 selection's workflow, edit it (the Project
+    # Manager), read its change log, export it. None of them decides a gate.
+    assert "/api/v1/sdlc-runs/{run_id}/workflow" in paths
+    assert "/api/v1/projects/{project_id}/workflows" in paths
+    assert "/api/v1/workflows/{workflow_id}" in paths
+    assert "/api/v1/workflows/{workflow_id}/changes" in paths
+    assert "/api/v1/workflows/{workflow_id}/export" in paths
+    assert "/api/v1/workflows/{workflow_id}/phases/{phase_id}" in paths
+    assert "/api/v1/workflows/{workflow_id}/activities/{activity_id}" in paths
+    assert "/api/v1/workflows/{workflow_id}/gates/{gate_id}" in paths
+    assert not [p for p in paths if "workflow" in p and ("decide" in p or "approve" in p)]
+    # P11 and later stay absent.
+    assert not [p for p in paths if "evaluation" in p]
     # The one decision path is unchanged: G8 is decided there like G1-G3, and
     # no P7 endpoint decides a gate, approves or baselines anything.
     assert [p for p in paths if p.endswith("/decide")] == [

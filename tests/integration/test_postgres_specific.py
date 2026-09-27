@@ -140,6 +140,9 @@ def test_migrations_create_nothing_beyond_the_current_phase(pg_engine) -> None:
         "traceability_link", "artifact", "artifact_version", "artifact_section",
         # P9
         "sdlc_run", "sdlc_factor", "sdlc_candidate", "sdlc_rule_application",
+        # P10
+        "workflow", "workflow_phase", "workflow_activity", "workflow_gate", "workflow_source",
+        "workflow_change",
         # The LangGraph checkpoint store, in the same database (architecture C.7);
         # created by the elicitation graph's durable checkpointer on first use.
         "checkpoint_migrations", "checkpoints", "checkpoint_blobs", "checkpoint_writes",

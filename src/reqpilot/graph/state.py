@@ -240,3 +240,12 @@ class SDLCState(BaseGraphState, total=False):
     #: An ``ExplanationStatus`` value.
     explanation_status: str
     g6_task_ids: list[str]
+    # --- workflow mode (P10; architecture F.6 ``workflow_id``) ----------------
+    #: The generated workflow's id (``generate_workflow``), or the reused one.
+    workflow_id: str | None
+    #: A ``WorkflowStatus`` value.
+    workflow_status: str
+    #: The same run and approved inputs already had a workflow; it was returned.
+    workflow_reused: bool
+    #: A refused generation's validation codes (no text beyond the finding).
+    workflow_findings: list[dict[str, str]]

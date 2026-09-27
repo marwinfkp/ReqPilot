@@ -27,6 +27,7 @@ from reqpilot.api.routes import (
     risk,
     sdlc,
     traceability,
+    workflow,
 )
 
 DESCRIPTION = (
@@ -57,7 +58,11 @@ DESCRIPTION = (
     "bounded model proposals and recorded human overrides, versioned rules and weighted MCDA "
     "over seven candidates, a persisted ranking explained afterwards and checked for "
     "consistency, and G6 co-approval by the Project Manager, Architect, Security Reviewer and "
-    "Compliance Officer). Model calls go to the configured "
+    "Compliance Officer) and P10 (workflow generation: a project-specific workflow for the "
+    "G6-selected SDLC, derived deterministically from its versioned template and the "
+    "project's own compliance mappings, derived security requirements and HIGH risks, with a "
+    "production-readiness gate inside the generated workflow, Project Manager edits with a "
+    "change log, and Markdown and DOCX export). Model calls go to the configured "
     "provider: the offline stub by default, "
     "or OpenAI when LLM_PROVIDER=openai."
 )
@@ -82,6 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(risk.router)
     app.include_router(traceability.router)
     app.include_router(sdlc.router)
+    app.include_router(workflow.router)
     return app
 
 

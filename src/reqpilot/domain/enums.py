@@ -511,6 +511,15 @@ class AuditEventType(StrEnum):
     SDLC_SELECTION_RECORDED = "SDLC_SELECTION_RECORDED"
     #: A G6 rejection or modification request settled on the run (not a selection).
     SDLC_G6_SETTLED = "SDLC_G6_SETTLED"
+    # Workflow generation (added by P10; architecture C.5 ``generate_workflow``).
+    WORKFLOW_GENERATED = "WORKFLOW_GENERATED"
+    #: Generation refused before anything was stored (G6 not passed, a pending
+    #: G8, a validation error). The refusal and its codes are recorded.
+    WORKFLOW_GENERATION_REFUSED = "WORKFLOW_GENERATION_REFUSED"
+    #: A Project Manager's edit (``FR-WFL-007``); the change-log row is the content.
+    WORKFLOW_EDITED = "WORKFLOW_EDITED"
+    WORKFLOW_EXPORTED = "WORKFLOW_EXPORTED"
+    WORKFLOW_SUPERSEDED = "WORKFLOW_SUPERSEDED"
 
 
 class Action(StrEnum):
@@ -665,6 +674,16 @@ class Action(StrEnum):
     SDLC_FACTOR_OVERRIDE = "sdlc.factor_override"
     #: Asking for the explanation again after a provider failure (human only).
     SDLC_EXPLAIN = "sdlc.explain"
+    # --- workflow generation (P10) -----------------------------------------
+    #: Asking for the project workflow of a G6-selected SDLC run (human only).
+    WORKFLOW_GENERATE = "workflow.generate"
+    #: Persisting a generated workflow (the pipeline, in the analyst's name).
+    WORKFLOW_RECORD = "workflow.record"
+    WORKFLOW_READ = "workflow.read"
+    #: Editing a generated workflow, with a change-log entry (FR-WFL-007; human only).
+    WORKFLOW_EDIT = "workflow.edit"
+    #: Downloading the workflow as Markdown or DOCX (FR-WFL-008).
+    WORKFLOW_EXPORT = "workflow.export"
 
 
 class ResourceType(StrEnum):
@@ -704,6 +723,7 @@ class ResourceType(StrEnum):
     ARTIFACT = "artifact"
     ARTIFACT_VERSION = "artifact_version"
     SDLC_RUN = "sdlc_run"
+    WORKFLOW = "workflow"
 
 
 # ---------------------------------------------------------------------------
@@ -1350,3 +1370,68 @@ class ExplanationStatus(StrEnum):
     DISCREPANCY = "discrepancy"
     #: The provider failed or refused; the ranking stands, G6 is not raised yet.
     FAILED = "failed"
+
+
+# ---------------------------------------------------------------------------
+# Workflow generation (roadmap phase P10)
+# ---------------------------------------------------------------------------
+
+
+class WorkflowStatus(StrEnum):
+    """Where one generated project workflow stands (architecture G.8 ``workflow.status``).
+
+    ``COMPLETE`` - it passed deterministic validation and the project's own
+    records leave nothing open. ``OPEN_ITEMS`` - it passed validation, but the
+    source records leave items a human must still resolve (a HIGH risk with no
+    recorded mitigation, an open compliance gap, a mapping without evidence); the
+    items are listed on the workflow and on every export, never papered over.
+    ``SUPERSEDED`` - a later workflow for the project replaced it; it is kept,
+    with its change log, unchanged.
+
+    A workflow that fails validation is never stored at all: generation refuses.
+    """
+
+    COMPLETE = "complete"
+    OPEN_ITEMS = "open_items"
+    SUPERSEDED = "superseded"
+
+
+class WorkflowGateKind(StrEnum):
+    """What a gate *inside the generated project's workflow* is.
+
+    None of these is a ReqPilot gate (G1-G8): ReqPilot records them as data for the
+    target project to operate (architecture M.1, M.4). ``PRODUCTION_READINESS``
+    is ``[PS §16]`` category 8, satisfied here through ``FR-WFL-003``.
+    """
+
+    #: A template-defined human approval at a phase boundary.
+    PHASE_APPROVAL = "phase_approval"
+    #: Derived from the project's own compliance mappings (``FR-WFL-003``; N.2 #25).
+    COMPLIANCE_CHECKPOINT = "compliance_checkpoint"
+    #: The production-readiness approval (``[PS §16]`` category 8; architecture M.4).
+    PRODUCTION_READINESS = "production_readiness"
+
+
+class WorkflowActivityKind(StrEnum):
+    """Where a workflow activity came from."""
+
+    #: The selected SDLC's own activity (the versioned template).
+    TEMPLATE = "template"
+    #: Derived from a security/privacy finding - a derived security requirement.
+    SECURITY = "security"
+    #: Implementing a HIGH risk's recorded mitigation (N.2 #26).
+    RISK_TREATMENT = "risk_treatment"
+    #: Verifying that mitigation (N.2 #26).
+    RISK_VERIFICATION = "risk_verification"
+    #: Added by the Project Manager (``FR-WFL-007``).
+    MANUAL = "manual"
+
+
+class WorkflowElementOrigin(StrEnum):
+    """Generated content versus a later human edit (``FR-WFL-007``)."""
+
+    GENERATED = "generated"
+    #: Generated, then edited by the Project Manager (the change log has the diff).
+    EDITED = "edited"
+    #: Added by the Project Manager.
+    MANUAL = "manual"

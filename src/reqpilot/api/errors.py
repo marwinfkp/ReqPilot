@@ -40,6 +40,7 @@ from reqpilot.domain.errors import (
     StateTransitionError,
     TraceabilityError,
     UngroundedRetrievalError,
+    WorkflowError,
 )
 
 #: Checked in order, so the most specific type wins.
@@ -74,6 +75,9 @@ ERROR_STATUS: tuple[tuple[type[Exception], int], ...] = (
     # P9: an SDLC recommendation refused in the current state (unapproved
     # inputs, a superseded run, a lifecycle that does not allow the request).
     (SdlcError, status.HTTP_409_CONFLICT),
+    # P10: a workflow refused in the current state (G6 not passed, a pending G8,
+    # a validation failure, an edit that would remove a mandatory element).
+    (WorkflowError, status.HTTP_409_CONFLICT),
     # A trust-boundary refusal is not the caller's input error.
     (EgressRefusedError, status.HTTP_409_CONFLICT),
     (PromptRegistryError, status.HTTP_500_INTERNAL_SERVER_ERROR),
@@ -104,4 +108,9 @@ def install_error_handlers(app: FastAPI) -> None:
             # Do not echo the isolation reason back: it would disclose that the
             # refusal was about membership rather than existence.
             detail = "not found"
-        return JSONResponse(status_code=code, content={"detail": detail})
+        content: dict[str, object] = {"detail": detail}
+        findings = getattr(exc, "findings", ())
+        if findings and code != status.HTTP_404_NOT_FOUND:
+            # P10: the validation codes, so a refusal is actionable.
+            content["findings"] = list(findings)
+        return JSONResponse(status_code=code, content=content)

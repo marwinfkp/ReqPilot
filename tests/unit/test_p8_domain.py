@@ -199,7 +199,7 @@ def test_every_allowlisted_triple_names_its_origin() -> None:
     for (f, link, t), origin in ALLOWED_TRIPLES.items():
         assert isinstance(f, TraceNodeType) and isinstance(t, TraceNodeType)
         assert isinstance(link, TraceLinkType)
-        assert origin in ("P8", "P9") or origin.startswith("N.2 #")
+        assert origin in ("P8", "P9", "P10") or origin.startswith("N.2 #")
 
 
 def test_n2_rows_that_p8_realises_are_allowlisted() -> None:
@@ -223,8 +223,13 @@ def test_the_allowlist_refuses_what_it_does_not_name() -> None:
     assert not is_allowed("requirement_version", "APPROVED_BY", "requirement_version")
     assert not is_allowed("risk", "SOURCES", "requirement_version")
     assert not is_allowed("security_privacy_finding", "DERIVED", "requirement_version")
-    # P10 (workflow) edges do not exist before that phase; P9 adds only SDLC edges.
-    assert not any("workflow" in str(f) or "workflow" in str(t) for (f, _l, t) in ALLOWED_TRIPLES)
+    # P10 adds exactly the workflow edges (N.2 #24-#26 and two P10 additions), and no
+    # edge points *out of* a workflow node: a workflow is never a source of provenance.
+    workflow = [
+        (f, t) for (f, _l, t) in ALLOWED_TRIPLES if "workflow" in str(f) or "workflow" in str(t)
+    ]
+    assert len(workflow) == 5
+    assert not [f for f, _t in workflow if "workflow" in str(f)]
 
 
 def test_the_database_check_is_built_from_the_same_table() -> None:

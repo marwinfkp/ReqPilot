@@ -150,6 +150,17 @@ TRACE_DOCUMENT_TABLES = {"traceability_link", "artifact", "artifact_version", "a
 #: 13 factors, the candidates' MCDA results and the triggered rules.
 SDLC_TABLES = {"sdlc_run", "sdlc_factor", "sdlc_candidate", "sdlc_rule_application"}
 
+#: Tables the workflow-generation phase adds (architecture G.8, N.2 #24-#26): the
+#: generated workflow, its ordered children, its provenance and its change log.
+WORKFLOW_TABLES = {
+    "workflow",
+    "workflow_phase",
+    "workflow_activity",
+    "workflow_gate",
+    "workflow_source",
+    "workflow_change",
+}
+
 
 def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None:
     """The schema must not run ahead of the roadmap.
@@ -169,6 +180,7 @@ def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None
         | RISK_TABLES
         | TRACE_DOCUMENT_TABLES
         | SDLC_TABLES
+        | WORKFLOW_TABLES
     )
     unexpected = present - permitted
     assert not unexpected, f"migrations created out-of-scope tables: {sorted(unexpected)}"
@@ -410,3 +422,53 @@ def test_every_revision_id_fits_the_alembic_version_column() -> None:
         match = re.search(r'^revision: str = "([^"]+)"', path.read_text(encoding="utf-8"), re.M)
         assert match is not None, f"{path.name} declares no revision"
         assert len(match.group(1)) <= 32, f"{path.name}: revision id longer than 32 characters"
+
+
+def test_downgrading_p10_removes_exactly_the_workflow_tables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rolling P10 back leaves P0-P9 intact and restores the P9 trace allowlist exactly.
+
+    Exactly: the P9 check keeps every SDLC triple and loses every workflow triple -
+    including N.2 #25/#26, which touch no SDLC node - and a further downgrade to P8
+    loses both, so each revision's allowlist is the one its own phase left.
+    """
+    url = sqlite_url(tmp_path / "p10-down.db")
+    monkeypatch.setenv("DATABASE_URL", url)
+    get_settings.cache_clear()
+    config = alembic_config(url)
+
+    def trace_ddl(engine_url: str) -> str:
+        engine = create_engine(engine_url, future=True)
+        try:
+            with engine.connect() as conn:
+                return str(
+                    conn.exec_driver_sql(
+                        "SELECT sql FROM sqlite_master WHERE name = 'traceability_link'"
+                    ).scalar_one()
+                )
+        finally:
+            engine.dispose()
+
+    try:
+        command.upgrade(config, "head")
+        ddl = trace_ddl(url)
+        assert "workflow_gate" in ddl and "REQUIRES_ACTIVITY" in ddl, "P10 widens the check"
+        command.downgrade(config, "0011_p9_sdlc_recommendation")
+        engine = create_engine(url, future=True)
+        try:
+            present = set(inspect(engine).get_table_names())
+        finally:
+            engine.dispose()
+        assert not present & WORKFLOW_TABLES, "downgrade left P10 tables behind"
+        assert present >= SDLC_TABLES | TRACE_DOCUMENT_TABLES | RISK_TABLES
+        ddl = trace_ddl(url)
+        assert "workflow" not in ddl and "REQUIRES_CHECKPOINT" not in ddl
+        assert "sdlc_candidate" in ddl, "the P9 allowlist keeps its SDLC triples"
+        command.downgrade(config, "0010_p8_trace_documents")
+        ddl = trace_ddl(url)
+        assert "sdlc" not in ddl and "workflow" not in ddl, "the P8 allowlist is exact too"
+        command.upgrade(config, "head")
+        assert "workflow_gate" in trace_ddl(url)
+    finally:
+        get_settings.cache_clear()

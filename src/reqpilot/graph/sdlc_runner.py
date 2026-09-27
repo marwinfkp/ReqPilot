@@ -12,6 +12,11 @@ transaction (the ``AnalysisRunner`` pattern):
   Project Manager can override without being able to start runs;
 * :meth:`SdlcRunner.explain` - an analyst retries the explanation of a ranked
   run whose explanation failed or was never generated.
+* :meth:`SdlcRunner.generate_workflow` (P10) - an analyst or the Project Manager
+  asks for the project workflow of a run that passed G6 (``FR-WFL-001``). The
+  graph's ``workflow`` mode verifies G6 from the persisted records, derives,
+  validates and stores the workflow, and renders it once. The run acts as its
+  system actor, like a factor override's recompute.
 
 A bug - an exception no node expected - is not caught: the request fails and its
 transaction rolls back (architecture T, "fail loudly").
@@ -67,6 +72,11 @@ class SdlcRunSummary:
     provider_calls: int
     tokens_in: int
     tokens_out: int
+    # P10 (workflow mode); defaulted so every P9 construction is unchanged.
+    workflow_id: uuid.UUID | None = None
+    workflow_status: str | None = None
+    workflow_reused: bool = False
+    workflow_findings: tuple[dict[str, str], ...] = ()
 
 
 class SdlcRunner:
@@ -181,6 +191,23 @@ class SdlcRunner:
             scope={"mode": "sdlc_explain", "sdlc_run_id": str(run.id)},
         )
 
+    def generate_workflow(
+        self, *, actor: Actor, project_id: ProjectId, run_id: uuid.UUID
+    ) -> SdlcRunSummary:
+        """P10: the project workflow of a G6-selected run. Idempotent per approved inputs."""
+        require(
+            actor,
+            Action.WORKFLOW_GENERATE,
+            ResourceRef(resource_type=ResourceType.WORKFLOW, project_id=project_id),
+        )
+        return self._run(
+            actor,
+            project_id,
+            {"mode": "workflow", "sdlc_run_id": str(run_id), "semantic": False},
+            scope={"mode": "workflow", "sdlc_run_id": str(run_id)},
+            trigger=Action.WORKFLOW_GENERATE,
+        )
+
     # ------------------------------------------------------------------
     def _run(
         self,
@@ -233,7 +260,11 @@ class SdlcRunner:
         errors = tuple(e["message"] for e in final.get("errors", []))
         status = GraphRunStatus.FAILED if errors else GraphRunStatus.COMPLETED
         sdlc_run_id = final.get("sdlc_run_id")
-        trace_links = self._record_trace(actor, project_id, sdlc_run_id)
+        workflow_id = final.get("workflow_id")
+        if initial.get("mode") == "workflow":
+            trace_links = self._record_workflow_trace(actor, project_id, workflow_id)
+        else:
+            trace_links = self._record_trace(actor, project_id, sdlc_run_id)
         log.finish(
             status,
             sdlc_run_id=sdlc_run_id,
@@ -261,7 +292,28 @@ class SdlcRunner:
             provider_calls=ledger.calls,
             tokens_in=ledger.tokens_in,
             tokens_out=ledger.tokens_out,
+            workflow_id=uuid.UUID(workflow_id) if workflow_id else None,
+            workflow_status=final.get("workflow_status"),
+            workflow_reused=bool(final.get("workflow_reused", False)),
+            workflow_findings=tuple(final.get("workflow_findings", [])),
         )
+
+    def _record_workflow_trace(
+        self, human: Actor, project_id: ProjectId, workflow_id: str | None
+    ) -> int:
+        """N.2 #24-#26 for the new workflow, recorded as the human who asked for it.
+
+        As for a run's edges: an analyst holds ``TRACE_SYNC`` and the edges exist at
+        once; a Project Manager's request gets them at the next trace sync, derived
+        from the same persisted provenance (:meth:`TraceGraphSync.workflow_edges`).
+        """
+        if workflow_id is None:
+            return 0
+        ref = ResourceRef(resource_type=ResourceType.TRACEABILITY_LINK, project_id=project_id)
+        if not can(human, Action.TRACE_SYNC, ref):
+            return 0
+        sync = TraceGraphSync(self._session, human)
+        return sync.record(project_id, sync.workflow_edges(project_id, [uuid.UUID(workflow_id)]))
 
     def _record_trace(self, human: Actor, project_id: ProjectId, sdlc_run_id: str | None) -> int:
         """The new run's trace edges, recorded as the human who caused the run.

@@ -23,6 +23,7 @@ from reqpilot.web.risk import router as risk_web_router
 from reqpilot.web.router import router as web_router
 from reqpilot.web.sdlc import router as sdlc_web_router
 from reqpilot.web.traceability import router as traceability_web_router
+from reqpilot.web.workflow import router as workflow_web_router
 
 
 def create_app() -> FastAPI:
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(risk_web_router)
     app.include_router(traceability_web_router)
     app.include_router(sdlc_web_router)
+    app.include_router(workflow_web_router)
     return app
 
 

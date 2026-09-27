@@ -15,7 +15,7 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 
 ---
 
-## Current status — roadmap phase P9 (SDLC recommendation)
+## Current status — roadmap phase P10 (Workflow generation)
 
 | Stage | State |
 |---|---|
@@ -30,7 +30,8 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 | P6 Compliance & security analysis — `docs/09-p6-compliance-security.md` | P6 COMPLETE — ROADMAP EXIT PASSED (see the report) |
 | P7 Risk analysis & register — `docs/10-p7-risk-analysis.md` | P7 COMPLETE — ROADMAP EXIT PASSED — PROJECT-AUTHOR REVIEW COMPLETED (see the report) |
 | P8 Approval, traceability & documents — `docs/11-p8-approval-traceability-documents.md` | P8 COMPLETE — ROADMAP EXIT PASSED — PROJECT-AUTHOR REVIEW COMPLETED: gates G4, G5 and G7 on the one approval service with G1/G2/G3/G8; fail-closed readiness at submission, G1, baseline commit and generation; a typed, append-only trace graph; RTM; SRS (with data and interface sections), user stories, use cases, compliance matrix, risk register, assumptions/dependency register and open-issues list, all deterministic, versioned and exported as Markdown and DOCX; E6 computed (no target exists; first measurement 0.800 on a synthetic scenario baseline; the synthetic E6 benchmark was reviewed by the project author with no substantive label correction and is not independently expert-validated) |
-| **P9 SDLC recommendation — `docs/12-p9-sdlc-recommendation.md`** | **P9 COMPLETE — ROADMAP EXIT PASSED — PROJECT-AUTHOR REVIEW COMPLETED**: thirteen factors derived from the approved baseline and the governed risk register, with evidence; bounded model proposals and human overrides; weighted MCDA plus four versioned rules; a persisted ranking with reversal analysis; an LLM explanation checked against the ranking; G6 co-approval by Project Manager, Architect, Security Reviewer and Compliance Officer. E9 = 0.167 (2/12) agreement with a **synthetic AI-generated panel**, not a real or independently validated expert panel (no target exists; the benchmark was reviewed by the project author with no substantive correction). The exit criterion names a blind expert panel; the synthetic panel fills it under **deviation P9-3, approved by the project author** (docs/12 §17). P10 is not started |
+| P9 SDLC recommendation — `docs/12-p9-sdlc-recommendation.md` | P9 COMPLETE — ROADMAP EXIT PASSED — PROJECT-AUTHOR REVIEW COMPLETED: thirteen factors derived from the approved baseline and the governed risk register, with evidence; bounded model proposals and human overrides; weighted MCDA plus four versioned rules; a persisted ranking with reversal analysis; an LLM explanation checked against the ranking; G6 co-approval by Project Manager, Architect, Security Reviewer and Compliance Officer. E9 = 0.167 (2/12) agreement with a **synthetic AI-generated panel**, not a real or independently validated expert panel (no target exists; the benchmark was reviewed by the project author with no substantive correction). The exit criterion names a blind expert panel; the synthetic panel fills it under **deviation P9-3, approved by the project author** (docs/12 §17) |
+| **P10 Workflow generation — `docs/13-p10-workflow-generation.md`** | **P10 COMPLETE — ROADMAP EXIT PASSED**: the project workflow of the SDLC selection that passed G6, derived deterministically (no model call) from the selected candidate's versioned template - seven distinct phase structures, hybrids keeping their composition - and the project's own records: a compliance checkpoint for every eligible mapping, implementation and verification activities for every recorded mitigation of every HIGH risk, security activities from the derived security requirements, per-phase roles, deliverables, entry/exit criteria, testing and traceability requirements, and a production-readiness gate inside the generated workflow (no ninth ReqPilot gate). Every derived element is linked to its record (N.2 #24-#26); open items are listed, never filled in; Project Manager edits are validated and logged; Markdown and DOCX export through the P8 renderers. The exit test proves the criterion on a high-regulation synthetic project. P11 is not started |
 
 P0 built the foundation. P1 built the deterministic requirements repository:
 immutable requirement versions, a guarded lifecycle, G1 human approval, and
@@ -38,6 +39,15 @@ baselines. P2 built the grounding layer: a typed, versioned knowledge base
 (C.1 taxonomy), structure-aware chunking with exact offsets, local embeddings,
 PostgreSQL + pgvector hybrid retrieval with the source allowlist enforced
 **inside the query**, immutable evidence, and exact citation resolution.
+
+P10 added workflow generation: once G6 has passed, the selected SDLC's
+versioned template becomes the project's own workflow, with a compliance
+checkpoint for every eligible mapping, an implementation and a verification
+activity for every recorded HIGH-risk mitigation, security activities from the
+derived security requirements and a production-readiness gate - each linked to
+the record it came from. It is validated before it is stored, edited only by the
+Project Manager with a logged reason, and exported as Markdown and DOCX. No
+model call is made, and no ReqPilot gate is added.
 
 P9 added the SDLC recommendation: a thirteen-factor profile derived by code
 from the approved baseline and the governed risk register; bounded model

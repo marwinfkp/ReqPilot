@@ -293,6 +293,21 @@ def route_after_assessment(state: ElicitationState) -> AfterAssessment:
 # ---------------------------------------------------------------------------
 # sdlc_graph (P9; architecture C.5)
 # ---------------------------------------------------------------------------
+def route_sdlc_start(state: SDLCState) -> str:
+    """P10: the ``workflow`` mode goes straight to ``generate_workflow``.
+
+    Every P9 mode (``start``, ``override``, ``explain``) still begins with
+    ``collect_factor_evidence``; the router reads the mode the runner set, never
+    model text, and G6 is verified inside the node from persisted records.
+    """
+    return "workflow" if state.get("mode") == "workflow" else "collect"
+
+
+def route_after_workflow(state: SDLCState) -> str:
+    """Artefacts are emitted only for a stored workflow; a refusal ends the run."""
+    return "end" if state.get("failed") or not state.get("workflow_id") else "emit"
+
+
 def route_after_collect(state: SDLCState) -> str:
     if state.get("failed"):
         return "end"

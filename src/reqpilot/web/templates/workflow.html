@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Workflow {{ wf.id|string|truncate(8, True, "") }}{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ project.id }}/workflows">all workflows</a>
+  <a href="/ui/sdlc-runs/{{ wf.sdlc_run_id }}">SDLC run (G6)</a>
+  <a href="/api/v1/workflows/{{ wf.id }}">JSON</a>
+  {% if may_export %}
+  <a href="/api/v1/workflows/{{ wf.id }}/export?format=markdown">export Markdown</a>
+  <a href="/api/v1/workflows/{{ wf.id }}/export?format=docx">export DOCX</a>
+  {% endif %}
+{% endblock %}
+{% block content %}
+<h1>{{ wf.candidate_label }} workflow <span class="mono">{{ wf.id|string|truncate(8, True, "") }}</span></h1>
+<p class="note warn"><b>How to read this.</b> {{ wf.notice }}</p>
+{% if error %}
+<p class="note warn"><b>Edit refused.</b> Nothing was changed. Codes:
+  {% for c in error %}<span class="mono">{{ c }}</span>{% if not loop.last %}, {% endif %}{% endfor %}.
+  Mandatory elements cannot be removed, provenance cannot change, a reason is required, and the
+  edited workflow must still validate.</p>
+{% endif %}
+<p>Status <b>{{ wf.status.value }}</b> &middot; revision <b>{{ wf.revision }}</b> &middot;
+  SDLC selected at G6 (ReqPilot gate, all four approvers): <b class="mono">{{ wf.candidate_key }}</b>
+  ({{ wf.composition|join(" + ") }}).</p>
+<p>{{ wf.approach }}</p>
+<p class="muted">Template <span class="mono">{{ wf.template_ref }}</span> &middot; generated hash
+  <code>{{ wf.generated_hash[:16] }}&hellip;</code> &middot; current hash <code>{{ wf.content_hash[:16] }}&hellip;</code>
+  &middot; baseline <a class="mono" href="/ui/baselines/{{ wf.baseline_id }}">{{ wf.baseline_id|string|truncate(8, True, "") }}</a>
+  {% if wf.supersedes_workflow_id %}&middot; supersedes <a class="mono" href="/ui/workflows/{{ wf.supersedes_workflow_id }}">{{ wf.supersedes_workflow_id|string|truncate(8, True, "") }}</a>{% endif %}</p>
+
+<h2>Open items</h2>
+{% if wf.open_items %}
+<p class="muted">The project's records leave these for a human to resolve. They are listed, never filled in.</p>
+<table>
+  <tr><th>Code</th><th>Item</th></tr>
+  {% for f in wf.open_items %}<tr><td class="mono">{{ f.code }}</td><td>{{ f.message }}</td></tr>{% endfor %}
+</table>
+{% else %}<p class="muted">None.</p>{% endif %}
+
+<h2>Phases</h2>
+<ol>{% for p in wf.phases %}<li><a href="#phase-{{ p.key }}">{{ p.name }}</a>{% if p.cycle %} <span class="muted">({{ p.cycle }})</span>{% endif %}</li>{% endfor %}</ol>
+
+{% for p in wf.phases %}
+<h3 id="phase-{{ p.key }}">{{ p.position }}. {{ p.name }} <span class="muted mono">{{ p.origin }}</span></h3>
+<p>{{ p.description }}</p>
+<p class="muted">Stages: {{ p.stages|join(", ") }}{% if p.cycle %} &middot; {{ p.cycle }}{% endif %}{% if p.verifies_phase_key %} &middot; verifies <span class="mono">{{ p.verifies_phase_key }}</span>{% endif %}
+  &middot; responsible: {% for r in p.responsible_roles %}{{ roles.get(r, r) }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+<table>
+  <tr><th>Deliverables</th><th>Entry criteria</th><th>Exit criteria</th><th>Testing requirements</th><th>Traceability requirements</th></tr>
+  <tr>
+    <td><ul>{% for x in p.deliverables %}<li>{{ x }}</li>{% endfor %}</ul></td>
+    <td><ul>{% for x in p.entry_criteria %}<li>{{ x }}</li>{% endfor %}</ul></td>
+    <td><ul>{% for x in p.exit_criteria %}<li>{{ x }}</li>{% endfor %}</ul></td>
+    <td><ul>{% for x in p.testing_requirements %}<li>{{ x }}</li>{% endfor %}</ul></td>
+    <td><ul>{% for x in p.traceability_requirements %}<li>{{ x }}</li>{% endfor %}</ul></td>
+  </tr>
+</table>
+<h4>Activities</h4>
+<table>
+  <tr><th>Activity</th><th>Kind</th><th>Responsible</th><th>Deliverables</th><th>Derived from</th>{% if may_edit %}<th>Edit</th>{% endif %}</tr>
+  {% for a in p.activities %}
+  <tr>
+    <td><b>{{ a.name }}</b>{% if a.mandatory %} <span class="state">mandatory</span>{% endif %}<div class="muted">{{ a.description }}</div></td>
+    <td class="mono">{{ a.kind }}<div class="muted">{{ a.origin }}</div></td>
+    <td>{% for r in a.responsible_roles %}{{ roles.get(r, r) }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+    <td>{{ a.deliverables|join("; ") }}</td>
+    <td>{% if a.sources %}<ul>{% for s in a.sources %}<li><span class="mono">{{ s.relation }}</span> {{ s.label }}</li>{% endfor %}</ul>{% else %}<span class="muted">template</span>{% endif %}</td>
+    {% if may_edit %}<td>
+      <form method="post" action="/ui/workflows/{{ wf.id }}/activity/{{ a.id }}/edit">
+        <select name="field">{% for f in fields.activity %}<option>{{ f }}</option>{% endfor %}</select>
+        <textarea name="value" rows="2" placeholder="new value (lists: one item per line)"></textarea>
+        <input name="reason" placeholder="reason (required)">
+        <button type="submit">save</button>
+      </form>
+      {% if not a.mandatory %}
+      <form method="post" action="/ui/workflows/{{ wf.id }}/activities/{{ a.id }}/remove">
+        <input name="reason" placeholder="reason (required)"><button type="submit">remove</button>
+      </form>{% endif %}
+    </td>{% endif %}
+  </tr>
+  {% endfor %}
+</table>
+{% if p.gates %}
+<h4>Gates of this project's process <span class="muted">(not ReqPilot gates)</span></h4>
+<table>
+  <tr><th>Gate</th><th>Kind</th><th>Approvers</th><th>Required evidence</th><th>Entry / exit</th><th>Derived from</th>{% if may_edit %}<th>Edit</th>{% endif %}</tr>
+  {% for g in p.gates %}
+  <tr>
+    <td><b>{{ g.name }}</b><div class="muted">{{ g.purpose }}</div></td>
+    <td class="mono">{{ g.kind }}<div class="muted">{{ g.origin }}</div></td>
+    <td>{% for r in g.approver_roles %}{{ roles.get(r, r) }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+    <td><ul>{% for x in g.required_evidence %}<li>{{ x }}</li>{% endfor %}</ul></td>
+    <td><b>entry</b> {{ g.entry_criteria|join("; ") }}<br><b>exit</b> {{ g.exit_criteria|join("; ") }}</td>
+    <td>{% if g.sources %}<ul>{% for s in g.sources %}<li><span class="mono">{{ s.relation }}</span> {{ s.label }}</li>{% endfor %}</ul>{% else %}<span class="muted">{% if g.kind == "production_readiness" %}[PS §16] category 8{% else %}template{% endif %}</span>{% endif %}</td>
+    {% if may_edit %}<td>
+      <form method="post" action="/ui/workflows/{{ wf.id }}/gate/{{ g.id }}/edit">
+        <select name="field">{% for f in fields.gate %}<option>{{ f }}</option>{% endfor %}</select>
+        <textarea name="value" rows="2" placeholder="new value (lists: one item per line)"></textarea>
+        <input name="reason" placeholder="reason (required)">
+        <button type="submit">save</button>
+      </form>
+    </td>{% endif %}
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% if may_edit %}
+<details><summary>Edit this phase, or add an activity</summary>
+  <form method="post" action="/ui/workflows/{{ wf.id }}/phase/{{ p.id }}/edit">
+    <select name="field">{% for f in fields.phase %}<option>{{ f }}</option>{% endfor %}</select>
+    <textarea name="value" rows="3" placeholder="new value (lists: one item per line)"></textarea>
+    <input name="reason" placeholder="reason (required)">
+    <button type="submit">save phase</button>
+  </form>
+  <form method="post" action="/ui/workflows/{{ wf.id }}/phases/{{ p.id }}/activities">
+    <input name="name" placeholder="activity name">
+    <input name="description" placeholder="description">
+    <input name="responsible_roles" placeholder="roles, e.g. qa_engineer, developer">
+    <textarea name="deliverables" rows="2" placeholder="deliverables, one per line"></textarea>
+    <input name="reason" placeholder="reason (required)">
+    <button type="submit">add activity</button>
+  </form>
+</details>
+{% endif %}
+{% endfor %}
+
+<h2>Change log</h2>
+{% if changes %}
+<table>
+  <tr><th>Revision</th><th>When</th><th>Role</th><th>Change</th><th>Element</th><th>Fields (before &rarr; after)</th><th>Reason</th></tr>
+  {% for c in changes %}
+  <tr>
+    <td>{{ c.revision }}</td><td>{{ c.created_at }}</td><td class="mono">{{ c.role_exercised }}</td>
+    <td>{{ c.operation }}</td><td class="mono">{{ c.element_type }} {{ c.element_key }}</td>
+    <td><ul>{% for k, v in c.changes.items() %}<li><span class="mono">{{ k }}</span>: {{ v.before }} &rarr; {{ v.after }}</li>{% endfor %}</ul></td>
+    <td>{{ c.reason }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="muted">Unedited since generation (revision 1). The generated workflow is kept unchanged whatever edits follow.</p>{% endif %}
+{% if not may_edit %}<p class="muted">Only the project's Project Manager edits a workflow; superseded workflows are kept unchanged.</p>{% endif %}
+{% endblock %}
