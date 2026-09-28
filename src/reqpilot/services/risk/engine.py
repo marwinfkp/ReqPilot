@@ -373,6 +373,8 @@ class RiskEngine:
                 "mitigations": len(accepted.mitigations),
                 "owner_role": str(risk.owner_role),
                 "scope_rules_version": risk.scope_rules_version,
+                # P11 (FR-AUD-004): the status the risk was recorded in, for replay.
+                "status": str(risk.status),
             },
             **common,  # type: ignore[arg-type]
         )

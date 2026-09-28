@@ -339,11 +339,25 @@ class RequirementService:
         # here in deterministic application code - not in the UI, not in a
         # prompt, and not as a warning. The transition itself fails.
         unreviewed_high_risks = self._risks.unreviewed_high_count(project_id, version.id)
+        # P11 (found by the adversarial suite): a G8 task's subject is the risk, not
+        # the version, so the ``blocking`` list above never saw it - a register
+        # decision moving the risk out of review would have unblocked the version
+        # while its G8 task was still open. An open G8 task of any of this version's
+        # risks blocks, like any other blocking gate (INV-G8; FR-RSK-007).
+        risk_ids = {r.id for r in self._risks.list_for_project(project_id, version_id=version.id)}
+        open_g8 = [
+            task
+            for task in self._tasks.list_for_project(project_id)
+            if task.gate is Gate.G8_HIGH_SEVERITY_RISK
+            and task.subject_id in risk_ids
+            and task.status is ApprovalTaskStatus.OPEN
+            and task.blocking
+        ]
         return TransitionContext(
             source_ref_count=len(version.source_refs or []),
             label_count=labels or (1 if version.category is not None else 0),
             has_current_validation=version.state is RequirementState.VALIDATED,
-            blocking_gate_task_count=len(blocking) + pending_gates,
+            blocking_gate_task_count=len(blocking) + pending_gates + len(open_g8),
             is_baselined=version.state is RequirementState.BASELINED,
             open_defect_count=open_findings,
             # P5: an open or under-review conflict on either side blocks
@@ -522,6 +536,9 @@ class RequirementService:
                 "human_id": requirement.human_id,
                 "version_no": version.version_no,
                 "content_hash": version.content_hash,
+                # P11 (FR-AUD-004): the state the version was created in, so replay
+                # does not have to infer it from the first transition.
+                "state": str(version.state),
             },
         )
 

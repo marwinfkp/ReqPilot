@@ -521,6 +521,13 @@ class AuditEventType(StrEnum):
     WORKFLOW_EXPORTED = "WORKFLOW_EXPORTED"
     WORKFLOW_SUPERSEDED = "WORKFLOW_SUPERSEDED"
 
+    # Guardrails hardening (roadmap phase P11). ``INJECTION_SUSPECTED`` and
+    # ``PROJECT_DELETED`` are named in architecture O.2; the session events are
+    # project-less (``project_id`` NULL), like any other system event.
+    INJECTION_SUSPECTED = "INJECTION_SUSPECTED"
+    AUTH_SESSION_ISSUED = "AUTH_SESSION_ISSUED"
+    AUTH_SESSION_REVOKED = "AUTH_SESSION_REVOKED"
+
 
 class Action(StrEnum):
     """Actions the policy can authorise (architecture ADR-009).
@@ -1435,3 +1442,46 @@ class WorkflowElementOrigin(StrEnum):
     EDITED = "edited"
     #: Added by the Project Manager.
     MANUAL = "manual"
+
+
+# ---------------------------------------------------------------------------
+# Guardrails hardening (roadmap phase P11)
+# ---------------------------------------------------------------------------
+
+
+class MaskCategory(StrEnum):
+    """What the P11 masker recognises (architecture P #5; ``FR-ING-003``).
+
+    Synthetic-identifier coverage only: each category is a documented pattern,
+    most with a checksum, and none claims to find every sensitive value.
+    """
+
+    CARD_NUMBER = "card_number"
+    IBAN = "iban"
+    AADHAAR = "aadhaar"
+    GSTIN = "gstin"
+    PAN = "pan"
+    IFSC = "ifsc"
+    EMAIL = "email"
+    UPI_ID = "upi_id"
+    PHONE = "phone"
+    ACCOUNT_NUMBER = "account_number"
+    LOAN_ACCOUNT = "loan_account"
+
+
+class InjectionSignal(StrEnum):
+    """The heuristic prompt-injection signals (architecture Q.4).
+
+    A signal never blocks anything: it tags the content, raises
+    ``INJECTION_SUSPECTED`` and surfaces it. The structural controls are the
+    defence (Q.1-Q.3).
+    """
+
+    INSTRUCTION_OVERRIDE = "instruction_override"
+    ROLE_PLAY = "role_play"
+    SYSTEM_PROMPT_PROBE = "system_prompt_probe"
+    APPROVAL_MANIPULATION = "approval_manipulation"
+    PERMISSION_ESCALATION = "permission_escalation"
+    DATA_EXFILTRATION = "data_exfiltration"
+    DELIMITER_SPOOF = "delimiter_spoof"
+    ENCODED_BLOCK = "encoded_block"

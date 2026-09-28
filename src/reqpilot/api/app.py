@@ -20,6 +20,7 @@ from reqpilot.api.routes import (
     elicitation,
     extraction,
     governance,
+    guardrails,
     health,
     knowledge,
     quality,
@@ -62,7 +63,12 @@ DESCRIPTION = (
     "G6-selected SDLC, derived deterministically from its versioned template and the "
     "project's own compliance mappings, derived security requirements and HIGH risks, with a "
     "production-readiness gate inside the generated workflow, Project Manager edits with a "
-    "change log, and Markdown and DOCX export). Model calls go to the configured "
+    "change log, and Markdown and DOCX export) and P11 (guardrails hardening: protective "
+    "masking of synthetic financial identifiers at ingestion, at the gateway and in the audit "
+    "log; injection tagging; per-role capability tokens checked at the gateway and in the "
+    "policy; opaque server-side sessions; project deletion with a redacted, retained audit "
+    "trail; and an audit viewer with requirement and risk replay). Model calls go to the "
+    "configured "
     "provider: the offline stub by default, "
     "or OpenAI when LLM_PROVIDER=openai."
 )
@@ -88,6 +94,7 @@ def create_app() -> FastAPI:
     app.include_router(traceability.router)
     app.include_router(sdlc.router)
     app.include_router(workflow.router)
+    app.include_router(guardrails.router)
     return app
 
 

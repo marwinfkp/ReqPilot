@@ -13,6 +13,7 @@ prove that by driving the same service paths.
 
 from __future__ import annotations
 
+import datetime as dt
 import uuid
 from pathlib import Path
 
@@ -39,7 +40,6 @@ from reqpilot.domain.models.identity import Project
 from reqpilot.domain.policy import Actor
 from reqpilot.domain.requirement_ids import RequirementKind
 from reqpilot.services.approval import ApprovalService, required_roles, requires_all_roles
-from reqpilot.services.audit import AuditService
 from reqpilot.services.baseline import BaselineService
 from reqpilot.services.classification import RELABELLABLE_STATES, ClassificationService
 from reqpilot.services.extraction import RequirementRecordService
@@ -401,26 +401,50 @@ def baseline_view(
 def audit_view(
     project_id: uuid.UUID, request: Request, session: DbSession, actor: CurrentActor
 ) -> HTMLResponse:
-    """The audit trail. Read-only, chain-ordered, references only."""
-    from reqpilot.domain.enums import Action, ResourceType
-    from reqpilot.domain.policy import ResourceRef, require
+    """The audit trail. Read-only, chain-ordered, references only.
+
+    P11 (``FR-AUD-003``): filterable by requirement, risk, user, role, event type
+    and time, with replay links; a deleted project's payloads are redacted.
+    """
+    from reqpilot.services.audit.replay import AuditFilter, AuditViewer
 
     pid = ProjectId(project_id)
-    require(
-        actor,
-        Action.AUDIT_READ,
-        ResourceRef(resource_type=ResourceType.AUDIT_EVENT, project_id=pid),
+    params = request.query_params
+
+    def as_uuid(name: str) -> uuid.UUID | None:
+        try:
+            return uuid.UUID(params[name]) if params.get(name) else None
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"{name} is not an id") from None
+
+    def as_time(name: str) -> dt.datetime | None:
+        try:
+            return dt.datetime.fromisoformat(params[name]) if params.get(name) else None
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"{name} is not an ISO time") from None
+
+    view = AuditViewer(session, actor).view(
+        pid,
+        AuditFilter(
+            requirement_id=as_uuid("requirement_id"),
+            risk_id=as_uuid("risk_id"),
+            actor_ref=params.get("actor_ref") or None,
+            role=params.get("role") or None,
+            event_type=params.get("event_type") or None,
+            since=as_time("since"),
+            until=as_time("until"),
+        ),
     )
-    audit = AuditService(session)
-    ok, first_bad = audit.verify_project_chain(project_id)
     return TEMPLATES.TemplateResponse(
         request,
         "audit.html",
         {
             "project_id": pid,
-            "events": audit.list_for_project(project_id),
-            "chain_ok": ok,
-            "first_bad": first_bad,
+            "events": view.entries,
+            "chain_ok": view.chain_ok,
+            "first_bad": view.first_divergence,
+            "redacted": view.redacted,
+            "filters": dict(params),
             "actor": actor,
         },
     )

@@ -1,10 +1,18 @@
 """Request-scoped dependencies: the database session and the acting actor.
 
-**Actor resolution here is development-only.** Real authentication - sessions,
-password verification, MFA - is explicitly out of scope for this phase and was
-never part of the foundation either. What exists is the smallest mechanism that
-lets the API and the demonstration UI act *as* a real, project-scoped actor so
-that authorization can be enforced for real:
+**Sessions (P11; ADR-009).** A request may present an opaque server-side session
+- ``Authorization: Bearer <token>`` or the ``reqpilot_session`` cookie. The token
+is looked up by its SHA-256 in ``auth_session``; an unknown, expired or revoked
+session, a session of an inactive user, or a session presented together with a
+*different* ``X-ReqPilot-Actor`` claim is a 401 - never a fallback to another
+mechanism, never an answer as somebody else. Roles are then read from
+``project_member`` exactly as below.
+
+**Without a session, actor resolution is development-only.** Password
+verification and MFA are still not implemented (ADR-009; Phase 0 E.2). What
+exists is the smallest mechanism that lets the API and the demonstration UI act
+*as* a real, project-scoped actor so that authorization can be enforced for
+real - and that is how a session is first obtained:
 
     X-ReqPilot-Actor: <user id>
 
@@ -27,12 +35,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from reqpilot.config import AppEnv, EmbeddingProviderKind, Settings, get_settings
 from reqpilot.domain.enums import ActorKind, Role
+from reqpilot.domain.errors import AuthSessionError
 from reqpilot.domain.ids import ActorId, ProjectId
 from reqpilot.domain.models.identity import ProjectMember, User
 from reqpilot.domain.policy import Actor
@@ -52,6 +61,7 @@ from reqpilot.rules.quality import QualityRules, load_quality_rules
 from reqpilot.rules.risk import RiskRules, load_risk_rules
 from reqpilot.rules.sdlc import SdlcRules, load_sdlc_rules
 from reqpilot.services.compliance import Retriever
+from reqpilot.services.guardrails.sessions import AuthSessionService
 from reqpilot.services.knowledge.retrieval import RetrievalService
 
 
@@ -88,12 +98,38 @@ def load_actor(session: Session, user_id: uuid.UUID) -> Actor:
     )
 
 
+def bearer_token(authorization: str | None) -> str | None:
+    """The token of an ``Authorization: Bearer <token>`` header, else ``None``."""
+    if not authorization:
+        return None
+    scheme, _, token = authorization.strip().partition(" ")
+    return token.strip() or None if scheme.lower() == "bearer" else None
+
+
 def get_actor(
     session: Annotated[Session, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
     x_reqpilot_actor: Annotated[str | None, Header()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+    reqpilot_session: Annotated[str | None, Cookie()] = None,
 ) -> Actor:
-    """Resolve the acting user for this request. Development only."""
+    """Resolve the acting user for this request: a server-side session if one is
+    presented (P11), else the development identity claim."""
+    token = bearer_token(authorization) or reqpilot_session
+    if token:
+        try:
+            holder = AuthSessionService(session).resolve(token)
+        except AuthSessionError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid or expired session"
+            ) from None
+        if x_reqpilot_actor and x_reqpilot_actor.strip() != str(holder.id):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="the session and the identity claim name different users",
+            )
+        return load_actor(session, holder.id)
+
     if settings.app_env is AppEnv.PRODUCTION:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
@@ -117,8 +153,11 @@ def get_actor(
             detail="X-ReqPilot-Actor must be a user id",
         ) from None
 
-    if session.get(User, user_id) is None:
+    user = session.get(User, user_id)
+    if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="unknown actor")
+    if not user.is_active:  # P11: a deactivated user acts as nobody
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="inactive actor")
 
     return load_actor(session, user_id)
 

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ project.name }}{% endblock %}
+{% block nav %}<a href="/ui/projects/{{ project.id }}">back to project</a>{% endblock %}
+{% block content %}
+<h1>Delete project</h1>
+<p class="note warn">Deleting removes this project's content: requirements and their versions,
+sources and segments, interviews and utterances, stakeholders, findings, conflicts, compliance
+mappings, risks, baselines, artefacts, trace links, SDLC runs, workflows, approval tasks, runs
+and their checkpoints, and the unmasking map. The audit trail is <b>retained</b>, with
+content-bearing values redacted, so who did what and when survives (FR-ADM-006,
+architecture P.2). This cannot be undone.</p>
+{% if error %}<p class="note warn">Not deleted: {{ error }}</p>{% endif %}
+{% if may_delete %}
+<form method="post" action="/ui/projects/{{ project.id }}/delete">
+  <label for="confirm_name">Type the project's name to confirm: <b>{{ project.name }}</b></label>
+  <input type="text" id="confirm_name" name="confirm_name" autocomplete="off">
+  <p><button class="primary" type="submit">Delete this project's content</button></p>
+</form>
+{% else %}
+<p class="muted">Only the Project Manager of this project may delete it.</p>
+{% endif %}
+{% endblock %}

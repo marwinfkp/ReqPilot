@@ -38,6 +38,7 @@ from tests.workflow.test_p1_exit_test import make_project
 from reqpilot.agents.contracts.classification import ClassificationOutput
 from reqpilot.agents.validation.classification import validate_classification
 from reqpilot.config import LLMProvider, Settings
+from reqpilot.domain.capabilities import mint_capability
 from reqpilot.domain.enums import AgentRole, GraphRunStatus, Role
 from reqpilot.domain.ids import ProjectId
 from reqpilot.domain.lifecycle import RequirementState
@@ -73,19 +74,27 @@ def live_settings(monkeypatch: pytest.MonkeyPatch) -> Settings:
 
 def test_a_live_structured_call_returns_a_typed_valid_proposal(live_settings: Settings) -> None:
     """One tiny classification call: schema-valid, labelled, stamped with provenance."""
-    result = build_gateway(live_settings).generate(
-        role=AgentRole.CLASSIFICATION,
-        prompt_name="requirement_classification",
-        params={},
-        content=[
-            ContentBlock(
-                label="requirement",
-                text=SYNTHETIC_REQUIREMENT,
-                trust_class=TrustClass.PROJECT_CONTENT,
-                synthetic=True,
-            )
-        ],
-        schema=ClassificationOutput,
+    # P11: the call carries the Coordinator's token for the classification role (P.1).
+    token = mint_capability(
+        run_id=uuid.uuid4(), project_id=uuid.uuid4(), role=AgentRole.CLASSIFICATION
+    )
+    result = (
+        build_gateway(live_settings)
+        .with_capability(token)
+        .generate(
+            role=AgentRole.CLASSIFICATION,
+            prompt_name="requirement_classification",
+            params={},
+            content=[
+                ContentBlock(
+                    label="requirement",
+                    text=SYNTHETIC_REQUIREMENT,
+                    trust_class=TrustClass.PROJECT_CONTENT,
+                    synthetic=True,
+                )
+            ],
+            schema=ClassificationOutput,
+        )
     )
     meta = result.meta
     print(

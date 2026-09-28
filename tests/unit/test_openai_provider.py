@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -20,6 +21,7 @@ httpx2 = pytest.importorskip("httpx2")
 
 from reqpilot.agents.contracts.classification import ClassificationOutput  # noqa: E402
 from reqpilot.config import LLMProvider, Settings  # noqa: E402
+from reqpilot.domain.capabilities import mint_capability  # noqa: E402
 from reqpilot.domain.enums import AgentRole  # noqa: E402
 from reqpilot.domain.errors import (  # noqa: E402
     EgressRefusedError,
@@ -109,7 +111,12 @@ def provider_with(answers: list, **settings) -> tuple[LLMGateway, FakeClient, li
     sleeps: list[float] = []
     provider = OpenAIProvider(model=MODEL, client=client)
     gateway = LLMGateway(provider, settings=openai_settings(**settings), sleep=sleeps.append)
-    return gateway, client, sleeps
+    # P11: a structured call carries the Coordinator's token for its role (P.1);
+    # every call in this file is the classification role's.
+    token = mint_capability(
+        run_id=uuid.uuid4(), project_id=uuid.uuid4(), role=AgentRole.CLASSIFICATION
+    )
+    return gateway.with_capability(token), client, sleeps
 
 
 def classify(gateway: LLMGateway, text: str = "The system shall encrypt data.", **block):

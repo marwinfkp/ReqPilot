@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -53,6 +54,7 @@ from reqpilot.services.elicitation.stakeholders import (
     is_stakeholder_only,
     require_may_view,
 )
+from reqpilot.services.guardrails.masking import audit_injection, protect_text, record_map
 
 
 def topic_plan(template: InterviewTemplate) -> list[tracker.TopicPlan]:
@@ -264,6 +266,7 @@ class InterviewSessionService:
         question = self.utterance(row, row.pending_question_id)
         if question is None:  # pragma: no cover - the pointer is written with the row
             raise ElicitationError("the pending question is missing")
+        protected = protect_text(text)  # P11: masked before it is stored (FR-ING-003)
         utterance = self._utterances.add(
             Utterance(
                 project_id=project_id,
@@ -272,15 +275,19 @@ class InterviewSessionService:
                 speaker_kind=SpeakerKind.STAKEHOLDER,
                 speaker_ref=stakeholder.id,
                 stakeholder_role=stakeholder.stakeholder_role,
-                text=text,
+                text=protected.text,
                 topic_id=question.topic_id,
                 is_followup=question.is_followup,
                 replies_to_id=question.id,
                 recorded_by=self._actor.actor_id,
                 on_behalf=on_behalf,
+                masking_status=protected.status,
+                masker_id=protected.masker_id,
+                injection_signals=protected.signal_codes,
             ),
             action=Action.SESSION_ANSWER,
         )
+        self._protected(project_id, utterance, protected)
         row.unassessed_answer_id = utterance.id
         row.updated_at = utc_now()
         self._sessions.save(row, action=Action.SESSION_ANSWER)
@@ -297,6 +304,27 @@ class InterviewSessionService:
         )
         return utterance
 
+    def _protected(self, project_id: ProjectId, utterance: Utterance, protected: Any) -> None:
+        """P11: keep the unmasking map apart, and surface an injection tag (Q.4)."""
+        record_map(
+            self._session,
+            project_id=project_id,
+            source_type="utterance",
+            source_id=utterance.id,
+            protected=protected,
+        )
+        if protected.signals:
+            audit_injection(
+                self._session,
+                actor_kind=self._actor.kind,
+                actor_ref=str(self._actor.actor_id),
+                project_id=project_id,
+                subject_type="utterance",
+                subject_id=str(utterance.id),
+                stage="interview",
+                signal_codes=protected.signal_codes,
+            )
+
     # -- the pipeline --------------------------------------------------------
     def record_question(
         self,
@@ -309,13 +337,17 @@ class InterviewSessionService:
     ) -> Utterance:
         """Persist a question role #2 proposed and validation accepted."""
         project_id = ProjectId(row.project_id)
+        protected = protect_text(text)  # P11: masked before it is stored (FR-ING-003)
         utterance = self._utterances.add(
             Utterance(
                 project_id=project_id,
                 session_id=row.id,
                 seq=self._utterances.next_seq(project_id, row.id),
                 speaker_kind=SpeakerKind.SYSTEM,
-                text=text,
+                text=protected.text,
+                masking_status=protected.status,
+                masker_id=protected.masker_id,
+                injection_signals=protected.signal_codes,
                 topic_id=topic_id,
                 is_followup=is_followup,
                 agent_run_id=agent_run_id,
@@ -323,6 +355,7 @@ class InterviewSessionService:
             ),
             action=Action.UTTERANCE_RECORD,
         )
+        self._protected(project_id, utterance, protected)
         row.pending_question_id = utterance.id
         row.topic_coverage = tracker.record_question(
             row.topic_coverage, topic_id, is_followup=is_followup

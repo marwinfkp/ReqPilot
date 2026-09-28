@@ -16,12 +16,14 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint, event, inspect
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import select as sa_select
+from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
 from reqpilot.domain.enums import ApprovalDecisionType, ApprovalTaskStatus, Gate, Role
+from reqpilot.domain.errors import ImmutableRecordError
 from reqpilot.domain.models.base import Base, created_at_column, uuid_pk
 
 
@@ -73,6 +75,8 @@ class ApprovalTask(Base):
         SAEnum(ApprovalTaskStatus, name="approval_task_status_enum"),
         nullable=False,
         default=ApprovalTaskStatus.OPEN,
+        # P11: the guard below needs the value before a change, even when expired.
+        active_history=True,
     )
     #: Whether this task blocks progress. G1-G8 are all blocking in the
     #: approved design; the column exists because the architecture names it.
@@ -144,3 +148,116 @@ class ApprovalDecision(Base):
         return (
             f"ApprovalDecision(id={self.id}, decision={self.decision}, role={self.role_exercised})"
         )
+
+
+# ---------------------------------------------------------------------------
+# P11: the records of the one approval path cannot be forged or rewritten
+# ---------------------------------------------------------------------------
+
+#: What a task *is*: fixed when it is raised. ``subject_version_hash`` is left out
+#: deliberately: a changed binding can only make the approval service refuse
+#: (``StaleApprovalError`` - it re-checks the binding against the subject at decision
+#: time), and the P1/P8 security tests rely on simulating exactly that tampering.
+_TASK_IDENTITY = (
+    "project_id",
+    "gate",
+    "task_group_id",
+    "subject_type",
+    "subject_id",
+    "required_role",
+    "blocking",
+)
+
+#: A task closes as APPROVED or REJECTED only with the decision that closes it.
+_CLOSING_DECISIONS: dict[ApprovalTaskStatus, frozenset[ApprovalDecisionType]] = {
+    ApprovalTaskStatus.APPROVED: frozenset({ApprovalDecisionType.APPROVE}),
+    ApprovalTaskStatus.REJECTED: frozenset(
+        {ApprovalDecisionType.REJECT, ApprovalDecisionType.MODIFY}
+    ),
+}
+
+
+def _has_decision(
+    session: Session, task_id: uuid.UUID, kinds: frozenset[ApprovalDecisionType]
+) -> bool:
+    for obj in session.new:
+        if isinstance(obj, ApprovalDecision) and obj.task_id == task_id and obj.decision in kinds:
+            return True
+    with session.no_autoflush:
+        found = session.scalars(
+            sa_select(ApprovalDecision.id).where(
+                ApprovalDecision.task_id == task_id, ApprovalDecision.decision.in_(kinds)
+            )
+        ).first()
+    return found is not None
+
+
+def _check_new_decision(session: Session, decision: ApprovalDecision) -> None:
+    from reqpilot.domain.models.identity import ProjectMember
+
+    with session.no_autoflush:
+        task = session.get(ApprovalTask, decision.task_id)
+        if task is None or task.project_id != decision.project_id:
+            raise ImmutableRecordError("a decision names an approval task of its own project")
+        if task.status is not ApprovalTaskStatus.OPEN:
+            raise ImmutableRecordError(f"a {task.status} approval task takes no further decision")
+        if decision.role_exercised is not task.required_role:
+            raise ImmutableRecordError("a decision is recorded only in the task's own role")
+        holds = session.scalars(
+            sa_select(ProjectMember.id).where(
+                ProjectMember.project_id == decision.project_id,
+                ProjectMember.user_id == decision.decided_by,
+                ProjectMember.role == decision.role_exercised,
+            )
+        ).first()
+    if holds is None:
+        raise ImmutableRecordError(
+            "a decision is recorded only for a project member holding the role exercised"
+        )
+
+
+@event.listens_for(Session, "before_flush")
+def _guard_approval_records(session: Session, _context: object, _instances: object) -> None:
+    """Architecture J.1 / M.2 as a property of the records (P11; mirrored in PostgreSQL).
+
+    * ``approval_decision`` is append-only: never updated, never deleted - and a
+      new one is recorded only against an ``OPEN`` task of the same project, in
+      the task's own role, by a project member who holds that role.
+    * A task is never deleted through the ORM, and what it is - its gate, subject,
+      exact-version binding, role, group and ``blocking`` - never changes.
+    * A task moves only out of ``OPEN``; to ``APPROVED`` only with an ``APPROVE``
+      decision for it, to ``REJECTED`` only with a ``REJECT``/``MODIFY`` one;
+      ``CANCELLED`` (which passes nothing) needs none. So a status written by any
+      path other than the approval service cannot make a gate pass.
+
+    (The PostgreSQL project purge deletes these rows nested in a trigger, which the
+    database-level guard allows; the ORM never deletes them.)
+    """
+    for obj in session.new:
+        if isinstance(obj, ApprovalDecision):
+            _check_new_decision(session, obj)
+    for obj in session.deleted:
+        if isinstance(obj, (ApprovalDecision, ApprovalTask)):
+            raise ImmutableRecordError(
+                f"{type(obj).__tablename__} rows are never deleted (architecture M.2)"
+            )
+    for obj in session.dirty:
+        if isinstance(obj, ApprovalDecision) and session.is_modified(obj):
+            raise ImmutableRecordError("approval_decision is append-only (architecture G.7)")
+        if not isinstance(obj, ApprovalTask) or not session.is_modified(obj):
+            continue
+        state = inspect(obj)
+        for name in _TASK_IDENTITY:
+            if state.attrs[name].history.has_changes():
+                raise ImmutableRecordError(f"an approval task's {name} never changes")
+        history = state.attrs.status.history
+        if not history.has_changes():
+            continue
+        before = history.deleted[0] if history.deleted else None
+        if before is not None and before is not ApprovalTaskStatus.OPEN:
+            raise ImmutableRecordError(f"a {before} approval task cannot change again")
+        needed = _CLOSING_DECISIONS.get(obj.status)
+        if needed is not None and not _has_decision(session, obj.id, needed):
+            raise ImmutableRecordError(
+                f"an approval task becomes {obj.status} only with the decision that closes it"
+            )

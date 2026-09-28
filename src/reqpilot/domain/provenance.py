@@ -43,6 +43,13 @@ class ModelMeta:
     params: dict[str, Any] = field(default_factory=dict)
     #: The provider's response identifiers, one per successful call, in order.
     response_ids: tuple[str, ...] = ()
+    #: P11: how many values the gateway's own masking pass replaced (J.2 defence in
+    #: depth - normally zero, because ingestion already masked the text).
+    masked_at_egress: int = 0
+    #: P11 (Q.4): labels of the data blocks the injection heuristics flagged, and
+    #: the signal codes. Tags only: nothing is blocked on them.
+    injection_flagged: tuple[str, ...] = ()
+    injection_signals: tuple[str, ...] = ()
 
     @property
     def prompt_ref(self) -> str:

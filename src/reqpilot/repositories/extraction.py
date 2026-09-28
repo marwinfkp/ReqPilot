@@ -104,12 +104,12 @@ class RunRepository(ProjectScopedRepository[GraphRun]):
         return run
 
     def update_run(self, run: GraphRun) -> GraphRun:
-        self.authorize(Action.RUN_RECORD, ProjectId(run.project_id))
+        self.authorize(Action.RUN_RECORD, ProjectId(run.project_id), run.id)
         self._session.flush()
         return run
 
     def get_run(self, project_id: ProjectId, run_id: uuid.UUID) -> GraphRun | None:
-        self.authorize(Action.RUN_READ, project_id)
+        self.authorize(Action.RUN_READ, project_id, run_id)
         stmt = select(GraphRun).where(GraphRun.id == run_id)
         return self._session.scalars(self.scoped(stmt, GraphRun.project_id, project_id)).first()
 
@@ -128,7 +128,7 @@ class RunRepository(ProjectScopedRepository[GraphRun]):
         return agent_run
 
     def agent_runs(self, project_id: ProjectId, run_id: uuid.UUID) -> list[AgentRun]:
-        self.authorize(Action.RUN_READ, project_id)
+        self.authorize(Action.RUN_READ, project_id, run_id)
         stmt = (
             select(AgentRun)
             .join(GraphRun, GraphRun.id == AgentRun.graph_run_id)

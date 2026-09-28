@@ -43,6 +43,7 @@ from reqpilot.domain.errors import (
 from reqpilot.domain.models.base import utc_now
 from reqpilot.domain.quality import PairItem, judge_pair
 from reqpilot.domain.quality.text import Span
+from reqpilot.graph.capabilities import for_role
 from reqpilot.graph.state import AnalysisState
 from reqpilot.services.audit import AuditService
 from reqpilot.services.quality import ProposedConflict, QualityEngine, VersionView
@@ -163,7 +164,7 @@ class QualityNodes:
             groups: dict[tuple[bool, bool], list[VersionView]] = {}
             for view in scope:
                 groups.setdefault((view.masked, view.synthetic), []).append(view)
-            role = RequirementQualityRole(ctx.gateway)
+            role = RequirementQualityRole(for_role(ctx, RequirementQualityRole.role))
             allowed = sorted(str(t) for t in rules.proposable_types)
             for (masked, synthetic), views in sorted(groups.items()):
                 size = rules.semantic_batch_size
@@ -294,7 +295,7 @@ class QualityNodes:
         engine = self._engine()
         rules = engine.rules
         semantic = bool(state.get("semantic")) and rules.semantic_adjudication
-        role = ConflictDetectionRole(ctx.gateway)
+        role = ConflictDetectionRole(for_role(ctx, AgentRole.CONFLICT_DETECTION))
         recorded: list[str] = []
         outcomes: Counter[str] = Counter()
         failures = 0

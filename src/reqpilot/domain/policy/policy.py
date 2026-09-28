@@ -85,14 +85,25 @@ The design rules enforced here rather than trusted to callers:
     workflow approves, baselines or decides anything in ReqPilot: its gates -
     production readiness included - are gates of the generated project's own
     process (architecture M.4), and no action here decides G1-G8.
+14. **An agent role acts only within its capability token.** From P11 an
+    ``AGENT_ROLE`` actor is authorised by the immutable token the Coordinator
+    minted for it (architecture P.1, ``[DESIGN] D10``;
+    :mod:`reqpilot.domain.capabilities`) and by nothing else: not by any role
+    in ``roles_by_project``, not by ``is_superuser``. No token means no access;
+    a forged, altered, expired or foreign token means no access; a read, write
+    or retrieval the token does not grant is refused. Rules 3 and 5-13 are
+    checked first, so no token can reach a gate decision or a human decision.
+    Deleting a project (``PROJECT_DELETE``; ``FR-ADM-006``) is a human decision
+    too.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from reqpilot.domain.capabilities import Access, CapabilityToken, access_problem
 from reqpilot.domain.enums import GATE_REQUIRED_ROLES, Action, ActorKind, Gate, ResourceType, Role
-from reqpilot.domain.errors import AuthorizationError, ProjectIsolationError
+from reqpilot.domain.errors import AuthorizationError, CapabilityError, ProjectIsolationError
 from reqpilot.domain.ids import ActorId, ProjectId
 
 
@@ -110,6 +121,13 @@ class Actor:
     kind: ActorKind = ActorKind.HUMAN
     roles_by_project: dict[ProjectId, frozenset[Role]] = field(default_factory=dict)
     is_superuser: bool = False
+    #: P11: an agent role's grant (architecture P.1). Present only on an
+    #: ``AGENT_ROLE`` actor, minted by the Coordinator; never read from a request.
+    capability: CapabilityToken | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        if self.capability is not None and self.kind is not ActorKind.AGENT_ROLE:
+            raise ValueError("only an agent-role actor carries a capability token")
 
     def roles_in(self, project_id: ProjectId | None) -> frozenset[Role]:
         if project_id is None:
@@ -147,6 +165,8 @@ class Decision:
 
     allowed: bool
     reason: str
+    #: P11: the refusal came from an agent's capability token (rule 14).
+    capability_denial: bool = False
 
     def __bool__(self) -> bool:
         return self.allowed
@@ -631,8 +651,54 @@ _HUMAN_ONLY_ACTIONS: frozenset[Action] = frozenset(
         # Rule 13 (P10): asking for a workflow and editing it are human.
         Action.WORKFLOW_GENERATE,
         Action.WORKFLOW_EDIT,
+        # Rule 14 (P11): deleting a project and its content is a human decision.
+        Action.PROJECT_DELETE,
     }
 )
+
+
+def _access_for(action: Action) -> Access:
+    """How an action touches its resource, for an agent's capability check."""
+    if action is Action.KB_RETRIEVE:
+        return Access.RETRIEVE
+    if action.value.endswith(".read"):
+        return Access.READ
+    return Access.WRITE
+
+
+#: Actions no agent role performs whatever its token grants: reading or verifying
+#: the audit trail, membership and project administration (architecture E.1, P.1).
+_AGENT_NEVER: frozenset[Action] = frozenset(
+    {
+        Action.AUDIT_READ,
+        Action.AUDIT_VERIFY,
+        Action.MEMBER_ADD,
+        Action.PROJECT_CREATE,
+        Action.PROJECT_DELETE,
+    }
+)
+
+
+def _can_agent(actor: Actor, action: Action, resource: ResourceRef) -> Decision:
+    """Rule 14: an agent-role actor is authorised by its capability token alone."""
+    if action in _UNSCOPED_ACTIONS or action in _AGENT_NEVER:
+        return Decision(
+            False,
+            f"no agent role performs {action}: it is a human decision (policy rules 5, 14)",
+            capability_denial=True,
+        )
+    problem = access_problem(
+        actor.capability,
+        project_id=resource.project_id,
+        resource_type=resource.resource_type,
+        access=_access_for(action),
+        resource_id=resource.resource_id,
+    )
+    if problem is None:
+        return Decision(True, f"granted by the capability token of {actor.capability.role}")  # type: ignore[union-attr]
+    if "another project" in problem:
+        problem += " (project isolation)"
+    return Decision(False, problem, capability_denial=True)
 
 
 def can(actor: Actor, action: Action, resource: ResourceRef) -> Decision:
@@ -658,6 +724,11 @@ def can(actor: Actor, action: Action, resource: ResourceRef) -> Decision:
 
     if not isinstance(action, Action):  # pragma: no cover - defensive
         return Decision(False, "unknown action")
+
+    # Rule 14 (P11): an agent role holds a token, not roles. Evaluated before the
+    # superuser shortcut and every role grant, so neither can stand in for it.
+    if actor.kind is ActorKind.AGENT_ROLE:
+        return _can_agent(actor, action, resource)
 
     # Gate decisions are authorised per gate against GATE_REQUIRED_ROLES, not by
     # a blanket action grant. Evaluated before the superuser shortcut so that no
@@ -748,4 +819,6 @@ def require(actor: Actor, action: Action, resource: ResourceRef) -> None:
         return
     if "project isolation" in decision.reason:
         raise ProjectIsolationError(decision.reason)
+    if decision.capability_denial:
+        raise CapabilityError(decision.reason)
     raise AuthorizationError(decision.reason)

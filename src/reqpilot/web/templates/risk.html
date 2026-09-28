@@ -50,7 +50,8 @@ the two ordinal ratings - the model proposes the ratings and has no field for a 
   <tr><th>Risk</th><th>Subject</th><th>Category</th><th>L &times; I</th><th>Severity</th><th>Status</th><th>Owner</th><th>Evidence</th></tr>
   {% for r in risks %}
   <tr>
-    <td>{{ r.title }}<div class="muted">{{ r.description }}</div></td>
+    <td>{{ r.title }}<div class="muted">{{ r.description }}</div>
+      <a class="muted" href="/ui/risks/{{ r.id }}/history">history (replay)</a></td>
     <td class="mono">{{ r.requirement_label or "project-level" }}</td>
     <td>{{ r.category.value }}</td>
     <td class="mono">{{ r.likelihood.value }} &times; {{ r.impact.value }}</td>

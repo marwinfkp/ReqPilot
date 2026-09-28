@@ -27,6 +27,7 @@ from reqpilot.domain.enums import (
     AuditEventType,
     DataSensitivity,
     ExplanationStatus,
+    MaskingStatus,
     Role,
     SdlcRunStatus,
 )
@@ -49,6 +50,13 @@ def test_real_unmasked_content_never_leaves_for_an_external_provider(world: P9Wo
         SourceDocument.__table__.update()
         .where(SourceDocument.project_id == world.project_id)
         .values(sensitivity=DataSensitivity.CONFIDENTIAL)
+    )
+    # P11: ingestion now masks. This test is about text that did *not* pass the
+    # masker - as a document stored before P11 did not - so the rows say so.
+    world.session.execute(
+        SourceDocument.__table__.update()
+        .where(SourceDocument.project_id == world.project_id)
+        .values(masking_status=MaskingStatus.NOT_MASKED.name, masker_id="none")
     )
     world.session.expire_all()
     provider = world.p8.gateway._provider

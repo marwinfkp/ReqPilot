@@ -44,6 +44,7 @@ from reqpilot.domain.enums import (
 )
 from reqpilot.domain.errors import EgressRefusedError, ReqPilotError
 from reqpilot.domain.models.base import utc_now
+from reqpilot.graph.capabilities import for_role
 from reqpilot.graph.nodes.compliance import PendingCall
 from reqpilot.graph.state import AnalysisState
 from reqpilot.services.audit import AuditService
@@ -119,7 +120,7 @@ class RiskNodes:
 
         from reqpilot.agents.roles.risk import RiskAnalysisRole
 
-        role = RiskAnalysisRole(ctx.gateway)
+        role = RiskAnalysisRole(for_role(ctx, AgentRole.RISK_ANALYSIS))
         categories = [c.value for c in engine.rules.owner_roles]
         calls = 0
         failures = 0

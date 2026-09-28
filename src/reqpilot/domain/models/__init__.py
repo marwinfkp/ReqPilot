@@ -20,6 +20,9 @@ adds ``sdlc_run``, ``sdlc_factor``, ``sdlc_candidate`` and
 ``sdlc_rule_application``. The workflow-generation phase (P10) adds ``workflow``,
 ``workflow_phase``, ``workflow_activity``, ``workflow_gate``, the append-only
 provenance ``workflow_source`` and the append-only change log ``workflow_change``.
+The guardrails-hardening phase (P11) adds the server-side ``auth_session``
+(ADR-009), the separately stored unmasking map ``masking_map_entry`` (J.2) and
+the append-only deletion record ``project_purge`` (``FR-ADM-006``).
 
 Tables belonging to later roadmap phases - evaluation - are still deliberately
 absent. A test
@@ -55,6 +58,7 @@ from reqpilot.domain.models.extraction import (
     SourceChunk,
     SourceDocument,
 )
+from reqpilot.domain.models.guardrails import AuthSession, MaskingMapEntry, ProjectPurge
 from reqpilot.domain.models.identity import Project, ProjectMember, User
 from reqpilot.domain.models.knowledge import (
     Control,
@@ -93,6 +97,7 @@ __all__ = [
     "ArtifactSection",
     "ArtifactVersion",
     "AuditEvent",
+    "AuthSession",
     "Base",
     "Baseline",
     "BaselineMember",
@@ -109,10 +114,12 @@ __all__ = [
     "InterviewSession",
     "KnowledgeChunk",
     "KnowledgeItem",
+    "MaskingMapEntry",
     "ModelVersion",
     "NormativeSource",
     "Project",
     "ProjectMember",
+    "ProjectPurge",
     "PromptTemplate",
     "QualityFinding",
     "Requirement",

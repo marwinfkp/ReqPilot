@@ -61,6 +61,7 @@ from reqpilot.domain.sdlc.factors import FactorId
 from reqpilot.domain.sdlc.profile import OverrideRecord, ProposalDecision, ranking_hash
 from reqpilot.domain.sdlc.scoring import ScoringResult, score_candidates
 from reqpilot.domain.workflow.templates import WorkflowTemplates
+from reqpilot.graph.capabilities import for_role
 from reqpilot.graph.state import SDLCState
 from reqpilot.llm.gateway import LLMGateway
 from reqpilot.llm.types import StructuredResult
@@ -224,7 +225,7 @@ class SdlcNodes:
         )
         supplied = profile.refs()
         started = utc_now()
-        role = SdlcSelectionRole(ctx.gateway)
+        role = SdlcSelectionRole(for_role(ctx, AgentRole.SDLC_SELECTION))
         try:
             result = role.propose_factors(
                 profile,
@@ -394,7 +395,7 @@ class SdlcNodes:
             for k, v in (r.basis or {}).items()
             if k.endswith("_pct")
         ]
-        role = SdlcSelectionRole(ctx.gateway)
+        role = SdlcSelectionRole(for_role(ctx, AgentRole.SDLC_SELECTION))
         max_attempts = 1 + ctx.rules.config.consistency.max_regenerations
         attempts = calls = failures = 0
         best: tuple[Any, tuple[Discrepancy, ...], Any, Any] | None = None

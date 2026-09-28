@@ -55,6 +55,7 @@ from reqpilot.domain.enums import (
 )
 from reqpilot.domain.errors import EgressRefusedError, ReqPilotError
 from reqpilot.domain.models.base import utc_now
+from reqpilot.graph.capabilities import for_role
 from reqpilot.graph.state import AnalysisState
 from reqpilot.llm.types import StructuredResult
 from reqpilot.retrieval.contracts import RetrievalOutcome
@@ -226,7 +227,7 @@ class ComplianceNodes:
         failures = 0
         calls = 0
         if state.get("semantic"):
-            role = ComplianceRole(ctx.gateway)
+            role = ComplianceRole(for_role(ctx, AgentRole.COMPLIANCE))
             project = engine.project(ctx.project_id)
             jurisdictions = [str(j).upper() for j in project.jurisdiction_scope or ()]
             for key, view in ctx.compliance_pool.items():
@@ -410,7 +411,7 @@ class ComplianceNodes:
             found = ctx.version_evidence.get(key)
             supplied = tuple(found.evidence_ids) if found is not None else ()
             evidence = self._evidence_views(supplied)
-            role = SecurityPrivacyRole(ctx.gateway)
+            role = SecurityPrivacyRole(for_role(ctx, AgentRole.SECURITY_PRIVACY))
             for category in (SecurityPrivacyCategory.SECURITY, SecurityPrivacyCategory.PRIVACY):
                 families = [f.family.value for f in rules.families_of(category)]
                 hinted = [f.value for f in indicated if f.value in families]

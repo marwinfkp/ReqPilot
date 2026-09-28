@@ -29,6 +29,7 @@ from reqpilot.domain.errors import (
     EvidenceIntegrityError,
     ImmutableRecordError,
     LicenceViolationError,
+    ProjectDeletedError,
     ProjectIsolationError,
     PromptRegistryError,
     QualityError,
@@ -49,6 +50,9 @@ ERROR_STATUS: tuple[tuple[type[Exception], int], ...] = (
     # answered with 403.
     (ProjectIsolationError, status.HTTP_404_NOT_FOUND),
     (AuthorizationError, status.HTTP_403_FORBIDDEN),
+    # P11: the project was deleted - gone, and not coming back (FR-ADM-006). Only
+    # a member of the project reaches this (isolation is checked first).
+    (ProjectDeletedError, status.HTTP_410_GONE),
     # Governance refusals: the request was understood and is not permitted in
     # the current state. 409 rather than 400 - nothing about the payload is wrong.
     (ApprovalError, status.HTTP_409_CONFLICT),

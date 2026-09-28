@@ -17,7 +17,7 @@ Two lifetimes exist:
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from typing import Any
 
@@ -94,6 +94,18 @@ def checkpointer_scope(
             saver.setup()
             _POSTGRES_READY.add(url)
         yield saver
+
+
+def forget_memory_threads(thread_ids: Sequence[str]) -> None:
+    """Drop threads from the process-wide in-memory saver (P11 project deletion).
+
+    The durable (``postgres``) store is purged by the deletion service in the
+    deletion's own transaction; this is its offline counterpart.
+    """
+    if _SHARED_MEMORY_SAVER is None:
+        return
+    for thread_id in thread_ids:
+        _SHARED_MEMORY_SAVER.delete_thread(thread_id)
 
 
 def run_config(run_id: GraphRunId) -> dict[str, Any]:

@@ -69,9 +69,14 @@ def test_a_transcript_is_stored_once_and_segmented_by_speaker_turn(world) -> Non
         assert chunk.embedding is None, "no unmasked project text reaches the vector store (J.2)"
 
 
-def test_the_masking_stage_says_honestly_that_nothing_was_masked(world) -> None:
+def test_the_masking_stage_says_honestly_what_it_did(world) -> None:
     document = ingest(world["session"], world["analyst"], world["project"].id)
-    assert document.masking_status is MaskingStatus.NOT_MASKED and document.masker_id == "none"
+    # P11 replaced the P3 "nothing was masked" stage with the protective masker
+    # (FR-ING-003). The record still states exactly what ran; the synthetic
+    # workshop contains no identifier, so its text is unchanged.
+    assert document.masking_status is MaskingStatus.MASKED
+    assert document.masker_id == "pattern-masker@1"
+    assert document.text == workshop_text().replace("\r\n", "\n")
     assert document.sensitivity is DataSensitivity.SYNTHETIC
 
 
@@ -154,7 +159,7 @@ def test_ingestion_is_audited_without_content(world) -> None:
         if e.event_type is AuditEventType.SOURCE_INGESTED
     ]
     assert event.payload["chunk_count"] == 11 and event.payload["embedded"] is False
-    assert event.payload["masking_status"] == "not_masked"
+    assert event.payload["masking_status"] == "masked"  # P11: the protective masker ran
     assert "income documents" not in json.dumps(event.payload)
 
 

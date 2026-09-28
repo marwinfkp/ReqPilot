@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ requirement.human_id }}{% endblock %}
-{% block nav %}<a href="/ui/projects/{{ project_id }}">back to project</a>{% endblock %}
+{% block nav %}<a href="/ui/projects/{{ project_id }}">back to project</a>
+  <a href="/ui/requirements/{{ requirement.id }}/history">history (replay)</a>{% endblock %}
 {% block content %}
 <h1 class="mono">{{ requirement.human_id }}</h1>
 <p class="muted">current version: {{ current.version_no if current else "none" }} &middot;

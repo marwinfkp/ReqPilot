@@ -26,6 +26,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -69,6 +70,7 @@ from reqpilot.services.elicitation.stakeholders import (
     is_linked_user,
     is_stakeholder_only,
 )
+from reqpilot.services.guardrails.masking import audit_injection, protect_text, record_map
 from reqpilot.services.requirements import RequirementService
 
 #: States a version may be in to have a clarification raised against it, with
@@ -213,6 +215,10 @@ class ClarificationService:
     ) -> Clarification:
         project_id = context.project_id
         now = utc_now()
+        # P11 (FR-ING-003): the proposed question is masked before it is stored
+        # anywhere - on the clarification and as the session's first utterance.
+        protected_question = protect_text(question)
+        question = protected_question.text
         clarification_session = self._sessions.add(
             InterviewSession(
                 project_id=project_id,
@@ -240,9 +246,13 @@ class ClarificationService:
                 is_followup=False,
                 agent_run_id=agent_run_id,
                 on_behalf=False,
+                masking_status=protected_question.status,
+                masker_id=protected_question.masker_id,
+                injection_signals=protected_question.signal_codes,
             ),
             action=Action.CLARIFICATION_RAISE,
         )
+        self._protected(project_id, question_utterance, protected_question)
         clarification_session.pending_question_id = question_utterance.id
         clarification = self._clarifications.add(
             Clarification(
@@ -283,6 +293,27 @@ class ClarificationService:
         )
         return clarification
 
+    def _protected(self, project_id: ProjectId, utterance: Utterance, protected: Any) -> None:
+        """P11: keep the unmasking map apart, and surface an injection tag (Q.4)."""
+        record_map(
+            self._session,
+            project_id=project_id,
+            source_type="utterance",
+            source_id=utterance.id,
+            protected=protected,
+        )
+        if protected.signals:
+            audit_injection(
+                self._session,
+                actor_kind=self._actor.kind,
+                actor_ref=str(self._actor.actor_id),
+                project_id=project_id,
+                subject_type="utterance",
+                subject_id=str(utterance.id),
+                stage="clarification",
+                signal_codes=protected.signal_codes,
+            )
+
     # -- answer and dismiss ------------------------------------------------
     def answer(
         self, *, project_id: ProjectId, clarification_id: uuid.UUID, text: str
@@ -308,6 +339,7 @@ class ClarificationService:
         if len(text) > self._rules.clarification_max_answer_chars:
             raise ClarificationError("the answer is too long")
         clarification_session = self._session_of(clarification)
+        protected = protect_text(text)  # P11: masked before it is stored (FR-ING-003)
         answer = self._utterances.add(
             Utterance(
                 project_id=project_id,
@@ -316,14 +348,18 @@ class ClarificationService:
                 speaker_kind=SpeakerKind.STAKEHOLDER,
                 speaker_ref=stakeholder.id,
                 stakeholder_role=stakeholder.stakeholder_role,
-                text=text,
+                text=protected.text,
                 is_followup=False,
                 replies_to_id=clarification.question_utterance_id,
                 recorded_by=self._actor.actor_id,
                 on_behalf=on_behalf,
+                masking_status=protected.status,
+                masker_id=protected.masker_id,
+                injection_signals=protected.signal_codes,
             ),
             action=Action.CLARIFICATION_ANSWER,
         )
+        self._protected(project_id, answer, protected)
         now = utc_now()
         clarification.status = ClarificationStatus.ANSWERED
         clarification.answer_utterance_id = answer.id

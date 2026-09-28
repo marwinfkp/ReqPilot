@@ -145,7 +145,8 @@ def test_an_analyst_adds_a_source_and_reads_its_segments(client, world) -> None:
     added = add_source(client, world)
     assert added["status"] == 201 and added["body"]["created"] is True
     source = added["body"]["source"]
-    assert (source["masking_status"], source["masker_id"]) == ("not_masked", "none")
+    # P11: the protective masker (FR-ING-003) now runs at ingestion and says so.
+    assert (source["masking_status"], source["masker_id"]) == ("masked", "pattern-masker@1")
     detail = client.get(f"/api/v1/sources/{source['id']}", headers=hdr(world["analyst"])).json()
     assert len(detail["chunks"]) == 11 and detail["chunks"][1]["speaker"] == "Facilitator"
     again = add_source(client, world)

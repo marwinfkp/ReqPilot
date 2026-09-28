@@ -290,3 +290,41 @@ class WorkflowError(ReqPilotError):
     def __init__(self, message: str, findings: tuple[dict[str, str], ...] = ()) -> None:
         super().__init__(message)
         self.findings = findings
+
+
+# --- guardrails hardening (P11) ---------------------------------------------------
+
+
+class CapabilityError(AuthorizationError):
+    """An agent-role invocation outside its capability token (architecture P.1, D10).
+
+    Raised for a missing, forged, expired, widened or mismatched token, and for
+    a read, write, retrieval or model call the token does not grant. A subclass
+    of :class:`AuthorizationError`, so every handler that audits authorization
+    failures as ``PERMISSION_DENIED`` audits these too.
+    """
+
+
+class CapabilityEgressError(CapabilityError, EgressRefusedError):
+    """A model call refused at the gateway for want of a matching capability.
+
+    Also an :class:`EgressRefusedError`: nothing reached a provider, and the
+    nodes that already record a refused egress as a failed agent run and a
+    ``PERMISSION_DENIED`` event record this the same way.
+    """
+
+
+class ProjectDeletedError(ReqPilotError):
+    """The project was deleted (``FR-ADM-006``; architecture P.2).
+
+    Its content is gone; only its redacted audit trail remains readable. Any
+    other action on it is refused.
+    """
+
+
+class DeletionError(ReqPilotError):
+    """A project deletion could not be completed and nothing was deleted."""
+
+
+class AuthSessionError(ReqPilotError):
+    """A server-side session is unknown, expired, revoked or mismatched (ADR-009)."""

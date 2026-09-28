@@ -174,10 +174,29 @@ def test_p6_to_p10_endpoints_are_present() -> None:
     assert "/api/v1/workflows/{workflow_id}/activities/{activity_id}" in paths
     assert "/api/v1/workflows/{workflow_id}/gates/{gate_id}" in paths
     assert not [p for p in paths if "workflow" in p and ("decide" in p or "approve" in p)]
-    # P11 and later stay absent.
+    # P12 (evaluation) stays absent.
     assert not [p for p in paths if "evaluation" in p]
     # The one decision path is unchanged: G8 is decided there like G1-G3, and
     # no P7 endpoint decides a gate, approves or baselines anything.
     assert [p for p in paths if p.endswith("/decide")] == [
         "/api/v1/approval-tasks/{task_id}/decide"
     ]
+
+
+def test_p11_endpoints_are_present_and_decide_nothing() -> None:
+    """P11 exposes server-side sessions, project deletion, audit verification and
+    requirement/risk replay. None of them decides a gate, moves a lifecycle state
+    or reveals the unmasking map; the one decision path is still the only one."""
+    paths = collect_paths(create_app())
+    assert "/api/v1/auth/sessions" in paths
+    assert "/api/v1/auth/sessions/current" in paths
+    assert "/api/v1/auth/whoami" in paths
+    assert "/api/v1/projects/{project_id}" in paths  # DELETE: FR-ADM-006
+    assert "/api/v1/projects/{project_id}/audit/verify" in paths
+    assert "/api/v1/requirements/{requirement_id}/history" in paths
+    assert "/api/v1/risks/{risk_id}/history" in paths
+    assert not [p for p in paths if "mask" in p or "unmask" in p]
+    assert [p for p in paths if p.endswith("/decide")] == [
+        "/api/v1/approval-tasks/{task_id}/decide"
+    ]
+    assert not [p for p in paths if "evaluation" in p]

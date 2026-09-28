@@ -8,8 +8,35 @@
 {% else %}
 <p class="note warn">Hash chain verification FAILED at position {{ first_bad }}.</p>
 {% endif %}
+{% if redacted %}
+<p class="note warn">This project was deleted. Its audit trail is retained with content-bearing
+payload values redacted (architecture P.2): who did what, and when, survives.</p>
+{% endif %}
 <p class="muted">Append-only, in chain order. Payloads carry references only &mdash;
-never requirement text.</p>
+never requirement text. Read-only: nothing here can change an event.</p>
+
+<form method="get" action="/ui/projects/{{ project_id }}/audit">
+<fieldset><legend>Filter (FR-AUD-003)</legend>
+  <label for="requirement_id">Requirement id (with all its versions)</label>
+  <input type="text" id="requirement_id" name="requirement_id" value="{{ filters.requirement_id or '' }}">
+  <label for="risk_id">Risk id (with its mitigations)</label>
+  <input type="text" id="risk_id" name="risk_id" value="{{ filters.risk_id or '' }}">
+  <label for="actor_ref">User (actor id)</label>
+  <input type="text" id="actor_ref" name="actor_ref" value="{{ filters.actor_ref or '' }}">
+  <label for="role">Role (exercised, required, or the agent role)</label>
+  <input type="text" id="role" name="role" value="{{ filters.role or '' }}">
+  <label for="event_type">Event type</label>
+  <input type="text" id="event_type" name="event_type" value="{{ filters.event_type or '' }}">
+  <label for="since">From (ISO time)</label>
+  <input type="text" id="since" name="since" value="{{ filters.since or '' }}">
+  <label for="until">To (ISO time)</label>
+  <input type="text" id="until" name="until" value="{{ filters.until or '' }}">
+  <p><button type="submit">Filter</button>
+  <a href="/ui/projects/{{ project_id }}/audit">clear</a></p>
+</fieldset>
+</form>
+
+<p class="muted">{{ events|length }} event(s).</p>
 <table>
   <tr><th>#</th><th>When</th><th>Actor</th><th>Event</th><th>Subject</th><th>Payload</th></tr>
   {% for e in events %}
@@ -17,8 +44,10 @@ never requirement text.</p>
     <td>{{ e.seq }}</td>
     <td class="muted">{{ e.occurred_at }}</td>
     <td class="mono">{{ e.actor_ref[:8] }}&hellip;</td>
-    <td class="mono">{{ e.event_type.value }}</td>
-    <td class="mono">{{ e.subject_type or "" }}{% if e.subject_version %} v{{ e.subject_version }}{% endif %}</td>
+    <td class="mono">{{ e.event_type }}</td>
+    <td class="mono">{{ e.subject_type or "" }}{% if e.subject_version %} v{{ e.subject_version }}{% endif %}
+      {% if e.subject_type == "requirement" and e.subject_id %}<a href="/ui/requirements/{{ e.subject_id }}/history">replay</a>{% endif %}
+      {% if e.subject_type == "risk" and e.subject_id %}<a href="/ui/risks/{{ e.subject_id }}/history">replay</a>{% endif %}</td>
     <td class="mono">{{ e.payload }}</td>
   </tr>
   {% endfor %}

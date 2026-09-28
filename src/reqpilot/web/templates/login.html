@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Session{% endblock %}
+{% block content %}
+<h1>Open a session</h1>
+{% if production %}
+<p class="note warn">Not available: password login and MFA are not implemented (ADR-009), and the
+development identity claim is disabled outside development.</p>
+{% else %}
+<p class="muted">Development only. Opens an opaque server-side session (ADR-009) for an existing,
+active user and sets it as an httpOnly, SameSite=Strict cookie. Your roles are read from the
+project memberships on every request, never from the session.</p>
+<form method="post" action="/ui/login">
+  <label for="user_id">User id</label>
+  <input type="text" id="user_id" name="user_id" autocomplete="off">
+  <p><button class="primary" type="submit">Open session</button></p>
+</form>
+{% endif %}
+{% endblock %}

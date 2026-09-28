@@ -15,10 +15,15 @@ offsets. Requirements cite these segments and offsets; the offsets are computed 
 never taken from a model.</p>
 <h2>Segments</h2>
 <table>
-  <tr><th>#</th><th>Span</th><th>Speaker</th><th>Strategy</th><th>Text</th></tr>
+  <tr><th>#</th><th>Span</th><th>Speaker</th><th>Strategy</th><th>Text</th><th>Injection tags</th></tr>
   {% for c in chunks %}
   <tr><td>{{ c.ordinal }}</td><td class="mono">[{{ c.char_start }}, {{ c.char_end }})</td>
-      <td>{{ c.speaker or "" }}</td><td class="mono">{{ c.strategy.value }}</td><td>{{ c.text }}</td></tr>
+      <td>{{ c.speaker or "" }}</td><td class="mono">{{ c.strategy.value }}</td><td>{{ c.text }}</td>
+      <td class="mono">{% if c.injection_signals %}<span class="state">suspected</span> {{ c.injection_signals|join(", ") }}{% endif %}</td></tr>
   {% endfor %}
 </table>
+<p class="muted">Injection tags (architecture Q.4) are heuristic and never block anything: this
+text reaches a model only as fenced, untrusted data, and no model output can approve, baseline
+or change a state. Identifiers were masked at ingestion (FR-ING-003); the unmasking map is stored
+separately and is never shown or sent to a model.</p>
 {% endblock %}

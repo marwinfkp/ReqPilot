@@ -15,7 +15,7 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 
 ---
 
-## Current status — roadmap phase P10 (Workflow generation)
+## Current status — roadmap phase P11 (Guardrails hardening)
 
 | Stage | State |
 |---|---|
@@ -31,7 +31,8 @@ advisory. It does not give legal advice, and it does not make lending decisions.
 | P7 Risk analysis & register — `docs/10-p7-risk-analysis.md` | P7 COMPLETE — ROADMAP EXIT PASSED — PROJECT-AUTHOR REVIEW COMPLETED (see the report) |
 | P8 Approval, traceability & documents — `docs/11-p8-approval-traceability-documents.md` | P8 COMPLETE — ROADMAP EXIT PASSED — PROJECT-AUTHOR REVIEW COMPLETED: gates G4, G5 and G7 on the one approval service with G1/G2/G3/G8; fail-closed readiness at submission, G1, baseline commit and generation; a typed, append-only trace graph; RTM; SRS (with data and interface sections), user stories, use cases, compliance matrix, risk register, assumptions/dependency register and open-issues list, all deterministic, versioned and exported as Markdown and DOCX; E6 computed (no target exists; first measurement 0.800 on a synthetic scenario baseline; the synthetic E6 benchmark was reviewed by the project author with no substantive label correction and is not independently expert-validated) |
 | P9 SDLC recommendation — `docs/12-p9-sdlc-recommendation.md` | P9 COMPLETE — ROADMAP EXIT PASSED — PROJECT-AUTHOR REVIEW COMPLETED: thirteen factors derived from the approved baseline and the governed risk register, with evidence; bounded model proposals and human overrides; weighted MCDA plus four versioned rules; a persisted ranking with reversal analysis; an LLM explanation checked against the ranking; G6 co-approval by Project Manager, Architect, Security Reviewer and Compliance Officer. E9 = 0.167 (2/12) agreement with a **synthetic AI-generated panel**, not a real or independently validated expert panel (no target exists; the benchmark was reviewed by the project author with no substantive correction). The exit criterion names a blind expert panel; the synthetic panel fills it under **deviation P9-3, approved by the project author** (docs/12 §17) |
-| **P10 Workflow generation — `docs/13-p10-workflow-generation.md`** | **P10 COMPLETE — ROADMAP EXIT PASSED**: the project workflow of the SDLC selection that passed G6, derived deterministically (no model call) from the selected candidate's versioned template - seven distinct phase structures, hybrids keeping their composition - and the project's own records: a compliance checkpoint for every eligible mapping, implementation and verification activities for every recorded mitigation of every HIGH risk, security activities from the derived security requirements, per-phase roles, deliverables, entry/exit criteria, testing and traceability requirements, and a production-readiness gate inside the generated workflow (no ninth ReqPilot gate). Every derived element is linked to its record (N.2 #24-#26); open items are listed, never filled in; Project Manager edits are validated and logged; Markdown and DOCX export through the P8 renderers. The exit test proves the criterion on a high-regulation synthetic project. P11 is not started |
+| P10 Workflow generation — `docs/13-p10-workflow-generation.md` | P10 COMPLETE — ROADMAP EXIT PASSED: the project workflow of the SDLC selection that passed G6, derived deterministically (no model call) from the selected candidate's versioned template - seven distinct phase structures, hybrids keeping their composition - and the project's own records: a compliance checkpoint for every eligible mapping, implementation and verification activities for every recorded mitigation of every HIGH risk, security activities from the derived security requirements, per-phase roles, deliverables, entry/exit criteria, testing and traceability requirements, and a production-readiness gate inside the generated workflow (no ninth ReqPilot gate). Every derived element is linked to its record (N.2 #24-#26); open items are listed, never filled in; Project Manager edits are validated and logged; Markdown and DOCX export through the P8 renderers. The exit test proves the criterion on a high-regulation synthetic project |
+| **P11 Guardrails hardening — `docs/14-p11-guardrails-hardening.md`** | **P11 COMPLETE — EXIT CRITERIA PASSED** (offline 2,397 passed; full PostgreSQL suite 2,666 passed, 0 skipped, 0 failed): protective masking of synthetic financial identifiers (pattern + checksum rules) at ingestion, at the LLM gateway and in audit payloads, with the unmasking map stored apart; Q.4 injection tagging (never blocking); per-role capability tokens minted by the Coordinator and checked at the gateway and in the policy; opaque server-side sessions (development sign-in only - no password login or MFA); project deletion that purges content and keeps a tombstone and a redacted audit trail; an audit viewer with filters and requirement/risk replay; database guards on the approval records. The adversarial suite attacks all eight gates through the real paths (28 attempts, 28 exercised, 0 bypasses, offline and on PostgreSQL); it found and fixed a G8 bypass in the P7/P8 lifecycle guard. No ninth ReqPilot gate. P12 is not started |
 
 P0 built the foundation. P1 built the deterministic requirements repository:
 immutable requirement versions, a guarded lifecycle, G1 human approval, and
@@ -39,6 +40,16 @@ baselines. P2 built the grounding layer: a typed, versioned knowledge base
 (C.1 taxonomy), structure-aware chunking with exact offsets, local embeddings,
 PostgreSQL + pgvector hybrid retrieval with the source allowlist enforced
 **inside the query**, immutable evidence, and exact citation resolution.
+
+P11 hardened the guardrails. Identifiers in project text are masked before
+anything is stored or sent (and again at the gateway, and in audit payloads);
+every model call must carry a capability token the Coordinator minted for that
+exact role and run, and an agent-role actor can read or write only what its
+token grants; the approval records refuse forged decisions and statuses in the
+ORM and in PostgreSQL; sessions are server-side and revocable; a Project Manager
+can delete a project's content while its audit trail is kept, redacted on read;
+and any requirement's or risk's history can be replayed from the audit trail
+and checked against the record. Authentication is still a development mechanism.
 
 P10 added workflow generation: once G6 has passed, the selected SDLC's
 versioned template becomes the project's own workflow, with a compliance
@@ -94,8 +105,9 @@ used only when configured: `LLM_PROVIDER=openai`, with `LLM_API_KEY` and
 (`pip install -e ".[openai]"`). The default is the offline `stub`. E1 was
 measured on a synthetic reference benchmark (docs/06 §20). It demonstrates the
 pipeline on controlled synthetic data, not production accuracy.
-Masking is not implemented (roadmap P11), so project content may leave the
-machine only when declared synthetic. Documents are generated deterministically
+Project content may leave the machine only when its source was masked at
+ingestion (P11) or declared synthetic; content stored before P11 is recorded as
+not masked and stays on the machine. Documents are generated deterministically
 from approved baselines (P8); no model writes them.
 
 **No external LLM API key is needed** to install, migrate, run or test. The
@@ -147,6 +159,21 @@ visibly without it. With a migrated PostgreSQL 16 + pgvector available:
 REQPILOT_TEST_DATABASE_URL=postgresql+psycopg://reqpilot:reqpilot_local_dev_only@localhost:5432/reqpilot pytest
 ```
 
+The P11 guardrail checks can be run on their own; `-s` prints the adversarial
+suite's table of attempts and outcomes:
+
+```bash
+pytest tests/workflow/test_p11_exit_test.py tests/security/test_p11_adversarial.py -s
+```
+
+In development, a browser session can be opened at `/ui/login` (a user id - the
+same development identity claim as the `X-ReqPilot-Actor` header, disabled in
+production), or through `POST /api/v1/auth/sessions`; there is no password login
+or MFA. A Project Manager deletes a project's content at
+`/ui/projects/<id>/delete` or `DELETE /api/v1/projects/<id>`, and any audit
+reader can replay a history at `/ui/requirements/<id>/history` or
+`/ui/risks/<id>/history`.
+
 Full setup, including PostgreSQL and migrations, is in
 [docs/03-p0-foundations.md](docs/03-p0-foundations.md). What the repository does
 and how its governance is enforced is in
@@ -196,6 +223,7 @@ LLM gateway depends on no application layer.
 | [`docs/09-p6-compliance-security.md`](docs/09-p6-compliance-security.md) | Compliance mapping and security/privacy analysis |
 | [`docs/10-p7-risk-analysis.md`](docs/10-p7-risk-analysis.md) | Risk analysis and the risk register |
 | [`docs/11-p8-approval-traceability-documents.md`](docs/11-p8-approval-traceability-documents.md) | Gates G4/G5/G7, baseline readiness, the trace graph, RTM, E6, artefact generation and export |
+| [`docs/14-p11-guardrails-hardening.md`](docs/14-p11-guardrails-hardening.md) | Masking, injection defence, capability tokens, sessions, deletion and retention, the audit viewer and replay, the adversarial suite |
 | [`docs/problem-statement.md`](docs/problem-statement.md) | Reference copy of the original problem statement |
 
 `Problem Statement.docx` remains the authoritative specification.
@@ -206,6 +234,10 @@ LLM gateway depends on no application layer.
 
 - **Synthetic and anonymised data only.** No real customer or financial data
   belongs in this repository.
+- **Masking is a control, not a licence.** P11 masks the identifier formats it
+  lists before text is stored or sent to a model; it does not recognise names,
+  addresses or free-text personal details (docs/14 §7). Real data still does not
+  belong here.
 - **No secrets in version control.** Configuration is environment-driven;
   `.env.example` contains placeholders only.
 - The knowledge base is an educational, evidence-based reference corpus — not an

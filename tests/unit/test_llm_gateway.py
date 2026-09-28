@@ -7,6 +7,7 @@ assembled, captured by the scripted provider. No network, no model.
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ import pytest
 from reqpilot.agents.contracts.classification import ClassificationOutput
 from reqpilot.agents.contracts.extraction import ExtractionOutput
 from reqpilot.config import LLMProvider, Settings
+from reqpilot.domain.capabilities import mint_capability
 from reqpilot.domain.enums import AgentRole
 from reqpilot.domain.errors import (
     EgressRefusedError,
@@ -44,8 +46,29 @@ SETTINGS = Settings(_env_file=None)  # type: ignore[call-arg]
 LABELS = json.dumps({"labels": [{"category": "security", "review_signal": 0.8, "rationale": "r"}]})
 
 
+class _CoordinatedGateway(LLMGateway):
+    """P11: the gateway refuses a structured call that does not carry the
+    Coordinator's capability token for the calling role (architecture P.1). These
+    tests exercise the gateway itself, so this helper plays the Coordinator and
+    mints the calling role's token for each call; everything asserted is unchanged."""
+
+    def generate(self, *, role, **kwargs):  # type: ignore[no-untyped-def,override]
+        token = mint_capability(run_id=uuid.uuid4(), project_id=uuid.uuid4(), role=role)
+        return LLMGateway.generate(self.with_capability(token), role=role, **kwargs)
+
+    def with_usage(self, usage):  # type: ignore[no-untyped-def,override]
+        return _CoordinatedGateway(
+            self._provider,
+            settings=self._settings,
+            prompts=self._prompts,
+            usage=usage,
+            sleep=self._sleep,
+            secrets=self._secrets,
+        )
+
+
 def gateway(provider, **kwargs) -> LLMGateway:
-    return LLMGateway(
+    return _CoordinatedGateway(
         provider, settings=kwargs.pop("settings", SETTINGS), sleep=lambda _s: None, **kwargs
     )
 
@@ -166,7 +189,7 @@ def test_transient_failures_are_retried_with_backoff_then_succeed() -> None:
     provider = ScriptedProvider.queue(
         [TransientProviderError("429"), TransientProviderError("503"), LABELS]
     )
-    gw = LLMGateway(provider, settings=SETTINGS, sleep=sleeps.append)
+    gw = _CoordinatedGateway(provider, settings=SETTINGS, sleep=sleeps.append)
     result = classify(gw)
     assert result.ok and result.meta.attempts == 3
     assert sleeps == [0.5, 1.0], "exponential backoff"

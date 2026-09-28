@@ -223,6 +223,10 @@ class RiskService:
                 "severity": str(risk.severity),
                 "matrix_version": risk.matrix_version,
                 "explanation": computation.explanation,
+                # P11 (FR-AUD-004): what replay needs to rebuild the record.
+                "status": str(risk.status),
+                "likelihood": str(risk.likelihood),
+                "impact": str(risk.impact),
             },
         )
         return risk

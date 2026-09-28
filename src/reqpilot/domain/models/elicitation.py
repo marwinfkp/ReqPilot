@@ -59,6 +59,7 @@ from reqpilot.domain.enums import (
     FindingSeverity,
     InterviewSessionKind,
     InterviewSessionStatus,
+    MaskingStatus,
     QualityFindingStatus,
     QualityFindingType,
     ReanalysisStatus,
@@ -234,6 +235,21 @@ class Utterance(Base):
     #: For a question: the agent run that proposed it.
     agent_run_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("agent_run.id", ondelete="SET NULL"), nullable=True
+    )
+    #: P11 (``FR-ING-003``): whether ``text`` passed the protective masking stage
+    #: before it was stored. Rows recorded before P11 say ``not_masked``.
+    masking_status: Mapped[MaskingStatus] = mapped_column(
+        SAEnum(MaskingStatus, name="masking_status_enum"),
+        nullable=False,
+        default=MaskingStatus.NOT_MASKED,
+        server_default=MaskingStatus.NOT_MASKED.name,
+    )
+    masker_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, default="none", server_default="none"
+    )
+    #: P11 (architecture Q.4): heuristic injection signals, codes only.
+    injection_signals: Mapped[list[str]] = mapped_column(
+        JsonType, nullable=False, default=list, server_default="[]"
     )
     created_at: Mapped[dt.datetime] = created_at_column()
 

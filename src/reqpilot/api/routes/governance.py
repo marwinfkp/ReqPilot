@@ -11,6 +11,7 @@ Two properties of this module are the point of the whole phase:
 
 from __future__ import annotations
 
+import datetime as dt
 import uuid
 from collections.abc import Callable
 
@@ -35,7 +36,6 @@ from reqpilot.domain.models.approval import ApprovalTask
 from reqpilot.domain.models.baseline import Baseline
 from reqpilot.domain.policy import Actor
 from reqpilot.services.approval import ApprovalService
-from reqpilot.services.audit import AuditService
 from reqpilot.services.baseline import BaselineService
 
 router = APIRouter(prefix="/api/v1", tags=["governance"])
@@ -163,21 +163,40 @@ def get_baseline(
 
 @router.get("/projects/{project_id}/audit", response_model=list[AuditEventOut])
 def list_audit(
-    project_id: uuid.UUID, session: DbSession, actor: CurrentActor
+    project_id: uuid.UUID,
+    session: DbSession,
+    actor: CurrentActor,
+    subject_type: str | None = None,
+    subject_id: str | None = None,
+    requirement_id: uuid.UUID | None = None,
+    risk_id: uuid.UUID | None = None,
+    actor_ref: str | None = None,
+    role: str | None = None,
+    event_type: str | None = None,
+    since: dt.datetime | None = None,
+    until: dt.datetime | None = None,
 ) -> list[AuditEventOut]:
     """The project's audit trail, in chain order.
 
-    Read through the repository-layer authorization check first, so a caller
-    outside the project gets the same answer as for a project that does not
-    exist.
+    P11 (``FR-AUD-003``): filterable by subject, requirement (and its versions),
+    risk (and its mitigations), user, role, event type and time. Read through the
+    policy first, so a caller outside the project gets the same answer as for a
+    project that does not exist; a deleted project's payloads are redacted.
     """
-    from reqpilot.domain.enums import Action, ResourceType
-    from reqpilot.domain.policy import ResourceRef, require
+    from reqpilot.services.audit.replay import AuditFilter, AuditViewer
 
-    require(
-        actor,
-        Action.AUDIT_READ,
-        ResourceRef(resource_type=ResourceType.AUDIT_EVENT, project_id=ProjectId(project_id)),
+    view = AuditViewer(session, actor).view(
+        ProjectId(project_id),
+        AuditFilter(
+            subject_type=subject_type,
+            subject_id=subject_id,
+            requirement_id=requirement_id,
+            risk_id=risk_id,
+            actor_ref=actor_ref,
+            role=role,
+            event_type=event_type,
+            since=since,
+            until=until,
+        ),
     )
-    events = AuditService(session).list_for_project(project_id)
-    return [AuditEventOut.model_validate(e) for e in events]
+    return [AuditEventOut.model_validate(e) for e in view.entries]

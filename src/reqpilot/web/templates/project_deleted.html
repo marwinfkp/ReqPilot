@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Project deleted{% endblock %}
+{% block content %}
+<h1>Project deleted</h1>
+{% if receipt.already_deleted %}
+<p class="note">This project had already been deleted on {{ receipt.deleted_at }}. Nothing more
+was removed.</p>
+{% else %}
+<p class="note">The deletion was verified and committed: no content row of the project remains.
+{{ receipt.total_removed }} rows and {{ receipt.checkpoint_threads }} checkpoint thread(s) were
+removed.</p>
+<table>
+  <tr><th>Table</th><th>Rows removed</th></tr>
+  {% for table, count in receipt.rows_removed.items() %}
+  <tr><td class="mono">{{ table }}</td><td>{{ count }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+<p class="muted">Retained: {{ receipt.retained|join(", ") }}. No retention period is asserted.
+<a href="/ui/projects/{{ receipt.project_id }}/audit">The redacted audit trail</a> stays
+readable to the project's reviewing roles.</p>
+{% endblock %}

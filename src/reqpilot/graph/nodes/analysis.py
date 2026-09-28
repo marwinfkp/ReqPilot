@@ -57,6 +57,7 @@ from reqpilot.domain.models.requirements import RequirementVersion
 from reqpilot.domain.policy import Actor
 from reqpilot.domain.proposals import ExtractionDecision, ProposalRecord
 from reqpilot.domain.requirement_ids import RequirementKind
+from reqpilot.graph.capabilities import for_role
 from reqpilot.graph.nodes.quality import QualityNodes
 from reqpilot.graph.state import AnalysisState, NodeError
 from reqpilot.llm.gateway import LLMGateway
@@ -216,7 +217,7 @@ class AnalysisNodes:
                 "empty_scope",
                 ReqPilotError("the scope contains no segment to extract from"),
             )
-        role = RequirementExtractionRole(ctx.gateway, ctx.rules)
+        role = RequirementExtractionRole(for_role(ctx, AgentRole.REQUIREMENT_EXTRACTION), ctx.rules)
         extraction = ExtractionService(ctx.session, ctx.actor, ctx.rules)
         size = ctx.rules.max_segments_per_call
         agent_run_ids: list[str] = []
@@ -442,7 +443,7 @@ class AnalysisNodes:
         ctx.log.node_started(node)
         ids = state.get("requirement_version_ids") or state.get("scope_version_ids") or []
         versions = RequirementVersionRepository(ctx.session, ctx.actor)
-        role = ClassificationRole(ctx.gateway)
+        role = ClassificationRole(for_role(ctx, AgentRole.CLASSIFICATION))
         queue = ReviewQueue(ctx.session, ctx.actor)
         classified: list[str] = []
         low: list[str] = []
@@ -685,7 +686,7 @@ class AnalysisNodes:
             char_start=0,
             text=utterance.text,
             speaker=self._speaker_label(utterance),
-            masked=False,
+            masked=utterance.masking_status is MaskingStatus.MASKED,
             synthetic=synthetic,
             source_kind="utterance",
             context=" ".join(question.text.split()) if question is not None else None,

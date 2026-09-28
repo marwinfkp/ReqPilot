@@ -143,6 +143,8 @@ def test_migrations_create_nothing_beyond_the_current_phase(pg_engine) -> None:
         # P10
         "workflow", "workflow_phase", "workflow_activity", "workflow_gate", "workflow_source",
         "workflow_change",
+        # P11
+        "auth_session", "masking_map_entry", "project_purge",
         # The LangGraph checkpoint store, in the same database (architecture C.7);
         # created by the elicitation graph's durable checkpointer on first use.
         "checkpoint_migrations", "checkpoints", "checkpoint_blobs", "checkpoint_writes",
@@ -233,14 +235,31 @@ def test_database_refuses_an_unapproved_baseline_member(pg_engine) -> None:
                 ),
                 {"p": project, "v": version},
             ).scalar()
+            # P11: a decision row is accepted only for a project member holding the
+            # role exercised (the approval_decision_guard trigger), so the decider is
+            # a real analyst of the project.
+            decider = conn.execute(
+                text(
+                    "INSERT INTO app_user (id, email, display_name, is_active, created_at) "
+                    "VALUES (gen_random_uuid(), 'trigger-test-' || gen_random_uuid() || "
+                    " '@example.test', 'trigger test', true, now()) RETURNING id"
+                )
+            ).scalar()
+            conn.execute(
+                text(
+                    "INSERT INTO project_member (id, project_id, user_id, role, created_at) "
+                    "VALUES (gen_random_uuid(), :p, :u, 'ANALYST', now())"
+                ),
+                {"p": project, "u": decider},
+            )
             decision = conn.execute(
                 text(
                     "INSERT INTO approval_decision (id, task_id, project_id, decided_by, "
                     " role_exercised, decision, subject_version_hash, decided_at) "
-                    "VALUES (gen_random_uuid(), :t, :p, gen_random_uuid(), 'ANALYST', "
+                    "VALUES (gen_random_uuid(), :t, :p, :u, 'ANALYST', "
                     " 'APPROVE', repeat('a', 64), now()) RETURNING id"
                 ),
-                {"t": task, "p": project},
+                {"t": task, "p": project, "u": decider},
             ).scalar()
             baseline = conn.execute(
                 text(

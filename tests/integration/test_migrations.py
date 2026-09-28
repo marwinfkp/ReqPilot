@@ -161,6 +161,11 @@ WORKFLOW_TABLES = {
     "workflow_change",
 }
 
+#: Tables the guardrails-hardening phase adds (P11): server-side sessions
+#: (ADR-009), the separately stored unmasking map (J.2) and the append-only record
+#: of each project deletion (FR-ADM-006).
+GUARDRAILS_TABLES = {"auth_session", "masking_map_entry", "project_purge"}
+
 
 def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None:
     """The schema must not run ahead of the roadmap.
@@ -181,6 +186,7 @@ def test_migration_creates_nothing_beyond_the_current_phase(migrated_db) -> None
         | TRACE_DOCUMENT_TABLES
         | SDLC_TABLES
         | WORKFLOW_TABLES
+        | GUARDRAILS_TABLES
     )
     unexpected = present - permitted
     assert not unexpected, f"migrations created out-of-scope tables: {sorted(unexpected)}"
@@ -470,5 +476,51 @@ def test_downgrading_p10_removes_exactly_the_workflow_tables(
         assert "sdlc" not in ddl and "workflow" not in ddl, "the P8 allowlist is exact too"
         command.upgrade(config, "head")
         assert "workflow_gate" in trace_ddl(url)
+    finally:
+        get_settings.cache_clear()
+
+
+def test_downgrading_p11_removes_exactly_the_guardrails_schema_and_reupgrades(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """P11 is additive: rolling it back removes its three tables and five columns and
+    leaves P0-P10 intact; upgrading again restores them."""
+    url = sqlite_url(tmp_path / "p11-down.db")
+    monkeypatch.setenv("DATABASE_URL", url)
+    get_settings.cache_clear()
+    config = alembic_config(url)
+
+    def schema() -> tuple[set[str], dict[str, set[str]]]:
+        engine = create_engine(url, future=True)
+        try:
+            inspector = inspect(engine)
+            tables = set(inspector.get_table_names())
+            columns = {
+                t: {c["name"] for c in inspector.get_columns(t)}
+                for t in ("project", "utterance", "source_chunk")
+            }
+            return tables, columns
+        finally:
+            engine.dispose()
+
+    p11_columns = {
+        "project": {"deleted_at", "deleted_by"},
+        "utterance": {"masking_status", "masker_id", "injection_signals"},
+        "source_chunk": {"injection_signals"},
+    }
+    try:
+        command.upgrade(config, "head")
+        tables, columns = schema()
+        assert tables >= GUARDRAILS_TABLES
+        assert all(columns[t] >= cols for t, cols in p11_columns.items())
+        command.downgrade(config, "0012_p10_workflow_generation")
+        tables, columns = schema()
+        assert not tables & GUARDRAILS_TABLES, "downgrade left P11 tables behind"
+        assert tables >= WORKFLOW_TABLES | SDLC_TABLES | FOUNDATION_TABLES
+        assert all(not columns[t] & cols for t, cols in p11_columns.items())
+        command.upgrade(config, "head")
+        tables, columns = schema()
+        assert tables >= GUARDRAILS_TABLES
+        assert all(columns[t] >= cols for t, cols in p11_columns.items())
     finally:
         get_settings.cache_clear()

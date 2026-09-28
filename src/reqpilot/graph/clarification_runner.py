@@ -29,6 +29,7 @@ from reqpilot.agents.validation import validate_clarification
 from reqpilot.config import Settings, get_settings
 from reqpilot.domain.enums import (
     Action,
+    AgentRole,
     AgentRunStatus,
     ClarificationStatus,
     GraphRunStatus,
@@ -41,6 +42,7 @@ from reqpilot.domain.models.elicitation import Clarification, Utterance
 from reqpilot.domain.models.runs import GraphRun
 from reqpilot.domain.policy import Actor
 from reqpilot.domain.requirement_ids import parse_requirement_id
+from reqpilot.graph.capabilities import agent_gateway
 from reqpilot.graph.runner import AnalysisRunner, RunSummary
 from reqpilot.llm.accounting import UsageLedger
 from reqpilot.llm.gateway import LLMGateway
@@ -103,7 +105,14 @@ class ClarificationRunner:
         log = RunLog(self._session, pipeline, run)
         log.node_started(NODE)
         ledger = UsageLedger()
-        role = ClarificationRole(self._gateway.with_usage(ledger))
+        role = ClarificationRole(
+            agent_gateway(
+                self._gateway.with_usage(ledger),
+                run_id=run.id,
+                project_id=project_id,
+                role=AgentRole.CLARIFICATION,
+            )
+        )
         item = ClarificationInput(
             requirement_ref=context.requirement.human_id,
             statement=context.version.statement,

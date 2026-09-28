@@ -1,15 +1,18 @@
 """Project source documents: the input to batch extraction (``FR-ING-001``, ``FR-ING-004``).
 
-The architecture's ingestion pipeline (J.2), as far as P3 implements it::
+The architecture's ingestion pipeline (J.2), as implemented::
 
     upload -> declared type + sensitivity -> parse (txt / md / pdf / docx)
-      -> masking stage (NOT IMPLEMENTED: NoMasking, recorded as such)
+      -> masking (P11: the protective pattern masker; FR-ING-003)
       -> content-hash dedupe -> segment with exact offsets (J.3)
-      -> persist document + segments -> audit SOURCE_INGESTED
+      -> injection tags per segment (P11; architecture Q.4 - a tag, never a block)
+      -> persist document + segments + the unmasking map (kept apart, J.2)
+      -> audit SOURCE_INGESTED (+ INJECTION_SUSPECTED when a segment is tagged)
 
 Segments are speaker turns for a transcript (never split), and headings then
-paragraphs for other documents. **No embedding is computed**: J.2 forbids
-unmasked text in the vector store, and masking does not exist yet.
+paragraphs for other documents. **No embedding is computed**: nothing retrieves
+over project documents (retrieval is over the curated knowledge base, J.1), so
+there is no project vector to store.
 """
 
 from __future__ import annotations
@@ -35,8 +38,10 @@ from reqpilot.retrieval.chunking import (
 from reqpilot.retrieval.extraction import extract_text_from_bytes, normalise_text
 from reqpilot.retrieval.rules import RetrievalRules
 from reqpilot.rules.extraction import ExtractionRules
+from reqpilot.security.injection import signals as injection_signals
 from reqpilot.security.masking import Masker, default_masker
 from reqpilot.services.audit import AuditService
+from reqpilot.services.guardrails.masking import audit_injection, protect_text, record_map
 
 #: Batch mode is for one document at a time; a larger text is refused rather
 #: than silently truncated.
@@ -126,7 +131,8 @@ class SourceDocumentService:
                 f"a source document is limited to {MAX_SOURCE_CHARS} characters in batch mode"
             )
 
-        masked = self._masker.mask(text)
+        protected = protect_text(text, self._masker)
+        masked = protected.result
         content_hash = text_hash(masked.text)
         existing = self._repo.get_by_hash(project_id, content_hash)
         if existing is not None:
@@ -170,6 +176,7 @@ class SourceDocumentService:
                 speaker=segment.speaker[:200] if segment.speaker else None,
                 structure_label=segment.chunk.structure_label,
                 token_count=segment.chunk.token_count,
+                injection_signals=[s.value for s in injection_signals(segment.chunk.text)],
             )
             for segment in segments
         ]
@@ -179,6 +186,14 @@ class SourceDocumentService:
                     "a segment does not match its source span"
                 )  # pragma: no cover
         self._repo.add(document, chunks)
+        mapped = record_map(
+            self._session,
+            project_id=project_id,
+            source_type="source_document",
+            source_id=document.id,
+            protected=protected,
+        )
+        flagged = [c for c in chunks if c.injection_signals]
 
         strategies = Counter(str(c.strategy) for c in chunks)
         self._audit.append(
@@ -197,10 +212,27 @@ class SourceDocumentService:
                 "char_count": document.char_count,
                 "chunk_count": len(chunks),
                 "strategies": dict(sorted(strategies.items())),
-                # Deliberately empty in P3 (architecture J.2).
+                # Nothing retrieves over project documents (J.1): no vector is stored.
                 "embedded": False,
+                # P11: counts only - never a value (FR-ING-003).
+                "masked_values": masked.replacements,
+                "mask_categories": masked.category_counts(),
+                "unmasking_map_entries": mapped,
+                "injection_flagged_segments": len(flagged),
             },
         )
+        if flagged:
+            audit_injection(
+                self._session,
+                actor_kind=self._actor.kind,
+                actor_ref=str(self._actor.actor_id),
+                project_id=project_id,
+                subject_type="source_document",
+                subject_id=str(document.id),
+                stage="ingestion",
+                signal_codes=[code for c in flagged for code in c.injection_signals],
+                positions=[c.ordinal for c in flagged],
+            )
         return document, True
 
     def segment(self, doc_type: SourceDocumentType, text: str) -> list[Segment]:

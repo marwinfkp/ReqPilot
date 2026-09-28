@@ -155,6 +155,11 @@ class SourceChunk(Base):
         Vector(EMBEDDING_DIMENSION), nullable=True
     )
     embedding_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    #: P11 (architecture Q.4): the heuristic injection signals found in this
+    #: segment at ingestion - codes only. A tag, never a block.
+    injection_signals: Mapped[list[str]] = mapped_column(
+        JsonType, nullable=False, default=list, server_default="[]"
+    )
     created_at: Mapped[dt.datetime] = created_at_column()
 
 

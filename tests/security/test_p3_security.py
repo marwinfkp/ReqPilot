@@ -27,11 +27,17 @@ from tests.p3_helpers import (
 from tests.workflow.test_p1_exit_test import make_project
 
 from reqpilot.config import Settings
-from reqpilot.domain.enums import AuditEventType, DataSensitivity, GraphRunStatus, Role
+from reqpilot.domain.enums import (
+    AuditEventType,
+    DataSensitivity,
+    GraphRunStatus,
+    MaskingStatus,
+    Role,
+)
 from reqpilot.domain.ids import ProjectId
 from reqpilot.domain.lifecycle import RequirementState
 from reqpilot.domain.models.approval import ApprovalTask
-from reqpilot.domain.models.extraction import ExtractionCandidate, ReviewItem
+from reqpilot.domain.models.extraction import ExtractionCandidate, ReviewItem, SourceDocument
 from reqpilot.domain.models.requirements import RequirementVersion
 from reqpilot.domain.models.runs import AgentRun
 from reqpilot.graph import runner as runner_module
@@ -216,6 +222,14 @@ def test_unmasked_real_data_is_not_sent_to_an_external_provider(world) -> None:
         world["project"].id,
         sensitivity=DataSensitivity.UNCLASSIFIED,
     )
+    # P11: ingestion now masks. This test is about text that did *not* pass the
+    # masker - as a document stored before P11 did not - so the row says so.
+    world["session"].execute(
+        SourceDocument.__table__.update()
+        .where(SourceDocument.id == document.id)
+        .values(masking_status=MaskingStatus.NOT_MASKED.name, masker_id="none")
+    )
+    world["session"].expire_all()
     provider = ExternalProvider()
     gateway = LLMGateway(provider, settings=TEST_SETTINGS, sleep=lambda _s: None)
     summary = run_extraction(

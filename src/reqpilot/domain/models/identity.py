@@ -9,13 +9,14 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import JSON, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, UniqueConstraint, event, inspect
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
 from reqpilot.domain.enums import Role
+from reqpilot.domain.errors import ImmutableRecordError
 from reqpilot.domain.models.base import Base, created_at_column, uuid_pk
 
 
@@ -68,6 +69,15 @@ class Project(Base):
     #: KB version.
     kb_version_pin: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # --- deletion (P11; FR-ADM-006, architecture P.2) --------------------
+    #: Set when the project was deleted. The row remains as a tombstone because
+    #: its audit trail - append-only and hash-chained per project - remains.
+    deleted_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, active_history=True
+    )
+    #: The human who deleted it.
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
     members: Mapped[list[ProjectMember]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
@@ -97,3 +107,25 @@ class ProjectMember(Base):
 
     project: Mapped[Project] = relationship(back_populates="members")
     user: Mapped[User] = relationship(back_populates="memberships")
+
+
+@event.listens_for(Session, "before_flush")
+def _guard_project_tombstone(session: Session, _context: object, _instances: object) -> None:
+    """A deleted project's row is final (P11; the ``project_tombstone_guard`` trigger).
+
+    Checked here as well as in PostgreSQL so the rule holds on every engine: once
+    ``deleted_at`` is set - by the one flush that tombstones the project - no
+    later flush may change any column of that row, or delete it.
+    """
+    for obj in list(session.dirty) + list(session.deleted):
+        if not isinstance(obj, Project):
+            continue
+        with session.no_autoflush:
+            obj.deleted_at  # noqa: B018 - loads an expired value before reading its history
+        history = inspect(obj).attrs.deleted_at.history
+        committed = [*history.deleted, *history.unchanged]
+        previous = committed[0] if committed else None
+        if previous is not None and (obj in session.deleted or session.is_modified(obj)):
+            raise ImmutableRecordError(
+                "a deleted project's tombstone is final (FR-ADM-006); it cannot change"
+            )

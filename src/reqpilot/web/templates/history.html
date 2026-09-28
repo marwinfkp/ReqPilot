@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} history{% endblock %}
+{% block nav %}
+  <a href="/ui/projects/{{ result.project_id }}">back to project</a>
+  <a href="/ui/projects/{{ result.project_id }}/audit">audit trail</a>
+{% endblock %}
+{% block content %}
+<h1>{{ title }} history <span class="mono">{{ result.entity_id }}</span></h1>
+<p class="muted">Replay (FR-AUD-004): reconstructed from the append-only audit trail, event by
+event, and then compared with the current record. Read-only: nothing on this page changes a
+record, raises a task or moves a state.</p>
+
+{% if result.complete %}
+<p class="note">Complete: every event applied, the reconstruction matches the current record,
+and the project's hash chain verifies.</p>
+{% else %}
+<p class="note warn"><b>This history cannot be shown as complete.</b>
+{% if result.redacted %}The project was deleted; its retained audit trail is shown with
+content-bearing values redacted.{% endif %}</p>
+<ul>
+  {% for gap in result.gaps %}<li>{{ gap }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+<h2>Current record</h2>
+{% if result.current %}
+<table>
+  {% for key, value in result.current.items() %}
+  <tr><th>{{ key }}</th><td class="mono">{{ value }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="muted">No current record exists{% if result.redacted %} (the project was deleted){% endif %}.</p>
+{% endif %}
+
+<h2>Reconstructed from the audit trail</h2>
+<table>
+  {% for key, value in result.reconstructed.items() %}
+  <tr><th>{{ key }}</th><td class="mono">{{ value }}</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Events, in chain order</h2>
+<table>
+  <tr><th>#</th><th>When</th><th>Actor</th><th>Event</th><th>Subject</th><th>Change</th></tr>
+  {% for s in result.steps %}
+  <tr>
+    <td>{{ s.seq }}</td>
+    <td class="muted">{{ s.occurred_at }}</td>
+    <td class="mono">{{ s.actor_kind }} {{ s.actor_ref[:8] }}&hellip;</td>
+    <td class="mono">{{ s.event_type }}</td>
+    <td class="mono">{{ s.subject_type or "" }}</td>
+    <td class="mono">{% if s.change %}{{ s.change }}{% else %}<span class="muted">related; no change</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

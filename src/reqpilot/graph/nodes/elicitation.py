@@ -50,6 +50,7 @@ from reqpilot.domain.enums import (
     DataSensitivity,
     GraphRunStatus,
     InterviewSessionStatus,
+    MaskingStatus,
     SpeakerKind,
     TopicStatus,
 )
@@ -58,6 +59,7 @@ from reqpilot.domain.ids import ProjectId
 from reqpilot.domain.models.base import utc_now
 from reqpilot.domain.models.elicitation import InterviewSession, Utterance
 from reqpilot.domain.policy import Actor
+from reqpilot.graph.capabilities import for_role
 from reqpilot.graph.state import ElicitationState
 from reqpilot.llm.gateway import LLMGateway
 from reqpilot.llm.types import StructuredResult
@@ -207,7 +209,13 @@ class ElicitationNodes:
             max_followups=ctx.rules.max_followups_per_topic,
             issue=row.pending_issue if is_followup else None,
             synthetic=row.sensitivity is DataSensitivity.SYNTHETIC,
-            masked=False,
+            # P11: the turns in the prompt passed the protective masker (FR-ING-003).
+            # With no turn yet there is nothing shown to be masked: fail closed, as P4.
+            masked=bool(utterances)
+            and all(
+                u.masking_status is MaskingStatus.MASKED
+                for u in utterances[-ctx.rules.recent_turns_in_prompt :]
+            ),
         )
         asked = [u.text for u in utterances if u.speaker_kind is SpeakerKind.SYSTEM]
         last_answer = next(
@@ -218,7 +226,7 @@ class ElicitationNodes:
             ),
             None,
         )
-        role = StakeholderInteractionRole(ctx.gateway)
+        role = StakeholderInteractionRole(for_role(ctx, AgentRole.STAKEHOLDER_INTERACTION))
         findings: tuple[str, ...] = ()
         for attempt in range(1, ctx.rules.max_question_attempts + 1):
             started = utc_now()
@@ -320,13 +328,15 @@ class ElicitationNodes:
         topic = ctx.rules.topics[topic_id]
         template_topic = service.template(row).topic(topic_id)
         question = service.utterance(row, answer.replies_to_id) if answer.replies_to_id else None
-        earlier = tuple(
-            u.text
+        earlier_rows = [
+            u
             for u in service.utterances(row)
             if u.speaker_kind is SpeakerKind.STAKEHOLDER
             and u.topic_id == topic_id
             and u.id != answer.id
-        )
+        ]
+        earlier = tuple(u.text for u in earlier_rows)
+        used = [answer, *earlier_rows, *([question] if question is not None else [])]
         item = AnswerAssessmentInput(
             topic_id=topic_id,
             topic_title=topic.title,
@@ -336,9 +346,10 @@ class ElicitationNodes:
             answer=answer.text,
             earlier_answers=earlier,
             synthetic=row.sensitivity is DataSensitivity.SYNTHETIC,
-            masked=False,
+            # P11: every utterance in the prompt passed the protective masker.
+            masked=all(u.masking_status is MaskingStatus.MASKED for u in used),
         )
-        role = StakeholderInteractionRole(ctx.gateway)
+        role = StakeholderInteractionRole(for_role(ctx, AgentRole.STAKEHOLDER_INTERACTION))
         status: AnswerStatus | None = None
         issue: str | None = None
         for attempt in range(1, ctx.rules.max_question_attempts + 1):

@@ -77,6 +77,7 @@ from reqpilot.domain.enums import (
     GATE_REQUIRED_ROLES,
     GATE_REQUIRES_ALL_ROLES,
     Action,
+    ActorKind,
     ApprovalDecisionType,
     ApprovalTaskStatus,
     AuditEventType,
@@ -86,6 +87,7 @@ from reqpilot.domain.enums import (
 )
 from reqpilot.domain.errors import (
     ApprovalError,
+    AuthorizationError,
     ReqPilotError,
     SelfApprovalError,
     StaleApprovalError,
@@ -345,6 +347,10 @@ class ApprovalService:
         The only approval path in the system. There is no endpoint that writes a
         lifecycle state, and no resume payload that carries an approval.
         """
+        # P11: refused before anything is read - no agent or pipeline actor, with
+        # or without a capability token, gets as far as loading the task (J.1, M.2).
+        if self._actor.kind is not ActorKind.HUMAN:
+            raise AuthorizationError(f"{self._actor.kind} actors can never decide an approval gate")
         task = self._tasks.get(project_id, task_id)
         if task is None:
             raise ReqPilotError("approval task not found in this project")

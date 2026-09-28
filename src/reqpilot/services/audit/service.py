@@ -24,6 +24,7 @@ from reqpilot.domain.enums import ActorKind, AuditEventType
 from reqpilot.domain.errors import ImmutableRecordError
 from reqpilot.domain.models.audit import AuditEvent
 from reqpilot.domain.models.base import utc_now
+from reqpilot.security.masking import mask_structure
 from reqpilot.services.audit.hashing import compute_row_hash, verify_chain
 
 
@@ -61,7 +62,9 @@ class AuditService:
         counts, decisions. Never requirement text, chunk text, prompts or
         secrets (architecture O.1).
         """
-        payload = payload or {}
+        # P11 (FR-ING-003): any identifier a string value carries is masked before
+        # the row is hashed, so it can never become part of the immutable chain.
+        payload = mask_structure(payload or {})
         self._reject_suspicious_payload(payload)
 
         event_id = uuid4()

@@ -246,6 +246,13 @@ class RunLog:
             if meta.response_ids:
                 # The provider's identifiers - references to its calls, not content.
                 output_refs["provider_response_ids"] = list(meta.response_ids)
+            # P11: what the gateway masked and flagged on the way out (counts, labels
+            # and codes only). Absent when nothing was, so earlier runs read the same.
+            if meta.masked_at_egress:
+                output_refs["masked_at_egress"] = meta.masked_at_egress
+            if meta.injection_flagged:
+                output_refs["injection_flagged_blocks"] = list(meta.injection_flagged)
+                output_refs["injection_signals"] = list(meta.injection_signals)
         agent_run = AgentRun(
             graph_run_id=self._run.id,
             node=node,
@@ -266,7 +273,22 @@ class RunLog:
             cost_estimate=meta.cost_estimate if meta else None,
             finished_at=utc_now(),
         )
-        return self._repo.add_agent_run(self.project_id, agent_run)
+        recorded = self._repo.add_agent_run(self.project_id, agent_run)
+        if meta is not None and meta.injection_flagged:
+            # Architecture Q.4: detection after retrieval, surfaced - never blocking.
+            self._event(
+                AuditEventType.INJECTION_SUSPECTED,
+                subject_type="agent_run",
+                subject_id=str(recorded.id),
+                agent_run_id=recorded.id,
+                payload={
+                    "stage": "gateway",
+                    "node": node,
+                    "blocks": list(meta.injection_flagged),
+                    "signals": list(meta.injection_signals),
+                },
+            )
+        return recorded
 
     def _prompt_template(self, meta: ModelMeta, role: AgentRole, text: str) -> PromptTemplate:
         existing = self._repo.prompt_template(

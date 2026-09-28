@@ -9,16 +9,22 @@ What the gateway does, in order, for a structured call (:meth:`LLMGateway.genera
 
 1. **Resolve the prompt** from the registry: a versioned template for this
    agent role, filled only with validated parameters (DQ-04, F.5).
-2. **Assemble by trust class** (Q.1): template plus output contract in the
+2. **Check the capability** (P11; architecture P.1): the call must carry the
+   token the Coordinator minted for *this* role in this run - valid, unexpired,
+   unaltered - and the role must be one that calls a model. A missing, foreign,
+   forged or expired token is refused before anything is assembled.
+3. **Guard egress**: no application secret in the prompt (checked on the text
+   as supplied); then every data block and parameter is **masked**
+   (``FR-ING-003``, defence in depth behind ingestion masking) and scanned for
+   injection signals (Q.4, tags only); and no unmasked, non-synthetic project
+   content goes to a provider that leaves the machine.
+4. **Assemble by trust class** (Q.1): template plus output contract in the
    instruction region; every piece of content fenced in the data region.
-3. **Guard egress**: no application secret in the prompt; no unmasked,
-   non-synthetic project content to a provider that leaves the machine
-   (``FR-ING-003``).
-4. **Call the provider** with bounded retries on transient failure (C.8).
-5. **Parse and validate the structure** against the typed contract, with at
+5. **Call the provider** with bounded retries on transient failure (C.8).
+6. **Parse and validate the structure** against the typed contract, with at
    most **one** repair attempt: the same prompt plus the validation error, the
    bad output included only as fenced model output (C.8, F.2 stage 1).
-6. **Account** tokens, latency, attempts and estimated cost, and stamp the
+7. **Account** tokens, latency, attempts and estimated cost, and stamp the
    provider, model, prompt version and contract version on the result.
 
 It returns a typed *proposal*. Whether a proposal is acceptable - its sources
@@ -30,12 +36,16 @@ never here, and never by the model.
 closure; architecture Y), is in :mod:`reqpilot.llm.openai_provider` and is used
 only when ``LLM_PROVIDER=openai``. Nothing above depends on which it is.
 
-**What is not here.** No masking: that is P11. Until then the egress rule above
-keeps unmasked real data on the machine, whichever provider is configured.
+**Masking (P11).** Ingestion masks stored project text before anything else
+sees it; the gateway masks again on the way out, so an identifier that reached
+a prompt by any other path is replaced there too. The egress rule is unchanged:
+content whose *source* was neither masked at ingestion nor declared synthetic
+still does not leave the machine.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import time
@@ -45,8 +55,10 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from reqpilot.config import LLMProvider, Settings, get_settings
+from reqpilot.domain.capabilities import CapabilityToken, model_call_problem
 from reqpilot.domain.enums import AgentRole
 from reqpilot.domain.errors import (
+    CapabilityEgressError,
     FixtureMissingError,
     PromptRegistryError,
     ProviderUnavailableError,
@@ -68,6 +80,8 @@ from reqpilot.llm.types import (
     StructuredResult,
     TrustClass,
 )
+from reqpilot.security.injection import signals as injection_signals
+from reqpilot.security.masking import PatternMasker, mask_text
 
 #: Architecture C.8: "Schema-invalid model output - one repair attempt".
 MAX_REPAIRS = 1
@@ -113,6 +127,7 @@ class LLMGateway:
         usage: UsageSink | None = None,
         sleep: Callable[[float], None] = time.sleep,
         secrets: frozenset[str] | None = None,
+        capability: CapabilityToken | None = None,
     ) -> None:
         self._provider = provider
         self._settings = settings or get_settings()
@@ -120,6 +135,9 @@ class LLMGateway:
         self._usage = usage
         self._sleep = sleep
         self._secrets = secrets if secrets is not None else configured_secrets(self._settings)
+        #: P11: the Coordinator's token for the one role this gateway may serve.
+        self._capability = capability
+        self._masker = PatternMasker()
 
     # -- provider facts ----------------------------------------------------
     @property
@@ -139,6 +157,10 @@ class LLMGateway:
     def prompts(self) -> PromptRegistry:
         return self._prompts
 
+    @property
+    def capability(self) -> CapabilityToken | None:
+        return self._capability
+
     def with_usage(self, usage: UsageSink) -> LLMGateway:
         """The same gateway, reporting to ``usage`` (one ledger per run)."""
         return LLMGateway(
@@ -148,6 +170,23 @@ class LLMGateway:
             usage=usage,
             sleep=self._sleep,
             secrets=self._secrets,
+            capability=self._capability,
+        )
+
+    def with_capability(self, capability: CapabilityToken) -> LLMGateway:
+        """The same gateway, bound to the token the Coordinator minted for one role.
+
+        The token is checked on every call, not here: binding a bad token binds
+        nothing that can be used.
+        """
+        return LLMGateway(
+            self._provider,
+            settings=self._settings,
+            prompts=self._prompts,
+            usage=self._usage,
+            sleep=self._sleep,
+            secrets=self._secrets,
+            capability=capability,
         )
 
     # -- the raw completion boundary (P0 contract) ---------------------------
@@ -162,6 +201,14 @@ class LLMGateway:
             for i, text in enumerate(request.untrusted_content.values())
         ]
         self._guard(request.instructions, blocks)
+        request = request.model_copy(
+            update={
+                "untrusted_content": {
+                    label: self._masker.mask(text).text
+                    for label, text in request.untrusted_content.items()
+                }
+            }
+        )
         try:
             response, _attempts = self._call(request)
         except _ProviderFailureError as failure:
@@ -191,10 +238,20 @@ class LLMGateway:
         spec = self._prompts.get(prompt_name)
         if spec.role is not role:
             raise PromptRegistryError(f"{spec.ref} is registered for {spec.role}, not {role}")
+        problem = model_call_problem(self._capability, role)
+        if problem is not None:
+            raise CapabilityEgressError(
+                f"model call refused before any provider was reached: {problem} (architecture P.1)"
+            )
 
-        instructions = assemble_instructions(spec.render(params), schema)
-        blocks = list(content)
+        # Secrets are looked for in the text as supplied, before masking could
+        # disguise one; then everything that is not a template is masked.
+        assert_no_secrets([*params.values(), *(b.text for b in content)], self._secrets)
+        masked_params = {k: self._masker.mask(v).text for k, v in params.items()}
+        instructions = assemble_instructions(spec.render(masked_params), schema)
+        blocks, masked_count = self._mask_blocks(content)
         self._guard(instructions, blocks)
+        flagged, codes = self._injection_flags(blocks)
 
         call_params: dict[str, Any] = {
             "temperature": self._settings.llm_temperature,
@@ -224,7 +281,14 @@ class LLMGateway:
                 response, attempts = self._call(attempt_request)
             except _ProviderFailureError as failure:
                 totals.attempts += failure.attempts
-                return self._failure(spec, totals, call_params, failure.code, failure.message)
+                return self._failure(
+                    spec,
+                    totals,
+                    call_params,
+                    failure.code,
+                    failure.message,
+                    egress=(masked_count, flagged, codes),
+                )
             totals.add(response, attempts)
             try:
                 value = schema.model_validate(parse_json_object(response.text))
@@ -236,7 +300,12 @@ class LLMGateway:
                 )
                 totals.last_output = response.text
                 continue
-            meta = self._meta(spec, totals, call_params, repaired=repair > 0)
+            meta = dataclasses.replace(
+                self._meta(spec, totals, call_params, repaired=repair > 0),
+                masked_at_egress=masked_count,
+                injection_flagged=flagged,
+                injection_signals=codes,
+            )
             self._record(meta)
             return StructuredResult(
                 meta=meta,
@@ -244,7 +313,12 @@ class LLMGateway:
                 output_sha256=hashlib.sha256(response.text.encode("utf-8")).hexdigest(),
             )
 
-        meta = self._meta(spec, totals, call_params, repaired=True)
+        meta = dataclasses.replace(
+            self._meta(spec, totals, call_params, repaired=True),
+            masked_at_egress=masked_count,
+            injection_flagged=flagged,
+            injection_signals=codes,
+        )
         self._record(meta)
         return StructuredResult(
             meta=meta,
@@ -259,6 +333,33 @@ class LLMGateway:
     def _guard(self, instructions: str, blocks: Sequence[ContentBlock]) -> None:
         assert_no_secrets([instructions, *(b.text for b in blocks)], self._secrets)
         assert_egress_permitted(blocks, leaves_machine=self.leaves_machine)
+
+    def _mask_blocks(self, content: Sequence[ContentBlock]) -> tuple[list[ContentBlock], int]:
+        """Every data block masked (J.2 at egress). Provenance flags are unchanged:
+        whether the *source* was masked or synthetic is what the egress rule reads."""
+        out: list[ContentBlock] = []
+        replaced = 0
+        for block in content:
+            result = self._masker.mask(block.text)
+            replaced += result.replacements
+            out.append(
+                block if result.text == block.text else dataclasses.replace(block, text=result.text)
+            )
+        return out, replaced
+
+    @staticmethod
+    def _injection_flags(
+        blocks: Sequence[ContentBlock],
+    ) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        """Architecture Q.4 at the gateway: which blocks look like instructions."""
+        flagged: list[str] = []
+        codes: set[str] = set()
+        for block in blocks:
+            found = injection_signals(block.text)
+            if found:
+                flagged.append(block.label)
+                codes.update(s.value for s in found)
+        return tuple(flagged), tuple(sorted(codes))
 
     def _call(self, request: LLMRequest) -> tuple[LLMResponse, int]:
         """Call the provider, retrying transient failures a bounded number of times."""
@@ -308,7 +409,7 @@ class LLMGateway:
         if previous_output is not None:
             echo = ContentBlock(
                 label="previous_output",
-                text=previous_output[:REPAIR_ECHO_LIMIT],
+                text=mask_text(previous_output[:REPAIR_ECHO_LIMIT]),
                 trust_class=TrustClass.MODEL_OUTPUT,
             )
             content.update(assemble_content([echo]))
@@ -354,8 +455,15 @@ class LLMGateway:
         params: dict[str, Any],
         code: GatewayErrorCode,
         message: str,
+        *,
+        egress: tuple[int, tuple[str, ...], tuple[str, ...]] = (0, (), ()),
     ) -> StructuredResult[Any]:
-        meta = self._meta(spec, totals, params, repaired=False)
+        meta = dataclasses.replace(
+            self._meta(spec, totals, params, repaired=False),
+            masked_at_egress=egress[0],
+            injection_flagged=egress[1],
+            injection_signals=egress[2],
+        )
         self._record(meta)
         return StructuredResult(meta=meta, error_code=code, error_message=message)
 
