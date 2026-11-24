@@ -68,6 +68,50 @@ export type Requirement = {
   generated_by: string;
   status: "pending_review" | "accepted" | "rejected" | "modified" | "obsolete";
   supplementary: Supplementary[];
+  citations?: Citation[];
+};
+
+/** A knowledge-base passage an agent used, checked against the source text (see backend services/rag.py). */
+export type Citation = {
+  agent: string;
+  chunk_id: number;
+  document_id: number;
+  document_name: string;
+  doc_type: string;
+  authority: string;
+  authenticity: "official" | "illustrative" | "reference";
+  jurisdiction: string;
+  version: string;
+  section_ref: string;
+  title: string;
+  page: number | null;
+  excerpt: string;
+  verified: boolean;
+  verification: "quote_verified" | "quote_not_found" | "retrieval_link";
+  model_quote?: string; // what the model quoted, kept when the quote could not be verified
+  retrieval: string;
+  score: number | null;
+  claim: string;
+};
+
+/** "" = the agent did not use the knowledge base (e.g. analyses made before RAG covered every agent). */
+export type EvidenceStatus = "" | "verified" | "unverified" | "none" | "unavailable";
+
+/** What one agent retrieved and how its citations were checked (agent_runs.retrieval). */
+export type RetrievalLog = {
+  agent: string;
+  key: string;
+  method: string;
+  doc_types: string[];
+  queries: number;
+  query_examples: string[];
+  retrieved: { chunk_id: number; document: string; section_ref: string; title: string; doc_type: string; authenticity: string; score: number }[];
+  prompted: { chunk_id: number; document: string; section_ref: string; title: string }[];
+  verified: number;
+  unverified: number;
+  rejected: number;
+  linked: number;
+  error: string;
 };
 
 /** Information added after submission, kept apart from the original requirement text. */
@@ -87,6 +131,8 @@ export type Finding = {
   generated_by: string;
   resolution: "" | "resolved" | "partially_resolved" | "unresolved" | "deferred";
   clarification_refs: string[];
+  citations?: Citation[];
+  evidence_status?: EvidenceStatus;
 };
 
 export type Mapping = {
@@ -123,6 +169,8 @@ export type Risk = {
   requirement_ids: string[];
   generated_by: string;
   status: "open" | "accepted" | "rejected";
+  citations?: Citation[];
+  evidence_status?: EvidenceStatus;
 };
 
 export type Factor = {
@@ -180,6 +228,7 @@ export type Sdlc = {
   generated_by: string;
   status: "pending_approval" | "approved" | "overridden";
   approved_model: string;
+  citations?: Citation[];
 };
 
 export type Phase = {
@@ -201,6 +250,7 @@ export type Phase = {
   verifies: string;
   customised: string[];
   generated_by: string;
+  citations?: Citation[];
 };
 
 export type Workflow = {
@@ -227,6 +277,8 @@ export type TraceRecord = {
   missing_links: string[];
   coverage: number;
   clarifications: string[];
+  citations?: Citation[];
+  linked_findings?: string[];
 };
 
 export type Approval = {
@@ -253,6 +305,7 @@ export type AgentRun = {
   message: string;
   llm_calls: { task: string; model: string; input_tokens: number | null; output_tokens: number | null; duration_ms: number; ok: boolean; error?: string }[];
   stage: "stage1" | "stage2";
+  retrieval?: RetrievalLog[];
 };
 
 export type SecurityArea = {
@@ -295,6 +348,16 @@ export type Metrics = Record<string, number | string | null> & {
   llm_calls: number;
 };
 
+export type ValidationCheck = {
+  check: string;
+  status: "pass" | "warn" | "fail" | "info";
+  detail: string;
+  citations?: Citation[];
+  // "Test coverage against testing guidance": one item per category; "Missing test cases": one per test.
+  items?: { category?: string; requirements?: number; missing?: string[]; expected_test?: string;
+            requirement_id?: string; test_case?: string; reason?: string; citations: Citation[] }[];
+};
+
 export type AnalysisPayload = AnalysisBrief & {
   project: Project;
   input_text: string;
@@ -306,7 +369,7 @@ export type AnalysisPayload = AnalysisBrief & {
   security_coverage: SecurityArea[];
   applicable_sources: { document_id: number; name: string; doc_type: string; authenticity: string; jurisdiction: string; version: string; mapped_requirements: string[] }[];
   use_cases: UseCase[];
-  validation_report: { check: string; status: "pass" | "warn" | "fail" | "info"; detail: string }[];
+  validation_report: ValidationCheck[];
   baseline_status: "draft" | "approved";
   agent_runs: AgentRun[];
   requirements: Requirement[];
@@ -356,6 +419,7 @@ export type ClarificationQuestion = {
   responded_at: string | null;
   answered_in_stage: number | null;
   affects_requirements: boolean;
+  citations?: Citation[];
 };
 
 export type QuestionCounts = {

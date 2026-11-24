@@ -22,6 +22,11 @@ How agents are selected:
 Agents that do not re-run keep the previous output and are logged as
 "skipped (retained)". The Extraction Agent never re-runs in Stage 2: the
 requirement set is changed only through approved changes.
+
+Knowledge-base evidence: a re-run agent retrieves its passages again from the
+updated requirements (nothing retrieved for an earlier version is reused), and
+its new citations are stored with the new version. Retained outputs keep the
+citations they had; the earlier version and its evidence are never changed.
 """
 import json
 import threading
@@ -531,7 +536,7 @@ def execute(run_id: int) -> None:
                 from app.pipeline import compute_metrics
                 ctx["metrics"] = compute_metrics(ctx, time.perf_counter() - started)
             _remove_previous_outputs(ctx, key)
-            ctx["llm_log"] = []
+            ctx["llm_log"], ctx["retrieval_log"] = [], []  # a re-run agent retrieves FRESH knowledge
             t0 = time.perf_counter()
             try:
                 status, message = RUNNERS[key](ctx)
@@ -540,7 +545,7 @@ def execute(run_id: int) -> None:
                 status, message = "failed", f"{type(exc).__name__}: {exc}"
             _record(ctx, order, name, status, "llm+rules" if llm.enabled() else "rules",
                     int((time.perf_counter() - t0) * 1000), f"Re-run because: {'; '.join(reasons)}. {message}",
-                    ctx["llm_log"])
+                    ctx["llm_log"], ctx["retrieval_log"])
             rerun.append(name)
             if status == "failed" and key in ("sdlc", "workflow"):
                 ctx["fatal"] = f"{name} failed during regeneration: {message}"
@@ -591,16 +596,18 @@ def execute(run_id: int) -> None:
 
 _REQ_FIELDS = {"req_id", "statement", "original_text", "source", "kind", "categories", "priority", "risk_level",
                "confidence", "dependencies", "user_story", "acceptance_criteria", "test_recommendations",
-               "generated_by", "status", "supplementary"}
+               "generated_by", "status", "supplementary", "citations"}
 
 
 def _log(ctx: dict, agent: str, status: str, mode: str, started: float, message: str) -> None:
     _record(ctx, 0, agent, status, mode, int((time.perf_counter() - started) * 1000), message, [])
 
 
-def _record(ctx: dict, order: int, agent: str, status: str, mode: str, ms: int, message: str, calls: list) -> None:
+def _record(ctx: dict, order: int, agent: str, status: str, mode: str, ms: int, message: str, calls: list,
+            retrieval: list | None = None) -> None:
     ctx["agent_runs"].append({"order": order, "agent": agent, "status": status, "mode": mode, "duration_ms": ms,
-                              "message": message, "llm_calls": calls, "stage": "stage2"})
+                              "message": message, "llm_calls": calls, "stage": "stage2",
+                              "retrieval": retrieval or []})
 
 
 def _carry_decisions(db: Session, new: Analysis, previous_sdlc, previous_workflow, previous_risks: list[dict],

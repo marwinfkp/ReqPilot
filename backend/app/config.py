@@ -32,6 +32,20 @@ OPENAI_MAX_RETRIES = _int("OPENAI_MAX_RETRIES", 3)
 LLM_CONCURRENCY = _int("LLM_CONCURRENCY", 4)  # parallel LLM calls for batched agents
 LLM_BATCH_SIZE = _int("LLM_BATCH_SIZE", 20)  # requirements per LLM call
 
+# --- Agent retrieval (RAG) --------------------------------------------------
+# Upper limit of knowledge-base passages placed in one agent prompt (each agent's
+# own limit in rag.AGENT_PROFILES is capped by this), and the character limit per passage.
+RAG_MAX_PASSAGES = _int("RAG_MAX_PASSAGES", 8)
+RAG_PASSAGE_CHARS = _int("RAG_PASSAGE_CHARS", 1200)
+# Minimum relevance for a passage to be given to an agent at all (cosine similarity
+# for semantic retrieval, keyword score for lexical retrieval). Below it, nothing is
+# passed - an agent then works from the requirements alone.
+RAG_MIN_SEMANTIC_SCORE = float(os.getenv("RAG_MIN_SEMANTIC_SCORE", "0.3"))
+RAG_MIN_LEXICAL_SCORE = float(os.getenv("RAG_MIN_LEXICAL_SCORE", "0.2"))
+# Stricter relevance for evidence linked to a rule-based finding without a model quote.
+RAG_LINK_SEMANTIC_SCORE = float(os.getenv("RAG_LINK_SEMANTIC_SCORE", "0.45"))
+RAG_LINK_LEXICAL_SCORE = float(os.getenv("RAG_LINK_LEXICAL_SCORE", "0.5"))
+
 # When no API key is configured ReqPilot runs in clearly-labelled DEMONSTRATION
 # mode: every agent uses its deterministic rule-based baseline only.
 DEMO_MODE = not OPENAI_API_KEY

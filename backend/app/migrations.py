@@ -8,6 +8,8 @@ touching any data. New tables (clarification questions, responses, stakeholder
 interactions, requirement changes, regeneration runs) are created by
 `create_all` itself.
 
+Later extensions (knowledge-base evidence for every agent) add columns the same way.
+
 Each entry is (table, column, SQL type, SQL default). Running it again is safe:
 columns that already exist are skipped.
 """
@@ -33,6 +35,18 @@ ADDED_COLUMNS = [
     ("trace_records", "clarifications", "JSON", "'[]'"),
     # Human risk acceptance
     ("risks", "status", "VARCHAR(30)", "'open'"),
+    # Knowledge-base evidence and retrieval provenance for every agent (RAG across agents)
+    ("agent_runs", "retrieval", "JSON", "'[]'"),
+    ("requirements", "citations", "JSON", "'[]'"),
+    ("findings", "citations", "JSON", "'[]'"),
+    ("findings", "evidence_status", "VARCHAR(20)", "''"),
+    ("risks", "citations", "JSON", "'[]'"),
+    ("risks", "evidence_status", "VARCHAR(20)", "''"),
+    ("sdlc_recommendations", "citations", "JSON", "'[]'"),
+    ("trace_records", "citations", "JSON", "'[]'"),
+    ("trace_records", "linked_findings", "JSON", "'[]'"),
+    ("clarification_questions", "citations", "JSON", "'[]'"),
+    ("document_chunks", "page", "INTEGER", None),
 ]
 
 

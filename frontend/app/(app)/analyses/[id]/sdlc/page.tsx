@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth";
 import { useLoadedAnalysis } from "@/components/analysis-context";
 import { HorizontalBars } from "@/components/charts";
 import { BulletList, EmptyState, GeneratedBy, Notice, Section, StatusPill } from "@/components/common";
+import { CitationItem } from "@/components/evidence";
 import { ReviewDialog } from "@/components/review-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -106,6 +107,13 @@ export default function SdlcPage() {
             <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
               <p className="flex items-center gap-2 text-sm font-medium"><Layers className="size-4" /> Hybrid composition</p>
               <BulletList items={top.components} />
+            </div>
+          )}
+          {(sdlc.citations?.length ?? 0) > 0 && (
+            <div className="mt-4">
+              <p className="text-sm font-medium">Supporting guidance from the knowledge base</p>
+              <p className="mb-2 text-xs text-muted-foreground">Supporting evidence only - retrieved after the ranking was fixed; it never changes a factor or a score.</p>
+              <ul className="space-y-2">{sdlc.citations!.map((c, i) => <CitationItem key={`${c.chunk_id}-${i}`} c={c} />)}</ul>
             </div>
           )}
         </Section>

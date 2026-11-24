@@ -14,6 +14,8 @@ import fitz
 from docx.enum.section import WD_ORIENT
 from docx.shared import Pt, RGBColor
 
+from app.services.rag import citation_text
+
 REPORTS = {
     "srs": "Software Requirements Specification",
     "requirements": "Functional and Non-Functional Requirements",
@@ -135,10 +137,18 @@ def use_case_section(a: dict) -> list:
     return blocks if a["use_cases"] else blocks + [p("No use cases generated.")]
 
 
+def evidence_note(item: dict) -> str:
+    """Knowledge-base evidence of a finding or risk, as one short sentence."""
+    if item.get("citations"):
+        return f" Knowledge-base evidence: {citation_text(item['citations'])}."
+    return {"none": " No knowledge-base evidence (derived from the requirements).",
+            "unavailable": " Knowledge base not available."}.get(item.get("evidence_status", ""), "")
+
+
 def findings_table(findings: list[dict]) -> tuple:
     return table(["Type", "Severity", "Requirements", "Finding", "Suggested correction"],
-                 [[f["issue_type"], f["severity"], f["requirement_ids"], f"{f['title']}. {f['explanation']}",
-                   f["suggestion"]] for f in findings])
+                 [[f["issue_type"], f["severity"], f["requirement_ids"],
+                   f"{f['title']}. {f['explanation']}{evidence_note(f)}", f["suggestion"]] for f in findings])
 
 
 def quality_section(a: dict) -> list:
@@ -201,18 +211,21 @@ def security_section(a: dict) -> list:
             h(3, f"Missing security controls ({len(gaps)})"), findings_table(gaps) if gaps else p("None."),
             h(3, f"Threats ({len(threats)})"),
             table(["STRIDE", "Severity", "Threat", "Requirements", "Safeguard"],
-                  [[t["issue_type"], t["severity"], t["title"], t["requirement_ids"], t["suggestion"]] for t in threats]),
+                  [[t["issue_type"], t["severity"], t["title"] + evidence_note(t), t["requirement_ids"], t["suggestion"]]
+                   for t in threats]),
             h(3, f"Privacy considerations ({len(privacy)})"),
             table(["Consideration", "Requirements", "Recommendation"],
-                  [[f["title"], f["requirement_ids"], f["suggestion"]] for f in privacy])]
+                  [[f["title"] + evidence_note(f), f["requirement_ids"], f["suggestion"]] for f in privacy])]
 
 
 def risk_section(a: dict) -> list:
     return [h(2, f"Risk register ({len(a['risks'])} risks)"),
-            p("Score = likelihood (1-5) x impact (1-5). Severity: 1-4 Low, 5-9 Medium, 10-15 High, 16-25 Critical."),
+            p("Score = likelihood (1-5) x impact (1-5). Severity: 1-4 Low, 5-9 Medium, 10-15 High, 16-25 Critical. "
+              "Evidence-backed risks cite a verified knowledge-base passage; the others are inferred from the "
+              "requirements and the analysis."),
             table(["ID", "Risk", "Category", "L", "I", "Score", "Severity", "Mitigation", "Requirements"],
-                  [[r["risk_id"], r["description"], r["category"], r["likelihood"], r["impact"], r["score"],
-                    r["severity"], r["mitigation"], r["requirement_ids"]] for r in a["risks"]])]
+                  [[r["risk_id"], r["description"] + evidence_note(r), r["category"], r["likelihood"], r["impact"],
+                    r["score"], r["severity"], r["mitigation"], r["requirement_ids"]] for r in a["risks"]])]
 
 
 def traceability_section(a: dict) -> list:
@@ -252,6 +265,12 @@ def sdlc_section(a: dict) -> list:
                        or ["None"]),
                h(3, "Advantages"), bullets(top["advantages"]), h(3, "Disadvantages"), bullets(top["disadvantages"]),
                h(3, "Trade-offs"), bullets(s["trade_offs"])]
+    if s.get("citations"):
+        blocks += [h(3, "Supporting guidance (knowledge base)"),
+                   note("Supporting evidence only: retrieved after the ranking was fixed; it never changes a score."),
+                   bullets([f"{c['document_name']} {c['section_ref']} ({c['authenticity']}"
+                            + ("" if c["verified"] else ", unverified") + f"): \"{c['excerpt']}\""
+                            for c in s["citations"]])]
     return blocks
 
 
@@ -270,7 +289,9 @@ def workflow_section(a: dict) -> list:
                        ["Approval gates", [f"{g['name']} ({', '.join(g['approvers'])})" for g in ph["approval_gates"]]
                         or "none"],
                        ["Traceability", ph["traceability"]], ["Key requirements", ph["key_requirements"]]]
-                         + ([["Verifies", ph["verifies"]]] if ph.get("verifies") else []))]
+                         + ([["Verifies", ph["verifies"]]] if ph.get("verifies") else [])
+                         + ([["Practice followed (knowledge base)", citation_text(ph["citations"])]]
+                            if ph.get("citations") else []))]
     return blocks
 
 

@@ -1,8 +1,14 @@
 """Central orchestrator: runs the agents in a fixed order on a shared context.
 
-USER SUBMITS -> extraction -> classification -> quality/conflicts -> compliance (RAG)
+USER SUBMITS -> extraction -> classification -> quality/conflicts -> compliance
 -> security & privacy -> risk -> SDLC scoring -> workflow -> documentation
 -> traceability -> validation -> summary -> results stored in PostgreSQL.
+
+Knowledge base (RAG): every agent that benefits from external knowledge retrieves its
+own passages through rag.retrieve_for_agent (classification, quality, compliance,
+security, risk, SDLC, workflow, documentation, validation); traceability reuses the
+verified citations of the others. What each agent retrieved and cited is stored with
+its run (agent_runs.retrieval).
 
 * Runs in a background thread; the frontend polls the Analysis row for
   progress (percentage + current stage). The user is never asked anything.
@@ -19,8 +25,8 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app import clarification, llm
-from app.agents import (classification, compliance, documentation, extraction, finding, quality, risk,
-                        sdlc_selection, security_privacy, validation, workflow)
+from app.agents import (all_citations, classification, compliance, documentation, extraction, finding, quality,
+                        risk, sdlc_selection, security_privacy, validation, workflow)
 from app.agents.clarification_context import attach_to_requirements
 from app.database import SessionLocal
 from app.models import (AgentRun, Analysis, ComplianceMapping, Finding, Requirement, Risk, SdlcRecommendation,
@@ -71,7 +77,8 @@ def new_context(db: Session, project: dict, sources: list[dict], clarifications:
             "use_cases": [], "traceability": [], "validation": [], "summary": "", "key_findings": [],
             "reference_checks": [], "agent_runs": [], "llm_log": [], "submitted_count": 0,
             "sdlc_weights": get_setting(db, "sdlc_factor_weights", {}), "metrics": {},
-            "clarifications": clarifications or [], "project_clarifications": [], "stage": "stage1"}
+            "clarifications": clarifications or [], "project_clarifications": [], "stage": "stage1",
+            "retrieval_log": []}
 
 
 def project_dict(project) -> dict:
@@ -108,7 +115,7 @@ def run_pipeline(ctx: dict, progress=None) -> dict:
             progress(int(100 * index / len(STAGES)), stage)
         if function is documentation.run_summary:  # the summary writer needs the metrics
             ctx["metrics"] = compute_metrics(ctx, time.perf_counter() - started)
-        ctx["llm_log"] = []
+        ctx["llm_log"], ctx["retrieval_log"] = [], []
         t0 = time.perf_counter()
         if needs and needs not in ctx:
             status, message = "skipped", f"Skipped: required input '{needs}' is missing because an earlier agent failed."
@@ -120,7 +127,8 @@ def run_pipeline(ctx: dict, progress=None) -> dict:
                 traceback.print_exc()
         ctx["agent_runs"].append({"order": index + 1, "agent": agent, "status": status, "mode": mode,
                                   "duration_ms": int((time.perf_counter() - t0) * 1000), "message": message,
-                                  "llm_calls": ctx["llm_log"], "stage": ctx.get("stage", "stage1")})
+                                  "llm_calls": ctx["llm_log"], "stage": ctx.get("stage", "stage1"),
+                                  "retrieval": ctx["retrieval_log"]})
         if agent == "Requirement Extraction Agent":
             ctx["requirement_ids"] = {r["req_id"] for r in ctx["requirements"]}
             # Link clarification answers to the extracted requirements (as supplementary
@@ -171,6 +179,7 @@ def compute_metrics(ctx: dict, seconds: float) -> dict:
         "llm_references_checked": len(ctx["reference_checks"]),
         "llm_invalid_references": sum(1 for c in ctx["reference_checks"] if not c["valid"]),
         "masked_values": ctx.get("masked_values", 0),
+        **evidence_metrics(ctx),
         "duration_seconds": round(seconds, 2),
         # Clarification provenance (Stage 1)
         "clarification_questions": len(ctx.get("clarifications", [])),
@@ -181,6 +190,29 @@ def compute_metrics(ctx: dict, seconds: float) -> dict:
         "issues_resolved": sum(1 for f in findings if f.get("resolution") == "resolved"),
         "issues_open": sum(1 for f in findings if f["kind"] == "quality" and f.get("resolution") != "resolved"),
     }
+
+
+def evidence_metrics(ctx: dict) -> dict:
+    """How much of the analysis is backed by knowledge-base evidence, per agent."""
+    citations = all_citations(ctx)
+    by_agent: dict[str, dict] = {}
+    for run in ctx["agent_runs"]:
+        for log in run.get("retrieval") or []:
+            entry = by_agent.setdefault(log["agent"], {"method": log["method"], "passages": 0, "prompted": 0})
+            entry["passages"] += len(log["retrieved"])
+            entry["prompted"] += len(log["prompted"])
+    for c in citations:
+        entry = by_agent.setdefault(c["agent"], {"method": c.get("retrieval", ""), "passages": 0, "prompted": 0})
+        entry["verified"] = entry.get("verified", 0) + c["verified"]
+        entry["unverified"] = entry.get("unverified", 0) + (not c["verified"])
+    findings = [f for f in ctx["findings"] if f.get("evidence_status")]
+    return {"evidence_citations": len(citations), "evidence_verified": sum(1 for c in citations if c["verified"]),
+            "evidence_unverified": sum(1 for c in citations if not c["verified"]),
+            "findings_with_verified_evidence": sum(1 for f in findings if f["evidence_status"] == "verified"),
+            "findings_without_evidence": sum(1 for f in findings if f["evidence_status"] in ("none", "unavailable")),
+            "risks_evidence_backed": sum(1 for r in ctx.get("risks", []) if r.get("evidence_status") == "verified"),
+            "rag_agents": {agent: entry for agent, entry in by_agent.items()
+                           if entry["passages"] or entry.get("verified") or entry.get("unverified")}}
 
 
 # --------------------------------------------------------------------------
@@ -256,7 +288,8 @@ def save_results(db: Session, analysis: Analysis, ctx: dict) -> None:
                            confidence=r["confidence"], dependencies=r["dependencies"], user_story=r["user_story"],
                            acceptance_criteria=r["acceptance_criteria"],
                            test_recommendations=r["test_recommendations"], generated_by=r["generated_by"],
-                           status=r.get("status", "pending_review"), supplementary=r.get("supplementary", [])))
+                           status=r.get("status", "pending_review"), supplementary=r.get("supplementary", []),
+                           citations=r.get("citations", [])))
     for f in ctx["findings"]:
         db.add(Finding(analysis_id=aid, **f))
     for m in ctx["mappings"]:
@@ -269,7 +302,7 @@ def save_results(db: Session, analysis: Analysis, ctx: dict) -> None:
                                   is_hybrid=sdlc["is_hybrid"], factors=sdlc["factors"], ranking=sdlc["ranking"],
                                   rules_applied=sdlc["rules_applied"], justification=sdlc["justification"],
                                   trade_offs=sdlc["trade_offs"], hybrid_explanation=sdlc["hybrid_explanation"],
-                                  generated_by=sdlc["generated_by"]))
+                                  generated_by=sdlc["generated_by"], citations=sdlc.get("citations", [])))
     wf = ctx.get("workflow")
     if wf:
         db.add(Workflow(analysis_id=aid, **wf))

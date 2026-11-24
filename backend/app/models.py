@@ -148,6 +148,9 @@ class AgentRun(Base):
     message: Mapped[str] = mapped_column(Text, default="")
     llm_calls: Mapped[list] = mapped_column(JSON, default=list)
     stage: Mapped[str] = mapped_column(String(20), default="stage1")  # stage1 | stage2
+    # Knowledge-base retrieval done by this agent: method, queries, passages retrieved / placed in
+    # the prompt and citation checks (see rag.Knowledge)
+    retrieval: Mapped[list] = mapped_column(JSON, default=list)
 
 
 class Requirement(Base):
@@ -172,6 +175,8 @@ class Requirement(Base):
     # Information added AFTER submission (clarification answers, stakeholder responses, agreed
     # acceptance criteria), kept apart from the original text: [{kind, ref, text}]
     supplementary: Mapped[list] = mapped_column(JSON, default=list)
+    # Knowledge-base evidence used for this requirement (e.g. domain terms from the glossary)
+    citations: Mapped[list] = mapped_column(JSON, default=list)
 
 
 class Finding(Base):
@@ -194,6 +199,10 @@ class Finding(Base):
     # After clarification: "" (not asked) | resolved | partially_resolved | unresolved | deferred
     resolution: Mapped[str] = mapped_column(String(30), default="")
     clarification_refs: Mapped[list] = mapped_column(JSON, default=list)  # e.g. ["Q-03"]
+    # Knowledge-base evidence (see rag.Knowledge._citation) and its status:
+    # "" (agent did not use the KB) | verified | unverified | none (no supporting passage) | unavailable
+    citations: Mapped[list] = mapped_column(JSON, default=list)
+    evidence_status: Mapped[str] = mapped_column(String(20), default="")
 
 
 class ComplianceMapping(Base):
@@ -234,6 +243,9 @@ class Risk(Base):
     requirement_ids: Mapped[list] = mapped_column(JSON, default=list)
     generated_by: Mapped[str] = mapped_column(String(60), default="rules")
     status: Mapped[str] = mapped_column(String(30), default="open")  # open | accepted | rejected (human decision)
+    # Evidence-backed (verified KB citation) vs inferred from the requirements (none)
+    citations: Mapped[list] = mapped_column(JSON, default=list)
+    evidence_status: Mapped[str] = mapped_column(String(20), default="")
 
 
 class SdlcRecommendation(Base):
@@ -251,6 +263,8 @@ class SdlcRecommendation(Base):
     generated_by: Mapped[str] = mapped_column(String(60), default="rules")
     status: Mapped[str] = mapped_column(String(30), default="pending_approval")  # approved | overridden
     approved_model: Mapped[str] = mapped_column(String(60), default="")
+    # Supporting evidence from SDLC guidance (never changes the deterministic scores)
+    citations: Mapped[list] = mapped_column(JSON, default=list)
 
 
 class Workflow(Base):
@@ -283,6 +297,8 @@ class TraceRecord(Base):
     missing_links: Mapped[list] = mapped_column(JSON, default=list)
     coverage: Mapped[float] = mapped_column(Float, default=0.0)
     clarifications: Mapped[list] = mapped_column(JSON, default=list)  # supplementary info linked to the requirement
+    citations: Mapped[list] = mapped_column(JSON, default=list)  # verified KB evidence linked to the requirement
+    linked_findings: Mapped[list] = mapped_column(JSON, default=list)  # compliance/security findings on it
 
 
 class Approval(Base):
@@ -338,6 +354,7 @@ class ClarificationQuestion(Base):
     parent_question_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # follow-up of
     generated_by: Mapped[str] = mapped_column(String(60), default="rules")
     applied_in_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    citations: Mapped[list] = mapped_column(JSON, default=list)  # KB passages the question is grounded in
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     response: Mapped["ClarificationResponse | None"] = relationship(
@@ -446,7 +463,8 @@ class KnowledgeDocument(Base):
     jurisdiction: Mapped[str] = mapped_column(String(60))
     version: Mapped[str] = mapped_column(String(40), default="")
     effective_date: Mapped[str] = mapped_column(String(40), default="")
-    doc_type: Mapped[str] = mapped_column(String(40))  # regulation | organisational_policy | security_standard | reference
+    # regulation | organisational_policy | security_standard | reference | engineering_guideline | domain_glossary
+    doc_type: Mapped[str] = mapped_column(String(40))
     authenticity: Mapped[str] = mapped_column(String(20))  # official | illustrative | reference
     applicability: Mapped[str] = mapped_column(Text, default="")
     filename: Mapped[str] = mapped_column(String(300), default="")
@@ -470,6 +488,7 @@ class DocumentChunk(Base):
     text: Mapped[str] = mapped_column(Text)
     topics: Mapped[list] = mapped_column(JSON, default=list)
     suspicious: Mapped[bool] = mapped_column(Boolean, default=False)  # possible prompt injection
+    page: Mapped[int | None] = mapped_column(Integer, nullable=True)  # PDF page the chunk starts on
     embedding = mapped_column(EmbeddingType, nullable=True)
 
     document: Mapped[KnowledgeDocument] = relationship(back_populates="chunks")

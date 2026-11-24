@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth";
 import { useLoadedAnalysis } from "@/components/analysis-context";
 import { Meter } from "@/components/charts";
 import { AuthenticityBadge, BulletList, Chips, GeneratedBy, Notice, ReqIds, Section, SeverityBadge, StatusPill } from "@/components/common";
+import { Evidence } from "@/components/evidence";
 import { ReviewDialog } from "@/components/review-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -156,6 +157,12 @@ export default function RequirementsPage() {
                   </div>
                 )}
                 <div><p className="mb-1 text-xs font-medium text-muted-foreground">Categories</p><Chips items={selected.categories} max={20} /></div>
+                {(selected.citations?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Domain terms (financial-services glossary used by the Classification Agent)</p>
+                    <Evidence citations={selected.citations} className="mt-1" />
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div><p className="mb-1 text-xs font-medium text-muted-foreground">Confidence</p><Meter value={selected.confidence} /></div>
                   <div><p className="mb-1 text-xs font-medium text-muted-foreground">Dependencies</p><ReqIds ids={selected.dependencies} /></div>

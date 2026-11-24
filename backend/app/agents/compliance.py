@@ -1,7 +1,8 @@
 """Agent 4 - Compliance and Regulatory Agent (retrieval-grounded).
 
 1. Retrieve the most relevant knowledge-base passages for every requirement
-   (allowlisted documents of the project's jurisdiction only).
+   (allowlisted regulatory documents, policies, security standards and reference
+   catalogues of the project's jurisdiction only).
 2. Map requirements to controls:
    * rules mode  - a passage is mapped when it shares a compliance topic with the
      requirement and has enough keyword overlap; the evidence is the passage's
@@ -19,8 +20,8 @@ every mapping waits for compliance-officer approval.
 """
 from pydantic import BaseModel
 
-from app import llm
-from app.agents import check_reference, finding, valid_ids
+from app import config, llm
+from app.agents import check_reference, finding, valid_ids, with_evidence
 from app.agents.clarification_context import resolve_topic_gap, supplementary_text
 from app.rules import TOPICS, detect_topics, expected_topics
 from app.security import mask_sensitive, wrap_untrusted
@@ -104,7 +105,7 @@ def _map_batch_llm(batch: list[tuple[dict, list[dict]]], ctx: dict) -> tuple[Com
     return llm.structured("compliance mapping", _INSTRUCTIONS, data, ComplianceOutput, ctx["llm_log"]), passages
 
 
-def detect_gaps(ctx: dict) -> list[dict]:
+def detect_gaps(ctx: dict, knowledge: "rag.Knowledge | None" = None) -> list[dict]:
     covered = {t for req in ctx["requirements"] for t in detect_topics(req["statement"])}
     gaps = []
     for topic in expected_topics(ctx["project"]["domain"]):
@@ -123,6 +124,8 @@ def detect_gaps(ctx: dict) -> list[dict]:
             evidence=cited, suggestion=f"Add explicit requirement(s) for {label.lower()} and confirm the "
                                        "applicable obligations with the compliance team.",
             question=f"Which {label.lower()} obligations apply to this application?"))
+        if knowledge is not None:  # the passages were retrieved for this topic and carry its tag
+            with_evidence(gaps[-1], knowledge, [knowledge.link([h], label, min_score=0) for h in sources[:2]])
         # A clarification about this topic addresses the gap only partially (see clarification_context).
         resolve_topic_gap(ctx, gaps[-1], {topic}, TOPICS[topic]["keywords"])
     return gaps
@@ -136,28 +139,49 @@ def run(ctx: dict) -> tuple[str, str]:
     retained = [m for m in ctx.get("mappings", []) if only is not None and m["requirement_id"] not in only
                 and m["requirement_id"] in ctx["requirement_ids"]]
     # Retrieval uses the requirement plus any clarification linked to it.
+    # Only regulatory documents, policies, security standards and reference catalogues are searched
+    # (engineering guidelines and the glossary serve the other agents).
+    doc_types = rag.REGULATORY_DOC_TYPES
     queries = [mask_sensitive(supplementary_text(r))[0] for r in requirements]
-    hits_per_req, method = rag.retrieve_many(db, queries, project["jurisdiction"], k=4) if queries else ([], None)
-    # Evidence for each expected topic (used to cite sources for gaps).
     topics = expected_topics(project["domain"])
-    topic_hits, topic_method = rag.retrieve_many(db, [TOPICS[t]["label"] for t in topics], project["jurisdiction"], k=3)
+    topic_queries = [TOPICS[t]["label"] for t in topics]
+    knowledge = rag.Knowledge(ctx, "compliance")  # recorded in the retrieval log like every other agent
+    try:
+        hits_per_req, method = rag.retrieve_many(db, queries, project["jurisdiction"], k=4, doc_types=doc_types) \
+            if queries else ([], None)
+        # Evidence for each expected topic (used to cite sources for gaps).
+        topic_hits, topic_method = rag.retrieve_many(db, topic_queries, project["jurisdiction"], k=3,
+                                                     doc_types=doc_types)
+        method = method or topic_method  # a scoped Stage 2 run may have no requirement to map
+    except Exception as exc:  # e.g. a database error: assess topic gaps only, never fail the analysis
+        hits_per_req, topic_hits, method = [[] for _ in queries], [[] for _ in topics], "failed"
+        knowledge.log["error"] = f"{type(exc).__name__}: {exc}"[:300]
     ctx["topic_evidence"] = {t: [h for h in hits if t in h["topics"]] for t, hits in zip(topics, topic_hits)}
-    method = method or topic_method  # a scoped Stage 2 run may have no requirement to map
     ctx["retrieval_method"] = method
+    knowledge.method = method
+    knowledge.log.update({"method": method, "queries": len(queries) + len(topic_queries),
+                          "query_examples": [q[:160] for q in (queries + topic_queries)[:3]],
+                          "retrieved": [rag.brief_hit(h) for h in rag.merge_hits(hits_per_req + topic_hits)[:25]]})
 
-    if method == "none":
+    if method in ("none", "failed"):
+        reason = ("No allowlisted knowledge-base documents exist for this jurisdiction" if method == "none"
+                  else "The knowledge base could not be searched")
         ctx["findings"].append(finding(
             "expert_review", "knowledge_base_unavailable", "High", "Regulatory knowledge base not available",
-            [], explanation="No allowlisted knowledge-base documents exist for this jurisdiction, so no "
-                            "evidence-based compliance mapping was possible. Coverage is limited.",
+            [], explanation=f"{reason}, so no evidence-based compliance mapping was possible. Coverage is limited.",
             suggestion="Upload official regulatory documents in the Knowledge Base and re-run the analysis."))
-        ctx["findings"].extend(detect_gaps(ctx))
-        return "partial", "Knowledge base empty: no evidence-based mappings; only topic gaps were assessed."
+        ctx["findings"][-1]["evidence_status"] = "unavailable"
+        ctx["findings"].extend(detect_gaps(ctx, knowledge))
+        return "partial", ("Knowledge base empty: no evidence-based mappings; only topic gaps were assessed."
+                           if method == "none" else "Knowledge-base search failed: no evidence-based mappings; only "
+                                                    "topic gaps were assessed.")
 
     mappings: list[dict] = []
     status, note = "completed", ""
     if llm.enabled():
         by_id = {r["req_id"]: r for r in requirements}
+        if method.startswith("semantic"):  # passages below the shared relevance minimum are not sent to the model
+            hits_per_req = [[h for h in hits if h["score"] >= config.RAG_MIN_SEMANTIC_SCORE] for hits in hits_per_req]
         batches = llm.batched(list(zip(requirements, hits_per_req)), 12)
         results = llm.map_parallel(lambda b: _map_batch_llm(b, ctx), batches)
         failed = 0
@@ -167,12 +191,16 @@ def run(ctx: dict) -> tuple[str, str]:
                 mappings += [m for req, hits in batch for m in map_with_rules(req, hits)]
                 continue
             output, passages = result
+            shown = {p["chunk_id"] for p in knowledge.log["prompted"]}
+            knowledge.log["prompted"] += [rag.brief_hit(h) for cid, h in passages.items() if cid not in shown]
             for item in output.mappings:
                 hit = passages.get(item.chunk_id)
                 if not check_reference(ctx, "compliance", hit is not None) or \
                         not valid_ids(ctx, "compliance", [item.requirement_id]):
+                    knowledge.log["rejected"] += 1
                     continue
                 verified = check_reference(ctx, "compliance", rag.quote_in_text(item.evidence_quote, hit["text"]))
+                knowledge.log["verified" if verified else "unverified"] += 1
                 req = by_id[item.requirement_id]
                 evidence = item.evidence_quote if verified else rag.best_sentence(hit["text"], req["statement"])
                 rationale = item.rationale if verified else (
@@ -182,15 +210,17 @@ def run(ctx: dict) -> tuple[str, str]:
                                          rationale, llm.model_label()))
             for gap in output.gaps:
                 chunk_ids = [c for c in gap.supporting_chunk_ids if check_reference(ctx, "compliance", c in passages)]
+                knowledge.log["rejected"] += len(gap.supporting_chunk_ids) - len(chunk_ids)
                 cited = "; ".join(f"{passages[c]['document_name']} {passages[c]['section_ref']} "
                                   f"({passages[c]['authenticity']})" for c in chunk_ids)
-                ctx["findings"].append(finding(
+                ctx["findings"].append(with_evidence(finding(
                     "compliance_gap", "llm_identified", "Medium", gap.title, valid_ids(ctx, "compliance",
                                                                                      gap.requirement_ids),
                     explanation=gap.explanation + ("" if chunk_ids else " (No supporting passage - requires "
                                                                         "verification.)"),
                     evidence=cited, suggestion="Confirm with the compliance officer and add requirements if needed.",
-                    generated_by=llm.model_label()))
+                    generated_by=llm.model_label()), knowledge,
+                    [knowledge.link([passages[c]], f"{gap.title} {gap.explanation}", min_score=0) for c in chunk_ids]))
         if failed:
             status, note = "partial", f" OpenAI failed for {failed}/{len(batches)} batches; rule mapping used."
     else:
@@ -198,7 +228,7 @@ def run(ctx: dict) -> tuple[str, str]:
 
     mappings = retained + mappings
     ctx["mappings"] = mappings
-    ctx["findings"].extend(detect_gaps(ctx))
+    ctx["findings"].extend(detect_gaps(ctx, knowledge))
     used = {}
     for m in mappings:
         entry = used.setdefault(m["document_id"], {
@@ -209,4 +239,4 @@ def run(ctx: dict) -> tuple[str, str]:
     ctx["applicable_sources"] = [{**e, "mapped_requirements": sorted(e["mapped_requirements"])} for e in used.values()]
     mapped = len({m["requirement_id"] for m in mappings})
     return status, (f"Created {len(mappings)} control mappings for {mapped} requirements using {method} "
-                    f"retrieval across {len(used)} knowledge-base documents.{note}")
+                    f"retrieval across {len(used)} knowledge-base documents.{note}{knowledge.summary()}")

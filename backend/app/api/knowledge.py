@@ -10,10 +10,10 @@ from app.schemas import DocumentUpdate
 from app.security import audit, get_current_user, has_permission, require
 from app.serializers import row_dict
 from app.services import rag
-from app.services.documents import read_upload
+from app.services.documents import read_upload_with_pages
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
-DOC_TYPES = {"regulation", "organisational_policy", "security_standard", "reference"}
+DOC_TYPES = set(rag.DOC_TYPES)  # + engineering_guideline and domain_glossary (used by the engineering agents)
 AUTHENTICITY = {"official", "illustrative", "reference"}
 
 
@@ -37,7 +37,7 @@ def get_document(document_id: int, db: Session = Depends(get_db), _: User = Depe
     if not doc:
         raise HTTPException(404, "Document not found")
     chunks = [{"id": c.id, "section_ref": c.section_ref, "title": c.title, "text": c.text, "topics": c.topics,
-               "suspicious": c.suspicious, "embedded": c.embedding is not None} for c in doc.chunks]
+               "suspicious": c.suspicious, "embedded": c.embedding is not None, "page": c.page} for c in doc.chunks]
     return {**doc_dict(doc), "chunks": chunks}
 
 
@@ -51,10 +51,10 @@ async def upload_document(
 ):
     if doc_type not in DOC_TYPES or authenticity not in AUTHENTICITY:
         raise HTTPException(400, "Invalid document type or authenticity")
-    filename, text = await read_upload(file)
+    filename, text, pages = await read_upload_with_pages(file)
     meta, sections = (rag.parse_kb_markdown(text) if filename.lower().endswith(".md") else ({}, []))
-    if not sections:
-        sections = rag.chunk_plain_text(text)
+    if not sections:  # PDFs are chunked page by page so citations can show the page number
+        sections = rag.chunk_pdf_pages(pages) if pages else rag.chunk_plain_text(text)
     meta.update({k: v for k, v in {"title": name.strip()[:300] or filename, "source_organisation": source_organisation[:200],
                                    "jurisdiction": jurisdiction[:60], "version": version[:40],
                                    "effective_date": effective_date[:40], "doc_type": doc_type,
@@ -92,12 +92,18 @@ def delete_document(document_id: int, request: Request, db: Session = Depends(ge
 
 
 @router.get("/search")
-def search(q: str, jurisdiction: str = "India", k: int = 5, db: Session = Depends(get_db),
+def search(q: str, jurisdiction: str = "India", k: int = 5, agent: str = "", db: Session = Depends(get_db),
            _: User = Depends(get_current_user)):
+    """Search the knowledge base. With `agent` (e.g. security, quality) only the document
+    types that agent may retrieve are searched - the same filter the agent uses."""
     if not q.strip():
         raise HTTPException(400, "Query is required")
-    results, method = rag.retrieve_many(db, [q[:1000]], jurisdiction, k=min(k, 10))
-    return {"method": method, "results": results[0]}
+    if agent and agent not in rag.AGENT_PROFILES:
+        raise HTTPException(400, f"Unknown agent. Use one of: {', '.join(rag.AGENT_PROFILES)}")
+    doc_types = rag.AGENT_PROFILES[agent]["doc_types"] if agent else None
+    results, method = rag.retrieve_many(db, [q[:1000]], jurisdiction, k=min(k, 10), doc_types=doc_types)
+    return {"method": method, "results": results[0], "agent": agent or None,
+            "doc_types": list(doc_types) if doc_types else None}
 
 
 @router.post("/reindex")

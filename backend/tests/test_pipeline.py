@@ -16,9 +16,9 @@ from tests.helpers import AGENT_NAMES, BENCHMARK_CASES, CASES, run_case
 
 LLM_SCHEMAS = {"ExtractionOutput", "ClassificationOutput", "QualityOutput", "ComplianceOutput", "SecurityOutput",
                "RiskOutput", "FactorReview", "Narrative", "WorkflowTailoring", "StoryOutput", "UseCaseOutput",
-               "Summary"}
+               "Summary", "MissingTestReview"}  # Validation: missing tests vs. the retrieved testing standard
 # Agents that do not use the LLM at all (pure rules / bookkeeping).
-RULE_ONLY_AGENTS = {"Traceability Builder", "Validation Agent"}
+RULE_ONLY_AGENTS = {"Traceability Builder"}
 
 
 def statuses(ctx: dict) -> dict[str, str]:

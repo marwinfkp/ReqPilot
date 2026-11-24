@@ -36,6 +36,7 @@ from app import config, llm, pipeline, security  # noqa: E402
 from app.database import SessionLocal, engine, init_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.seed import seed  # noqa: E402
+from app.services import rag  # noqa: E402
 from tests.fake_openai import FakeOpenAI  # noqa: E402
 from tests.helpers import CASES, USERS  # noqa: E402
 
@@ -77,6 +78,14 @@ def _reset_rate_limits():
     security._hits.clear()
     yield
     security._hits.clear()
+
+
+@pytest.fixture(autouse=True)
+def _reset_embedding_cache():
+    """Query embeddings are cached per process; each test starts with its own (fake) client."""
+    rag.clear_embedding_cache()
+    yield
+    rag.clear_embedding_cache()
 
 
 # --------------------------------------------------------------------------

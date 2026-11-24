@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/components/auth";
 import { EmptyState, LoadingState, Notice, SeverityBadge, StatTile, StatusPill } from "@/components/common";
+import { Evidence } from "@/components/evidence";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -161,6 +162,12 @@ function QuestionCard({ q, open, onToggle, editable, provisional, onSaved }: {
                 ))}
                 {q.related_requirements.length === 0 && q.requirement_ids.map((id) => <li key={id} className="font-mono text-xs">{id}</li>)}
               </ul>
+            </div>
+          )}
+          {(q.citations?.length ?? 0) > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Knowledge-base passages this question relies on</p>
+              <Evidence citations={q.citations} className="mt-1" />
             </div>
           )}
           {q.status === "answered" && !editing ? (

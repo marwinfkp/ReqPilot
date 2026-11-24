@@ -27,6 +27,13 @@ def safe_filename(name: str) -> str:
 
 async def read_upload(upload: UploadFile) -> tuple[str, str]:
     """Validate an upload and return (safe filename, extracted text)."""
+    name, text, _pages = await read_upload_with_pages(upload)
+    return name, text
+
+
+async def read_upload_with_pages(upload: UploadFile) -> tuple[str, str, list[str] | None]:
+    """Like read_upload, plus the text of every page for PDFs (None for other files),
+    so knowledge-base chunks can record the page they come from."""
     name = safe_filename(upload.filename)
     extension = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
     if extension not in ALLOWED_EXTENSIONS:
@@ -44,7 +51,12 @@ async def read_upload(upload: UploadFile) -> tuple[str, str]:
         raise HTTPException(400, f"{name}: could not read file ({type(exc).__name__})") from exc
     if not text.strip():
         raise HTTPException(400, f"{name}: no readable text found (scanned PDFs are not supported)")
-    return name, text
+    return name, text, (pdf_pages(data) if extension == ".pdf" else None)
+
+
+def pdf_pages(data: bytes) -> list[str]:
+    with fitz.open(stream=data, filetype="pdf") as pdf:
+        return [join_wrapped_lines(page.get_text()) for page in pdf]
 
 
 def extract_text(data: bytes, extension: str) -> str:

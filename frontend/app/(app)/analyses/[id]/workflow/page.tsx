@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAuth } from "@/components/auth";
 import { useLoadedAnalysis } from "@/components/analysis-context";
 import { BulletList, EmptyState, GeneratedBy, Notice, ReqIds, Section, StatusPill } from "@/components/common";
+import { Evidence } from "@/components/evidence";
 import { ReviewDialog } from "@/components/review-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,12 @@ function PhaseCard({ phase, open, toggle, last }: { phase: Phase; open: boolean;
             </div>
             {phase.key_requirements.length > 0 && <Field title="Key requirements in this phase" items={phase.key_requirements} mono />}
             {phase.customised.length > 0 && <p className="text-xs text-muted-foreground">Customised because: {[...new Set(phase.customised)].join(" · ")}</p>}
+            {(phase.citations?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Engineering practice this phase follows</p>
+                <Evidence citations={phase.citations} />
+              </div>
+            )}
           </div>
         )}
       </div>

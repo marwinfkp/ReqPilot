@@ -9,6 +9,9 @@ clicks **ANALYSE REQUIREMENTS**, and ReqPilot automatically produces:
 - structured, classified functional and non-functional requirements with IDs (e.g. `FR-PAY-001`)
 - requirement quality analysis: ambiguity, incompleteness, conflicts, duplicates, infeasibility, missing acceptance criteria, undefined terms
 - retrieval-grounded compliance mappings with verified citations, plus compliance gaps
+- **knowledge-base evidence across the agents (RAG)**: classification, quality, compliance, security, risk, SDLC,
+  workflow, documentation, validation and the clarification questions each retrieve the passages relevant to
+  their own task; every citation is checked against the passage the agent was actually given
 - security and privacy coverage, threats (STRIDE) and privacy considerations
 - a scored risk register (likelihood x impact)
 - a **deterministic, explainable ranking of 7 SDLC models** and a justified recommendation
@@ -46,7 +49,7 @@ flowchart LR
     A4 --> A5["5 Security & Privacy"] --> A6["6 Risk"] --> A7["7 SDLC Selection<br/>(deterministic scoring)"] --> A8["8 Workflow Generation"]
     A8 --> A9["9 Documentation, Traceability,<br/>Validation, Summary"]
     A1 & A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 -. "structured outputs<br/>(Pydantic)" .-> OAI["OpenAI API<br/>(app/llm.py)"]
-    A4 --> KB[("Knowledge base<br/>pgvector")]
+    A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 -- "rag.retrieve_for_agent<br/>(own document types + queries)" --> KB[("Knowledge base<br/>pgvector")]
     API --> DB[("PostgreSQL 16<br/>+ pgvector")]
 ```
 
@@ -73,6 +76,65 @@ flowchart LR
 | 7 | SDLC Selection | `agents/sdlc_selection.py` | 13 project factors -> weighted affinity scoring of 7 SDLC models -> ranking, justification, trade-offs |
 | 8 | Workflow Generation | `agents/workflow.py` | Model template + project-specific customisation rules + traceability checkpoints |
 | 9 | Documentation & Validation | `agents/documentation.py`, `agents/validation.py` | User stories, acceptance criteria, use cases, traceability matrix, consistency checks, executive summary |
+
+### Knowledge base and RAG across the agents (`services/rag.py`)
+
+All agents use **one retrieval interface**, `rag.retrieve_for_agent(ctx, agent, items=..., requirements=...)`,
+built on the existing chunking, OpenAI embeddings (`text-embedding-3-small`), pgvector cosine search, lexical
+fallback, jurisdiction filter, allowlist and prompt-injection exclusion. It returns a `Knowledge` object with the
+passages (and their metadata: document, version, section/clause, page, type, authenticity, jurisdiction, score),
+formats them for a prompt as **untrusted reference data**, and checks every citation the agent makes.
+
+| Agent | Searches (document types) | Agent-specific queries | OpenAI mode | Rules mode |
+|-------|---------------------------|------------------------|-------------|------------|
+| Clarification questions (Stage 1/2) | regulatory + glossary | one per compliance/security/privacy issue | passages sharpen questions; cited | rule questions linked to a passage |
+| Classification | domain glossary | one per requirement (text + clarifications + categories) | glossary entries of the batch in the prompt; `domain_terms` cited | glossary terms found in the requirement linked |
+| Quality & Conflict | engineering guidelines | one per issue type (vague wording, completeness, conflicts, ...) | requirements guideline in the prompt as criteria; issues cite the rule | every rule finding linked to its guideline section |
+| Compliance | regulatory, policies, security standards, references | one per requirement + one per expected topic (unchanged) | unchanged mapping logic; passages below the shared semantic minimum are no longer sent | unchanged; gaps now carry structured citations |
+| Security & Privacy | security standards, policies, regulations, references | one per security gap and threat template | passages in the prompt; threats/privacy cite them; *policy controls* only with a verified citation | gaps and threat templates linked |
+| Risk | regulatory, policies, references (incl. the risk guideline) | one per rule-derived risk | passages in the prompt; new risks cite them | risks inherit verified evidence of their gaps or are linked |
+| SDLC Selection | engineering guidelines | recommended model + model selection | narrative step only (never the factor review) | recommended model linked |
+| Workflow | engineering guidelines, policies, security standards | one per phase | tailoring cites the practice behind new activities | each phase linked to its practice |
+| Documentation | engineering guidelines | story, criteria and use-case conventions | documentation standard in the story/use-case prompts | templates (no retrieval) |
+| Traceability | - | reuses the **verified** citations of the other agents | | |
+| Validation | engineering guidelines (testing standard) | one per test type | missing-test review against the standard, cited | test coverage per category with the standard as evidence |
+
+Extraction and the Summary Writer do not retrieve: they work only on the submission and the analysis results.
+
+**Citation verification** (`Knowledge.cite`). A model may cite only passages that were placed in *its* prompt
+(other chunk IDs are rejected and counted as invalid references - the hallucination metric); the quote must be
+found word-for-word in that passage, otherwise the citation is kept but marked **unverified** and the closest real
+sentence is shown. Rule-based findings get a deterministic **retrieval link** (the passage's most relevant sentence,
+copied verbatim) only above a stricter relevance threshold. Each finding and risk has an `evidence_status`:
+`verified`, `unverified`, `none` (no supporting passage - derived from the requirements; not every finding needs a
+citation) or `unavailable` (knowledge base not searchable). **"Verified" is a quotation check**: the excerpt exists
+word-for-word in a passage the agent retrieved. Whether the passage really supports the finding is the model's
+judgement (or, for rule findings, the retrieval relevance score shown with the citation) and stays a reviewer
+decision - a spot-check of 30 verified citations from real runs found 26 clearly supporting and 4 only loosely
+related. Missing security controls proposed by the model are
+discarded unless a verified passage states them, and every citation shows what the source is (regulatory
+obligation, security standard, internal policy, reference summary, engineering guideline, glossary) and its
+authenticity, so a fictional policy or a reference summary is never presented as law.
+
+**SDLC scores are never influenced by retrieval**: guidance is retrieved after the ranking is fixed and given only
+to the narrative step; a test runs the scoring with and without the knowledge base and requires identical results.
+
+**Retrieval quality and efficiency**: semantic search in pgvector (cosine distance) with the lexical fallback;
+a query that names a clause (e.g. `ISP-04`) retrieves that clause first (hybrid exact-match boost); results of
+several queries are merged per chunk (best score), duplicates removed, more authoritative sources first on equal
+scores; minimum relevance thresholds (calibrated on real embeddings: relevant passages score about 0.55-0.8) and
+per-agent passage limits keep prompts small; query embeddings are cached per process (several agents embed the
+same requirement text). If retrieval fails the agent continues without knowledge and the log says so; if the
+embedding service or a pgvector query fails, retrieval falls back to lexical search, stays lexical for 5 minutes
+(so the other agents do not wait for the same timeouts), and the vector query runs in a savepoint so a database
+error cannot abort the analysis's transaction. The system prompt tells every agent to quote passage text (not the
+passage header) and never to present illustrative or reference passages as law.
+
+**Provenance**: what each agent retrieved, placed in its prompt and cited (verified / linked / unverified /
+rejected) is stored with its run (`agent_runs.retrieval`) and shown in the agent log; citations are stored with
+findings, risks, requirements (glossary terms), the SDLC recommendation, workflow phases, validation checks,
+traceability rows and clarification questions. In **Stage 2** every re-run agent retrieves again from the
+updated requirements; retained outputs keep their citations, and earlier versions are never changed.
 
 ### How the SDLC recommendation is calculated (`agents/sdlc_selection.py`)
 
@@ -191,7 +253,7 @@ ReqPilot2/
 │       └── seed.py               demo users + knowledge base
 │   └── tests/                    pytest suite
 ├── frontend/                     Next.js app (app/, components/, lib/)
-├── knowledge_base/               demo KB documents (illustrative policies + regulatory reference catalogue)
+├── knowledge_base/               demo KB documents (illustrative policies, engineering guidelines, glossary, reference catalogues)
 └── evaluation/benchmark.json     synthetic 4-case benchmark with ground truth
 ```
 
@@ -248,6 +310,9 @@ rule-based baseline and is logged as *partial* — the log shows the error.
 | `DEFAULT_RETENTION_DAYS` | 365 | Data-retention period (editable in Settings) |
 | `FRONTEND_ORIGIN` | `http://localhost:3000` | CORS origin |
 | `DEMO_USER_PASSWORD` | `ReqPilot@2026` | Password of the seeded demo accounts |
+| `RAG_MAX_PASSAGES`, `RAG_PASSAGE_CHARS` | 8, 1200 | Upper limit of knowledge-base passages per agent prompt; characters per passage |
+| `RAG_MIN_SEMANTIC_SCORE`, `RAG_MIN_LEXICAL_SCORE` | 0.3, 0.2 | Minimum relevance for a passage to reach an agent |
+| `RAG_LINK_SEMANTIC_SCORE`, `RAG_LINK_LEXICAL_SCORE` | 0.45, 0.5 | Stricter relevance for evidence linked to rule-based findings |
 
 Frontend: optional `BACKEND_URL` (default `http://127.0.0.1:8000`) for the `/api` proxy.
 
@@ -299,11 +364,13 @@ cd frontend; npm run build; npm run start
 
 ### Demonstration data
 
-* **Knowledge base** (`knowledge_base/`, loaded automatically): six *illustrative* fictional "Demo Bank"
-  policies (information security, data protection, payments, KYC, lending, IT operations) and a *reference*
-  catalogue of real Indian regulations/standards (DPDP Act 2023, RBI directions, CERT-In directions, PCI DSS,
-  ...) at document level only. To add authentic evidence, download official documents from the issuers and
-  upload them in **Knowledge Base** with authenticity "official".
+* **Knowledge base** (`knowledge_base/`, loaded automatically - see `knowledge_base/README.md`): *illustrative*
+  fictional "Demo Bank" policies (information security, data protection, payments, KYC, lending, IT operations,
+  technology risk), engineering guidelines (requirements engineering, SDLC practices, testing and validation,
+  documentation), a financial-services glossary, and *reference* catalogues of real Indian regulations/standards
+  (DPDP Act 2023, RBI directions, CERT-In directions, PCI DSS, ...) and OWASP standards, at document level only.
+  To add authentic evidence, download official documents from the issuers and upload them in **Knowledge Base**
+  with authenticity "official" (PDFs are chunked page by page, so citations show the page).
 * **Example requirement sets**: on **Analyse Requirements**, use *Load an example requirement set*
   (digital banking — 41 requirements, loan processing, payments hub, fraud detection).
 
@@ -318,9 +385,11 @@ cd frontend; npm run build; npm run start
    one, leave the rest, and click **Continue to Full Analysis** (a warning appears if critical questions are
    unanswered - continuing is still allowed). You can leave and resume later; answers are saved immediately.
 4. The 12 agents run; results open automatically: Overview (executive summary, clarification card, agent log
-   grouped by stage, validation report), Requirements (supplementary clarification info per requirement),
-   Quality (resolution badges), Compliance, Security & Risk, **SDLC Recommendation**, **SDLC Workflow**,
-   Traceability and Open Issues.
+   grouped by stage with a **Knowledge base** column, validation report), Requirements (supplementary
+   clarification info and glossary terms per requirement), Quality (resolution badges), Compliance, Security &
+   Risk, **SDLC Recommendation**, **SDLC Workflow**, Traceability and Open Issues. Findings, risks, SDLC guidance,
+   workflow phases and traceability rows show their **knowledge-base evidence** (click "n sources": document,
+   version, section, page, excerpt and whether the citation was verified).
 5. Optional Stage 2: **Open Refinement Centre** → generate more questions, record a stakeholder interview,
    propose a requirement change (sign in as **pm@reqpilot.local** to approve it - the proposer cannot), review
    the regeneration plan, confirm it, and compare version 1 with version 2.
@@ -331,6 +400,8 @@ cd frontend; npm run build; npm run start
 9. Sign in as **auditor@reqpilot.local** → **Audit Logs** shows every login, analysis, clarification answer,
    approval, regeneration and export.
 10. **Evaluation** → *Run evaluation* runs the 4-case synthetic benchmark and shows the calculated metrics.
+11. **Knowledge Base** → *Test retrieval*: choose an agent (e.g. "Quality") to search with exactly that agent's
+    document-type filter (`GET /api/knowledge/search?q=...&agent=quality`).
 
 ---
 
@@ -340,11 +411,16 @@ cd frontend; npm run build; npm run start
 cd backend; .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-269 tests (two-stage clarification and selective regeneration, SDLC scoring maths, every agent, the full pipeline on all benchmark cases, security helpers, file
-validation, RAG, every API endpoint and role, approvals, all 12 exports in both formats, evaluation) run in about
-20 seconds. The suite uses a temporary SQLite database and never calls the real OpenAI API: OpenAI-mode behaviour
+298 tests (two-stage clarification and selective regeneration, SDLC scoring maths, every agent, the full pipeline on all benchmark cases, security helpers, file
+validation, RAG across the agents, every API endpoint and role, approvals, all 12 exports in both formats, evaluation) run in about
+50 seconds. The suite uses a temporary SQLite database and never calls the real OpenAI API: OpenAI-mode behaviour
 is tested with a fake OpenAI client (verifying the client is called, invented IDs/quotes are rejected, sensitive
 data is masked before it reaches the model, and API failures fall back to rules with a `partial` status).
+`tests/test_rag_agents.py` covers agent-specific retrieval (document-type filters, relevant sections, jurisdiction,
+allowlist, injection exclusion, lexical fallback, failures, exact clause matching, embedding cache), passages
+reaching only the prompts that need them, citation checks (valid, invented, misquoted), evidence status, SDLC
+scores independent of retrieval, Stage 1 questions and Stage 2 fresh retrieval. `tests/test_pgvector.py` runs the
+pgvector code path against PostgreSQL in a temporary schema (skipped when the database is not reachable).
 
 ```powershell
 cd backend; .\.venv\Scripts\python.exe -m app.evaluation
@@ -390,4 +466,10 @@ provides, TLS termination, SSO, distributed rate limiting. No security certifica
 * The evaluation benchmark is small and synthetic, and its ground truth (including expected SDLC models) was
   written by the same developer who wrote the rule keywords, so rule-mode results are likely optimistic.
 * Analyses run in a background thread of the API process; a server restart marks running analyses as failed.
+* RAG: the engineering guidelines, glossary and risk guideline are fictional demo documents written for this
+  prototype, so the evidence they provide illustrates the mechanism rather than an authoritative standard. pgvector
+  search is exact (no HNSW/IVFFlat index - fine for hundreds of chunks). Rule-based evidence links depend on
+  retrieval relevance and can occasionally point to a related rather than the ideal section; model citations are
+  quote-checked but their relevance is still the model's judgement. The compliance prompt keeps its original
+  four passages per requirement. Retained outputs of a Stage 2 version keep the evidence of the earlier retrieval.
 * Stakeholder satisfaction and time saved versus manual analysis are not measured.

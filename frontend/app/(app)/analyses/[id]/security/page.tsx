@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { ColumnBars, RiskMatrix, SeverityBars } from "@/components/charts";
 import { EmptyState, GeneratedBy, ReqIds, Section, SeverityBadge, StatTile, StatusPill } from "@/components/common";
+import { Evidence } from "@/components/evidence";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { label } from "@/lib/format";
 
@@ -24,6 +25,7 @@ export default function SecurityRiskPage() {
   const severity = a.risks.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.severity]: (acc[r.severity] ?? 0) + 1 }), {});
   const byCategory = Object.entries(a.risks.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.category]: (acc[r.category] ?? 0) + 1 }), {}))
     .map(([name, value]) => ({ name: label(name), value }));
+  const evidenceBacked = a.risks.filter((r) => r.evidence_status === "verified").length;
 
   return (
     <div className="space-y-6">
@@ -32,7 +34,7 @@ export default function SecurityRiskPage() {
         <StatTile label="Privacy requirements" value={privacyReqs.length} icon={Fingerprint} />
         <StatTile label="Missing / weak controls" value={gaps.length} icon={ShieldX} tone={gaps.length ? "danger" : "good"} />
         <StatTile label="Threats identified" value={threats.length} icon={ShieldAlert} tone="warning" />
-        <StatTile label="High / critical risks" value={a.metrics.high_risks} hint={`${a.risks.length} risks registered`} icon={TriangleAlert} tone={a.metrics.high_risks ? "danger" : "good"} />
+        <StatTile label="High / critical risks" value={a.metrics.high_risks} hint={`${a.risks.length} risks registered${a.risks.some((r) => r.evidence_status) ? ` · ${evidenceBacked} evidence-backed` : ""}`} icon={TriangleAlert} tone={a.metrics.high_risks ? "danger" : "good"} />
       </div>
 
       <Section title="Security coverage" description="Ten security areas checked against the submitted requirements. 'Partial' means only vague requirements cover the area.">
@@ -60,6 +62,7 @@ export default function SecurityRiskPage() {
                   <p className="mt-1 font-medium">{f.title}</p>
                   {f.suggestion && <p className="mt-1 text-sm"><span className="font-medium">Safeguard: </span>{f.suggestion}</p>}
                   {f.requirement_ids.length > 0 && <div className="mt-2"><ReqIds ids={f.requirement_ids} /></div>}
+                  <Evidence citations={f.citations} status={f.evidence_status} />
                 </li>
               ))}
             </ul>
@@ -74,6 +77,7 @@ export default function SecurityRiskPage() {
                   <p className="mt-1 text-sm text-muted-foreground">{f.explanation}</p>
                   <p className="mt-1 text-sm"><span className="font-medium">Recommendation: </span>{f.suggestion}</p>
                   <div className="mt-2"><ReqIds ids={f.requirement_ids} /></div>
+                  <Evidence citations={f.citations} status={f.evidence_status} />
                 </li>
               ))}
             </ul>
@@ -90,7 +94,7 @@ export default function SecurityRiskPage() {
                 <TableRow key={t.id}>
                   <TableCell className="whitespace-nowrap text-xs font-medium">{t.issue_type}</TableCell>
                   <TableCell><SeverityBadge severity={t.severity} /></TableCell>
-                  <TableCell className="min-w-[240px] whitespace-normal">{t.title}<p className="text-xs text-muted-foreground">{t.explanation}</p></TableCell>
+                  <TableCell className="min-w-[240px] whitespace-normal">{t.title}<p className="text-xs text-muted-foreground">{t.explanation}</p><Evidence citations={t.citations} status={t.evidence_status} /></TableCell>
                   <TableCell className="min-w-[260px] whitespace-normal text-sm">{t.suggestion}</TableCell>
                   <TableCell className="min-w-[160px]"><ReqIds ids={t.requirement_ids} max={4} /></TableCell>
                 </TableRow>
@@ -120,7 +124,7 @@ export default function SecurityRiskPage() {
           <ColumnBars data={byCategory} height={250} />
         </Section>
       </div>
-      <Section title={`Risk register (${a.risks.length})`}>
+      <Section title={`Risk register (${a.risks.length})`} description="Evidence-backed risks cite a knowledge-base passage whose quote was verified (whether it supports the risk still needs review); the others are inferred from the requirements and the analysis.">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>Risk</TableHead><TableHead>Category</TableHead><TableHead className="text-center">L</TableHead><TableHead className="text-center">I</TableHead><TableHead className="text-center">Score</TableHead><TableHead>Severity</TableHead><TableHead>Mitigation</TableHead><TableHead>Requirements</TableHead><TableHead>Decision</TableHead></TableRow></TableHeader>
@@ -128,7 +132,7 @@ export default function SecurityRiskPage() {
               {a.risks.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-mono text-xs">{r.risk_id}</TableCell>
-                  <TableCell className="min-w-[260px] whitespace-normal">{r.description}<div className="mt-1"><GeneratedBy value={r.generated_by} /></div></TableCell>
+                  <TableCell className="min-w-[260px] whitespace-normal">{r.description}<div className="mt-1"><GeneratedBy value={r.generated_by} /></div><Evidence citations={r.citations} status={r.evidence_status} /></TableCell>
                   <TableCell>{label(r.category)}</TableCell>
                   <TableCell className="text-center tabular-nums">{r.likelihood}</TableCell>
                   <TableCell className="text-center tabular-nums">{r.impact}</TableCell>

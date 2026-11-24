@@ -1,24 +1,35 @@
 # ReqPilot Knowledge Base
 
-This folder holds the seed documents that ReqPilot uses to map extracted requirements to compliance evidence. Every document is a Markdown file with YAML-like front matter followed by sections that start with `## <SECTION-REF> <Title>` and a `Topics:` line.
+This folder holds the seed documents that ReqPilot's agents retrieve evidence from (Retrieval-Augmented Generation). Every document is a Markdown file with YAML-like front matter followed by sections that start with `## <SECTION-REF> <Title>` and an optional `Topics:` line.
 
 ## What is in this folder
 
-| File | Section prefix | doc_type | authenticity |
-|---|---|---|---|
-| `demo_information_security_policy.md` | ISP- | security_standard | illustrative |
-| `demo_data_protection_policy.md` | DPP- | organisational_policy | illustrative |
-| `demo_payments_transaction_standard.md` | PAY- | organisational_policy | illustrative |
-| `demo_kyc_onboarding_procedure.md` | KYC- | organisational_policy | illustrative |
-| `demo_lending_credit_policy.md` | LND- | organisational_policy | illustrative |
-| `demo_it_operations_change_standard.md` | OPS- | organisational_policy | illustrative |
-| `india_regulatory_reference_catalogue.md` | REF- | reference | reference |
+| File | Section prefix | doc_type | authenticity | Used by |
+|---|---|---|---|---|
+| `demo_information_security_policy.md` | ISP- | security_standard | illustrative | Compliance, Security & Privacy, Workflow |
+| `demo_data_protection_policy.md` | DPP- | organisational_policy | illustrative | Compliance, Security & Privacy, Risk |
+| `demo_payments_transaction_standard.md` | PAY- | organisational_policy | illustrative | Compliance, Security & Privacy, Risk |
+| `demo_kyc_onboarding_procedure.md` | KYC- | organisational_policy | illustrative | Compliance, Security & Privacy, Risk |
+| `demo_lending_credit_policy.md` | LND- | organisational_policy | illustrative | Compliance, Risk |
+| `demo_it_operations_change_standard.md` | OPS- | organisational_policy | illustrative | Compliance, Risk, Workflow |
+| `demo_technology_risk_guideline.md` | RSK- | organisational_policy | illustrative | Risk, Compliance, Workflow |
+| `india_regulatory_reference_catalogue.md` | REF- | reference | reference | Compliance, Security & Privacy, Risk |
+| `international_security_standards_catalogue.md` | SEC-REF- | reference | reference | Compliance, Security & Privacy, Risk |
+| `demo_requirements_engineering_guideline.md` | REQ- | engineering_guideline | illustrative | Quality |
+| `demo_sdlc_engineering_handbook.md` | SDLC- | engineering_guideline | illustrative | SDLC Selection, Workflow |
+| `demo_testing_validation_standard.md` | TST- | engineering_guideline | illustrative | Validation, Workflow |
+| `demo_documentation_standard.md` | DOC- | engineering_guideline | illustrative | Documentation |
+| `demo_banking_domain_glossary.md` | GLO- | domain_glossary | illustrative | Classification, Stage 1 clarification |
+
+Each agent only searches the document types relevant to its job (see `AGENT_PROFILES` in `backend/app/services/rag.py`): regulatory documents, policies and security standards (`regulation`, `organisational_policy`, `security_standard`, `reference`) for compliance, security and risk; `engineering_guideline` for quality, SDLC, workflow, documentation and validation; `domain_glossary` for classification. The "Used by" column shows where a document is typically relevant - retrieval decides per analysis.
 
 ### Illustrative documents (fictional)
 
-The six `demo_*.md` files are **fictional internal policies of "ReqPilot Demo Bank"**, an organisation that does not exist. They were written for this academic demo so that ReqPilot has concrete, testable clauses to match against (for example a 10-minute session idle timeout, 10-year transaction retention, or an RTO of 2 hours and RPO of 15 minutes). They are not laws, regulations or official guidelines. The numbers in them are plausible but invented, and they do not reproduce any regulator's text. ReqPilot should label any evidence drawn from them as "illustrative".
+The `demo_*.md` files are **fictional internal policies, guidelines and a glossary of "ReqPilot Demo Bank"**, an organisation that does not exist. They were written for this academic demo so that ReqPilot has concrete, testable clauses to match against (for example a 10-minute session idle timeout, 10-year transaction retention, or an RTO of 2 hours and RPO of 15 minutes). They are not laws, regulations or official guidelines. The numbers in them are plausible but invented, and they do not reproduce any regulator's text. ReqPilot should label any evidence drawn from them as "illustrative".
 
 ### Reference catalogue
+
+`international_security_standards_catalogue.md` does the same for international application-security standards (OWASP ASVS, OWASP Top 10, OWASP MASVS, OWASP API Security Top 10). Like PCI DSS and ISO/IEC 27001 in the Indian catalogue, it is filed under jurisdiction `India` (the standards apply to Indian projects); set a document's jurisdiction to `International` to make it retrievable for every jurisdiction.
 
 `india_regulatory_reference_catalogue.md` lists real Indian laws, RBI directions and circulars, CERT-In directions, NPCI guidelines and industry standards (PCI DSS, ISO/IEC 27001). Each entry gives the official title, issuing body, approximate date, where to obtain it, and a short scope summary in our own words. **It contains no regulatory text and no clause numbers.** Treat a match against this catalogue as "this regulation is probably relevant, go and read it", not as clause-level evidence. Dates marked "verify with issuer" should be checked, and issuers regularly amend or consolidate their instruments.
 

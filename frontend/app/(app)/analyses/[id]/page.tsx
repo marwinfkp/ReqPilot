@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useLoadedAnalysis } from "@/components/analysis-context";
 import { ColumnBars } from "@/components/charts";
 import { BulletList, GeneratedBy, Section, StatTile, StatusPill } from "@/components/common";
+import { Evidence, RetrievalSummary } from "@/components/evidence";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -105,6 +106,11 @@ export default function OverviewPage() {
             <span>Requirement baseline: <StatusPill status={a.baseline_status} /></span>
             <span>Processing time: {m.duration_seconds}s</span>
             <span>LLM calls: {m.llm_calls}</span>
+            {m.evidence_citations != null && (
+              <span title="Knowledge-base citations of all agents whose quote was found in the retrieved source passage (a quotation check, not proof that the passage supports the finding; compliance mappings are counted separately)">
+                KB quotes verified: {m.evidence_verified}/{m.evidence_citations}
+              </span>
+            )}
             <span>Traceability coverage: {pct(m.traceability_coverage)}</span>
           </div>
         </Section>
@@ -145,12 +151,22 @@ export default function OverviewPage() {
         <Section title="Requirements by category" description="Multi-label: one requirement can belong to several categories.">
           <ColumnBars data={categories} />
         </Section>
-        <Section title="Validation report" description="Deterministic consistency checks run by the Validation Agent.">
+        <Section title="Validation report" description="Consistency checks run by the Validation Agent, including test coverage against the testing standard in the knowledge base.">
           <ul className="space-y-2">
             {a.validation_report.map((c) => (
               <li key={c.check} className="flex items-start gap-3 text-sm">
                 <StatusPill status={c.status} text={c.status.toUpperCase()} />
-                <div><p className="font-medium">{c.check}</p><p className="text-xs text-muted-foreground">{c.detail}</p></div>
+                <div className="min-w-0">
+                  <p className="font-medium">{c.check}</p><p className="text-xs text-muted-foreground">{c.detail}</p>
+                  {c.items?.some((i) => i.test_case) && (
+                    <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs">
+                      {c.items.filter((i) => i.test_case).map((i, n) => (
+                        <li key={n}><span className="font-mono">{i.requirement_id}</span>: {i.test_case} <span className="text-muted-foreground">- {i.reason}</span></li>
+                      ))}
+                    </ul>
+                  )}
+                  <Evidence citations={c.citations} />
+                </div>
               </li>
             ))}
           </ul>
@@ -163,7 +179,7 @@ export default function OverviewPage() {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow><TableHead>#</TableHead><TableHead>Agent / operation</TableHead><TableHead>Status</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Time</TableHead><TableHead className="text-right">LLM calls</TableHead><TableHead>Result</TableHead></TableRow>
+              <TableRow><TableHead>#</TableHead><TableHead>Agent / operation</TableHead><TableHead>Status</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Time</TableHead><TableHead className="text-right">LLM calls</TableHead><TableHead>Knowledge base</TableHead><TableHead>Result</TableHead></TableRow>
             </TableHeader>
             <TableBody>
               {(["stage1", "stage2"] as const).map((stage) => {
@@ -171,7 +187,7 @@ export default function OverviewPage() {
                 if (!runs.length) return null;
                 return [
                   <TableRow key={`${stage}-header`} className="bg-muted/50 hover:bg-muted/50">
-                    <TableCell colSpan={7} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <TableCell colSpan={8} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {stage === "stage1" ? "Stage 1 - preliminary analysis, clarification and full 12-agent analysis"
                         : `Stage 2 - refinement${a.version > 1 ? ` (regeneration that created version ${a.version})` : ""}`}
                     </TableCell>
@@ -184,6 +200,7 @@ export default function OverviewPage() {
                       <TableCell className="text-xs">{r.mode === "rules" ? "Rules only" : r.mode === "human" ? "Human input" : "OpenAI + rules"}</TableCell>
                       <TableCell className="text-right tabular-nums">{r.duration_ms} ms</TableCell>
                       <TableCell className="text-right tabular-nums">{r.llm_calls.length}</TableCell>
+                      <TableCell className="min-w-[170px] whitespace-normal"><RetrievalSummary logs={r.retrieval} /></TableCell>
                       <TableCell className="min-w-[320px] whitespace-normal text-xs text-muted-foreground">{r.message}</TableCell>
                     </TableRow>
                   )),

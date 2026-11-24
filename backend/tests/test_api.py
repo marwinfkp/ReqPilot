@@ -590,7 +590,7 @@ def search(client, auth, query, jurisdiction="India"):
 def test_seeded_knowledge_base(client, auth):
     docs = client.get("/api/knowledge/documents", headers=auth("auditor")).json()
     seeded = [d for d in docs if d["uploaded_by"] == "system (seed)"]
-    assert len(seeded) == 7
+    assert len(seeded) == 14  # 7 regulatory/policy documents + 7 added for the other agents (RAG across agents)
     assert all(d["allowlisted"] and d["chunk_count"] > 0 and d["embedded_chunks"] == 0 for d in seeded)
     detail = client.get(f"/api/knowledge/documents/{seeded[0]['id']}", headers=auth("auditor")).json()
     assert len(detail["chunks"]) == detail["chunk_count"] and detail["chunks"][0]["text"]

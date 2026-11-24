@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useLoadedAnalysis } from "@/components/analysis-context";
 import { Meter } from "@/components/charts";
 import { Section, StatTile } from "@/components/common";
+import { Evidence } from "@/components/evidence";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -47,14 +48,14 @@ export default function TraceabilityPage() {
         </div>
       </Section>
       <Section title="Requirements Traceability Matrix"
-        description="Stakeholder statement → requirement → categories → controls → user story → acceptance criteria → tests → workflow phase."
+        description="Stakeholder statement → requirement → categories → controls (with verified knowledge-base evidence) → findings → user story → acceptance criteria → tests → workflow phase."
         actions={<div className="flex items-center gap-2"><Checkbox id="missing" checked={onlyMissing} onCheckedChange={(v) => setOnlyMissing(!!v)} /><Label htmlFor="missing" className="text-sm font-normal">Only missing links</Label></div>}>
         <div className="overflow-x-auto">
           <Table className="text-xs">
             <TableHeader>
               <TableRow>
                 <TableHead>Requirement</TableHead><TableHead>Stakeholder statement</TableHead><TableHead>Regulatory controls</TableHead>
-                <TableHead>Security controls</TableHead><TableHead>User story</TableHead><TableHead>Acceptance criteria</TableHead>
+                <TableHead>Security controls</TableHead><TableHead>Compliance &amp; security findings</TableHead><TableHead>User story</TableHead><TableHead>Acceptance criteria</TableHead>
                 <TableHead>Tests</TableHead><TableHead>Workflow phase</TableHead><TableHead>Clarifications</TableHead><TableHead>Missing links</TableHead><TableHead>Coverage</TableHead>
               </TableRow>
             </TableHeader>
@@ -68,6 +69,10 @@ export default function TraceabilityPage() {
                     <TableCell className="min-w-[240px] max-w-[320px] whitespace-normal">{t.source_statement}<p className="mt-1 text-muted-foreground">— {t.source}</p></TableCell>
                     <TableCell className="min-w-[180px] whitespace-normal"><Cell items={t.regulatory_controls} empty={expectsReg ? "missing" : "not required"} /></TableCell>
                     <TableCell className="min-w-[180px] whitespace-normal"><Cell items={t.security_controls} empty={expectsSec ? "missing" : "not required"} /></TableCell>
+                    <TableCell className="min-w-[220px] whitespace-normal">
+                      {t.linked_findings?.length ? <Cell items={t.linked_findings} /> : <span className="text-muted-foreground">–</span>}
+                      <Evidence citations={t.citations} />
+                    </TableCell>
                     <TableCell className="min-w-[220px] max-w-[280px] whitespace-normal">{t.user_story || <span className="text-red-700">missing</span>}</TableCell>
                     <TableCell className="min-w-[220px] whitespace-normal"><Cell items={t.acceptance_criteria} /></TableCell>
                     <TableCell className="min-w-[180px] whitespace-normal"><Cell items={t.tests} /></TableCell>

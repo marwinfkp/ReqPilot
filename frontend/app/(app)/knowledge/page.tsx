@@ -41,13 +41,21 @@ type KbDocument = {
   suspicious_chunks: number;
 };
 
-type Chunk = { id: number; section_ref: string; title: string; text: string; topics: string[]; suspicious: boolean; embedded: boolean };
+type Chunk = { id: number; section_ref: string; title: string; text: string; topics: string[]; suspicious: boolean; embedded: boolean; page?: number | null };
 
 type SearchHit = {
   chunk_id: number; document_name: string; section_ref: string; title: string; text: string; score: number; authenticity: string;
+  doc_type?: string; page?: number | null; match?: string;
 };
 
-const DOC_TYPES = ["regulation", "organisational_policy", "security_standard", "reference"];
+const DOC_TYPES = ["regulation", "organisational_policy", "security_standard", "reference", "engineering_guideline", "domain_glossary"];
+// Test retrieval with the same document-type filter an agent uses (backend rag.AGENT_PROFILES).
+const RETRIEVAL_AGENTS: [string, string][] = [
+  ["", "All documents"], ["compliance", "Compliance & Regulatory"], ["security", "Security & Privacy"], ["risk", "Risk Analysis"],
+  ["classification", "Classification (glossary)"], ["quality", "Quality (requirements guideline)"], ["sdlc", "SDLC Selection"],
+  ["workflow", "Workflow Generation"], ["documentation", "Documentation"], ["validation", "Validation (testing standard)"],
+  ["clarification", "Clarification questions"],
+];
 const AUTHENTICITY = ["official", "illustrative", "reference"];
 
 function DocumentSheet({ documentId, onClose }: { documentId: number | null; onClose: () => void }) {
@@ -91,6 +99,7 @@ function DocumentSheet({ documentId, onClose }: { documentId: number | null; onC
                         <AlertTriangle className="size-3" /> Instruction-like text · excluded from retrieval
                       </span>
                     )}
+                    {chunk.page ? <span className="text-[11px] text-muted-foreground">page {chunk.page}</span> : null}
                     {!chunk.embedded && <span className="text-[11px] text-muted-foreground">no embedding</span>}
                   </div>
                   <div className="mt-1"><Chips items={chunk.topics} max={5} /></div>
@@ -242,7 +251,8 @@ export default function KnowledgePage() {
   const [openDoc, setOpenDoc] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<{ method: string; results: SearchHit[] } | null>(null);
+  const [results, setResults] = useState<{ method: string; results: SearchHit[]; doc_types?: string[] | null } | null>(null);
+  const [agent, setAgent] = useState("");
   const [reindexing, setReindexing] = useState(false);
 
   const load = useCallback(() => {
@@ -266,7 +276,7 @@ export default function KnowledgePage() {
     if (!query.trim()) return;
     setSearching(true);
     try {
-      setResults(await api(`/api/knowledge/search?q=${encodeURIComponent(query)}&jurisdiction=India&k=5`));
+      setResults(await api(`/api/knowledge/search?q=${encodeURIComponent(query)}&jurisdiction=India&k=5${agent ? `&agent=${agent}` : ""}`));
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -291,7 +301,7 @@ export default function KnowledgePage() {
     <>
       <PageHeader
         title="Knowledge Base"
-        description="Regulations, organisational policies and security standards used for retrieval-grounded compliance analysis."
+        description="Regulations, policies, security standards, engineering guidelines and a domain glossary. Each agent retrieves the passages relevant to its own task."
         actions={
           <>
             {canManage && (
@@ -311,23 +321,30 @@ export default function KnowledgePage() {
         </Notice>
         <Notice>
           Retrieved passages are treated as untrusted data: they are wrapped as data in every prompt, sections containing instruction-like
-          text are excluded, and only allowlisted documents of the project&apos;s jurisdiction are retrieved.
+          text are excluded, and only allowlisted documents of the project&apos;s jurisdiction are retrieved. Every agent searches
+          only its own document types (e.g. the Quality Agent the requirements guideline, the Security Agent policies and standards),
+          and every citation is checked against the passage it was given.
         </Notice>
       </div>
 
       <div className="space-y-6">
-        <Section title="Test retrieval" description="Runs the same retrieval the Compliance Agent uses (semantic with pgvector when embeddings exist, otherwise lexical).">
+        <Section title="Test retrieval" description="Runs the same retrieval the agents use (semantic with pgvector when embeddings exist, otherwise lexical), optionally with one agent's document-type filter.">
           <form onSubmit={search} className="flex flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
               <Input className="pl-8" value={query} onChange={(e) => setQuery(e.target.value)}
                 placeholder="e.g. step-up authentication for high-value fund transfers" />
             </div>
+            <Select value={agent || "all"} onValueChange={(v) => setAgent(v === "all" ? "" : v)}>
+              <SelectTrigger className="sm:w-60" aria-label="Retrieve as agent"><SelectValue /></SelectTrigger>
+              <SelectContent>{RETRIEVAL_AGENTS.map(([key, name]) => <SelectItem key={key || "all"} value={key || "all"}>{name}</SelectItem>)}</SelectContent>
+            </Select>
             <Button type="submit" disabled={searching || !query.trim()}>{searching ? "Searching…" : "Search"}</Button>
           </form>
           {results && (
             <div className="mt-4 space-y-2">
-              <p className="text-xs text-muted-foreground">Method: <span className="font-medium text-foreground">{results.method}</span> · {results.results.length} result(s)</p>
+              <p className="text-xs text-muted-foreground">Method: <span className="font-medium text-foreground">{results.method}</span> · {results.results.length} result(s)
+                {results.doc_types && <> · document types: {results.doc_types.map(label).join(", ")}</>}</p>
               {results.results.length === 0 && <p className="text-sm text-muted-foreground">No allowlisted passages matched.</p>}
               {results.results.map((hit) => (
                 <div key={hit.chunk_id} className="rounded-md border p-3">
@@ -336,6 +353,9 @@ export default function KnowledgePage() {
                     <span className="font-mono text-xs">{hit.section_ref}</span>
                     <span className="text-muted-foreground">{hit.title}</span>
                     <AuthenticityBadge value={hit.authenticity} />
+                    {hit.doc_type && <Badge variant="outline" className="font-normal">{label(hit.doc_type)}</Badge>}
+                    {hit.page ? <span className="text-xs text-muted-foreground">page {hit.page}</span> : null}
+                    {hit.match && <span className="text-xs text-primary">{hit.match}</span>}
                     <span className="ml-auto text-xs tabular-nums text-muted-foreground">score {hit.score.toFixed(3)}</span>
                   </div>
                   <p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{hit.text}</p>
