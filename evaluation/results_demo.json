@@ -1,0 +1,334 @@
+{
+  "label": "SYNTHETIC BENCHMARK - not validated against real financial institutions",
+  "mode": "demo",
+  "model": "rule-based agents",
+  "generated_at": "2026-11-23T21:33:40.614985+00:00",
+  "summary": {
+    "extraction_precision": 1.0,
+    "extraction_recall": 1.0,
+    "extraction_f1": 1.0,
+    "completeness": 0.974,
+    "ambiguity_accuracy": 0.994,
+    "ambiguity_f1": 0.987,
+    "conflict_precision": 1.0,
+    "conflict_recall": 0.875,
+    "conflict_f1": 0.917,
+    "compliance_coverage": 0.861,
+    "citation_correctness": 1.0,
+    "hallucination_rate": null,
+    "sdlc_exact_accuracy": 0.5,
+    "sdlc_acceptable_accuracy": 1.0,
+    "traceability_coverage": 0.974,
+    "avg_processing_seconds": 0.09
+  },
+  "cases": [
+    {
+      "case": "digital_banking",
+      "title": "Digital Banking Application",
+      "ground_truth_requirements": 41,
+      "extracted_requirements": 41,
+      "extraction": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 41,
+        "fp": 0,
+        "fn": 0
+      },
+      "completeness": 0.976,
+      "ambiguity_detection": {
+        "precision": 0.9,
+        "recall": 1.0,
+        "f1": 0.947,
+        "tp": 9,
+        "fp": 1,
+        "fn": 0,
+        "accuracy": 0.976
+      },
+      "conflict_detection": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 3,
+        "fp": 0,
+        "fn": 0,
+        "accuracy_note": "3/3 expected pairs found"
+      },
+      "duplicate_detection": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 2,
+        "accuracy_note": "0/2 expected pairs found"
+      },
+      "compliance_coverage": 1.0,
+      "compliance_addressed": 1.0,
+      "citation_correctness": 1.0,
+      "hallucination_rate": null,
+      "llm_references_checked": 0,
+      "sdlc": {
+        "recommended": "DevSecOps",
+        "expected": "Hybrid (Agile + DevSecOps)",
+        "acceptable": [
+          "Hybrid (Agile + DevSecOps)",
+          "DevSecOps",
+          "Hybrid (Agile + V-Model)"
+        ],
+        "exact_match": false,
+        "acceptable_match": true,
+        "expected_rank": 2,
+        "score": 86.9
+      },
+      "traceability_coverage": 0.979,
+      "processing_seconds": 0.17,
+      "agent_status": {
+        "Requirement Extraction Agent": "completed",
+        "Requirement Classification Agent": "completed",
+        "Requirement Quality & Conflict Agent": "completed",
+        "Compliance & Regulatory Agent": "completed",
+        "Security & Privacy Agent": "completed",
+        "Risk Analysis Agent": "completed",
+        "SDLC Selection Agent": "completed",
+        "SDLC Workflow Generation Agent": "completed",
+        "Documentation Agent": "completed",
+        "Traceability Builder": "completed",
+        "Validation Agent": "completed",
+        "Summary Writer": "completed"
+      }
+    },
+    {
+      "case": "loan_processing",
+      "title": "Loan Origination and Processing System",
+      "ground_truth_requirements": 25,
+      "extracted_requirements": 25,
+      "extraction": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 25,
+        "fp": 0,
+        "fn": 0
+      },
+      "completeness": 0.96,
+      "ambiguity_detection": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "accuracy": 1.0
+      },
+      "conflict_detection": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 0.667,
+        "tp": 1,
+        "fp": 0,
+        "fn": 1,
+        "accuracy_note": "1/2 expected pairs found"
+      },
+      "duplicate_detection": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "accuracy_note": "0/1 expected pairs found"
+      },
+      "compliance_coverage": 0.9,
+      "compliance_addressed": 0.9,
+      "citation_correctness": 1.0,
+      "hallucination_rate": null,
+      "llm_references_checked": 0,
+      "sdlc": {
+        "recommended": "V-Model",
+        "expected": "V-Model",
+        "acceptable": [
+          "V-Model",
+          "Hybrid (Agile + V-Model)"
+        ],
+        "exact_match": true,
+        "acceptable_match": true,
+        "expected_rank": 1,
+        "score": 68.6
+      },
+      "traceability_coverage": 0.99,
+      "processing_seconds": 0.07,
+      "agent_status": {
+        "Requirement Extraction Agent": "completed",
+        "Requirement Classification Agent": "completed",
+        "Requirement Quality & Conflict Agent": "completed",
+        "Compliance & Regulatory Agent": "completed",
+        "Security & Privacy Agent": "completed",
+        "Risk Analysis Agent": "completed",
+        "SDLC Selection Agent": "completed",
+        "SDLC Workflow Generation Agent": "completed",
+        "Documentation Agent": "completed",
+        "Traceability Builder": "completed",
+        "Validation Agent": "completed",
+        "Summary Writer": "completed"
+      }
+    },
+    {
+      "case": "payment_system",
+      "title": "Real-Time Payments Hub",
+      "ground_truth_requirements": 25,
+      "extracted_requirements": 25,
+      "extraction": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 25,
+        "fp": 0,
+        "fn": 0
+      },
+      "completeness": 0.96,
+      "ambiguity_detection": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "accuracy": 1.0
+      },
+      "conflict_detection": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "accuracy_note": "2/2 expected pairs found"
+      },
+      "duplicate_detection": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "accuracy_note": "0/1 expected pairs found"
+      },
+      "compliance_coverage": 0.917,
+      "compliance_addressed": 1.0,
+      "citation_correctness": 1.0,
+      "hallucination_rate": null,
+      "llm_references_checked": 0,
+      "sdlc": {
+        "recommended": "DevSecOps",
+        "expected": "DevSecOps",
+        "acceptable": [
+          "DevSecOps",
+          "Hybrid (Agile + DevSecOps)"
+        ],
+        "exact_match": true,
+        "acceptable_match": true,
+        "expected_rank": 1,
+        "score": 79.0
+      },
+      "traceability_coverage": 0.982,
+      "processing_seconds": 0.07,
+      "agent_status": {
+        "Requirement Extraction Agent": "completed",
+        "Requirement Classification Agent": "completed",
+        "Requirement Quality & Conflict Agent": "completed",
+        "Compliance & Regulatory Agent": "completed",
+        "Security & Privacy Agent": "completed",
+        "Risk Analysis Agent": "completed",
+        "SDLC Selection Agent": "completed",
+        "SDLC Workflow Generation Agent": "completed",
+        "Documentation Agent": "completed",
+        "Traceability Builder": "completed",
+        "Validation Agent": "completed",
+        "Summary Writer": "completed"
+      }
+    },
+    {
+      "case": "fraud_detection",
+      "title": "Fraud Detection Platform",
+      "ground_truth_requirements": 21,
+      "extracted_requirements": 21,
+      "extraction": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 21,
+        "fp": 0,
+        "fn": 0
+      },
+      "completeness": 1.0,
+      "ambiguity_detection": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "accuracy": 1.0
+      },
+      "conflict_detection": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "accuracy_note": "2/2 expected pairs found"
+      },
+      "duplicate_detection": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "accuracy_note": "0/1 expected pairs found"
+      },
+      "compliance_coverage": 0.625,
+      "compliance_addressed": 0.75,
+      "citation_correctness": 1.0,
+      "hallucination_rate": null,
+      "llm_references_checked": 0,
+      "sdlc": {
+        "recommended": "Hybrid (Agile + DevSecOps)",
+        "expected": "Spiral",
+        "acceptable": [
+          "Spiral",
+          "Hybrid (Agile + DevSecOps)"
+        ],
+        "exact_match": false,
+        "acceptable_match": true,
+        "expected_rank": 2,
+        "score": 62.0
+      },
+      "traceability_coverage": 0.943,
+      "processing_seconds": 0.05,
+      "agent_status": {
+        "Requirement Extraction Agent": "completed",
+        "Requirement Classification Agent": "completed",
+        "Requirement Quality & Conflict Agent": "completed",
+        "Compliance & Regulatory Agent": "completed",
+        "Security & Privacy Agent": "completed",
+        "Risk Analysis Agent": "completed",
+        "SDLC Selection Agent": "completed",
+        "SDLC Workflow Generation Agent": "completed",
+        "Documentation Agent": "completed",
+        "Traceability Builder": "completed",
+        "Validation Agent": "completed",
+        "Summary Writer": "completed"
+      }
+    }
+  ],
+  "limitations": [
+    "Synthetic benchmark: 4 case studies written for this project; ground truth assigned by the developer, not validated by domain experts or real financial institutions.",
+    "Rule keywords and benchmark were authored by the same person, so rule-mode scores may be optimistic.",
+    "Expected SDLC labels are the author's judgement (with acceptable alternatives), not decisions of experienced architects.",
+    "Hallucination rate counts LLM references (requirement IDs, chunk IDs, quotes) that did not exist; in demonstration mode no LLM output exists, so it is reported as not applicable.",
+    "Stakeholder satisfaction, human correction rate and time saved versus manual analysis require user studies and are not measured."
+  ]
+}

@@ -1,0 +1,1520 @@
+{
+  "description": "Synthetic financial-sector benchmark authored for ReqPilot evaluation. Ground truth was assigned by the developer, not validated by domain experts or real financial institutions.",
+  "cases": [
+    {
+      "key": "digital_banking",
+      "title": "Digital Banking Application",
+      "project": {
+        "name": "Digital Banking Application",
+        "domain": "digital_banking",
+        "description": "A retail bank in India is replacing its ageing internet banking portal with a mobile-first digital banking platform for Android, iOS and web. The platform covers digital account opening with Aadhaar-based e-KYC, fund transfers over UPI, IMPS and NEFT, deposits and service requests, and must integrate with the bank's legacy core banking system. RBI expectations on digital payment security and data localisation apply, and the product backlog is expected to evolve with fortnightly releases after launch.",
+        "jurisdiction": "India",
+        "scale": "large",
+        "budget": "INR 18 crore over 18 months",
+        "schedule": "MVP in 9 months, then fortnightly releases",
+        "stakeholder_availability": "medium"
+      },
+      "requirements_text": "Accounts and onboarding:\nNote: the bank currently runs a legacy core banking system (CBS) with nightly batch interfaces and limited real-time APIs.\n- [Customer] The app shall allow a new customer to open a savings account digitally using Aadhaar-based e-KYC and PAN verification.\n- [Compliance Officer] The system must capture explicit customer consent, with timestamp and purpose, before performing Aadhaar-based authentication.\n- [Business Analyst] Accounts opened through OTP-based e-KYC shall be limited to a maximum balance of INR 1,00,000 until full KYC is completed.\n- [Customer] The onboarding journey should be simple and user-friendly.\n- [Operations] The system shall support video-based customer identification conducted live by a bank official, including a liveness check and geolocation capture.\n- [Product Owner] 90% of applicants who have Aadhaar and PAN available shall be able to complete account opening within 10 minutes.\n\nLogin and session security:\n- [Security Team] Customers shall log in using a 6-digit MPIN or device biometrics, with the app bound to the registered mobile number and device.\n- [Security Team] Customer sessions shall be terminated automatically after 5 minutes of inactivity.\n- [Security Team] Digital banking access shall be locked for 30 minutes after 5 consecutive failed login attempts.\n- [Product Owner] To avoid frustrating customers, the session idle timeout must be 30 minutes.\n- [Security Team] All data in transit shall be encrypted using TLS 1.2 or higher, and the mobile app shall implement certificate pinning.\n- [Security Team] Customer personal data and transaction data at rest, including backups, shall be encrypted using AES-256.\n- [Architect] The application should be secure enough to resist common attacks.\n- The app shall detect rooted or jailbroken devices and block financial transactions on them.\n- [Customer] A customer's account must be locked after five unsuccessful login attempts in a row.\n\nPayments and transfers:\n- [Customer] Customers shall be able to transfer funds using UPI, IMPS and NEFT from a single payments screen.\n- [Business Analyst] The default daily limit for transfers to third-party beneficiaries shall be INR 2,00,000, which the customer may change up to INR 5,00,000.\n- [Risk Management] Transfers to a newly added beneficiary shall be capped at INR 25,000 for the first 24 hours after the beneficiary is added.\n- [Security Team] Any fund transfer of INR 50,000 or more shall require step-up authentication with a one-time password.\n- [Customer] Customers shall receive an SMS and push notification for every debit transaction within 30 seconds.\n- [Product Owner] The system should process transfers fast.\n- [Business Analyst] The charge for IMPS transfers above INR 1,00,000 shall be TBD.\n- [Customer] Customers must be alerted on their phone every time money is debited from their account.\n\nDeposits and service requests:\n- Customers shall be able to open and prematurely close fixed deposits online, with interest rates fetched from the CBS.\n- [Business Analyst] The app may show personalised product offers based on transaction history, as appropriate.\n- [Customer] Customers shall be able to raise and track service requests and complaints in the app, receiving a reference number on submission.\n- [Business Analyst] Customer interaction events shall be published to the CDP within 5 minutes.\n\nData protection, privacy and audit:\n- [Compliance Officer] All customer and payment data, including backups and logs, shall be stored only in data centres located in India.\n- [Compliance Officer] Transaction records shall be retained for at least 10 years from the date of the transaction.\n- [Product Owner] To reduce storage costs, transaction history older than 3 years shall be permanently deleted from all systems.\n- [Auditor] The system shall maintain a tamper-evident audit trail of all logins, financial transactions and changes to customer profile data, including user ID, timestamp and device ID.\n- [Customer] Customers should be able to easily view and withdraw the consents they have given from a privacy dashboard in the app.\n- [Security Team] Production customer data shall not be used in test environments unless it is irreversibly masked.\nContext: the product backlog is expected to change frequently after launch based on customer feedback, app-store reviews and usage analytics.\n\nPerformance, availability and operations:\n- [Operations] The platform shall be available 99.99% of the time, 24x7, including weekends.\n- [Operations] A maintenance window of 4 hours every Sunday night shall be reserved, during which digital banking will be unavailable for CBS batch processing and deployments.\n- [Architect] The system shall support 20,000 concurrent users with a response time under 2 seconds at the 95th percentile for interactive requests.\n- [Operations] Critical services shall have a recovery time objective of 2 hours and a recovery point objective of 15 minutes, with the disaster recovery site located in India.\n- [Operations] The back-office admin portal should have minimal downtime.\n- [Architect] All channel requests to the CBS shall be routed through the ESB.\n- [Product Owner] New features shall be released to production every two weeks through an automated CI/CD pipeline that runs SAST, DAST and dependency scanning.\n- The mobile app shall support Android 10 and above and iOS 15 and above.",
+      "ground_truth": {
+        "requirements": [
+          {
+            "id": "GT-01",
+            "statement": "The app shall allow a new customer to open a savings account digitally using Aadhaar-based e-KYC and PAN verification.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "regulatory"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-02",
+            "statement": "The system must capture explicit customer consent, with timestamp and purpose, before performing Aadhaar-based authentication.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "privacy",
+              "regulatory"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-03",
+            "statement": "Accounts opened through OTP-based e-KYC shall be limited to a maximum balance of INR 1,00,000 until full KYC is completed.",
+            "kind": "business_rule",
+            "categories": [
+              "business",
+              "regulatory"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-04",
+            "statement": "The onboarding journey should be simple and user-friendly.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "usability",
+              "stakeholder"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "Vague terms 'simple' and 'user-friendly' with no measurable acceptance criterion."
+          },
+          {
+            "id": "GT-05",
+            "statement": "The system shall support video-based customer identification conducted live by a bank official, including a liveness check and geolocation capture.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "regulatory",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-06",
+            "statement": "90% of applicants who have Aadhaar and PAN available shall be able to complete account opening within 10 minutes.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "performance",
+              "usability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-07",
+            "statement": "Customers shall log in using a 6-digit MPIN or device biometrics, with the app bound to the registered mobile number and device.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-08",
+            "statement": "Customer sessions shall be terminated automatically after 5 minutes of inactivity.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-09",
+            "statement": "Digital banking access shall be locked for 30 minutes after 5 consecutive failed login attempts.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-10",
+            "statement": "To avoid frustrating customers, the session idle timeout must be 30 minutes.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "security",
+              "usability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-11",
+            "statement": "All data in transit shall be encrypted using TLS 1.2 or higher, and the mobile app shall implement certificate pinning.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-12",
+            "statement": "Customer personal data and transaction data at rest, including backups, shall be encrypted using AES-256.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "security",
+              "data_management"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-13",
+            "statement": "The application should be secure enough to resist common attacks.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "security"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'Secure enough' and 'common attacks' are undefined; no threat model, standard or test criterion is given."
+          },
+          {
+            "id": "GT-14",
+            "statement": "The app shall detect rooted or jailbroken devices and block financial transactions on them.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-15",
+            "statement": "A customer's account must be locked after five unsuccessful login attempts in a row.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-16",
+            "statement": "Customers shall be able to transfer funds using UPI, IMPS and NEFT from a single payments screen.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "integration"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-17",
+            "statement": "The default daily limit for transfers to third-party beneficiaries shall be INR 2,00,000, which the customer may change up to INR 5,00,000.",
+            "kind": "business_rule",
+            "categories": [
+              "business",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-18",
+            "statement": "Transfers to a newly added beneficiary shall be capped at INR 25,000 for the first 24 hours after the beneficiary is added.",
+            "kind": "business_rule",
+            "categories": [
+              "business",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-19",
+            "statement": "Any fund transfer of INR 50,000 or more shall require step-up authentication with a one-time password.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-20",
+            "statement": "Customers shall receive an SMS and push notification for every debit transaction within 30 seconds.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-21",
+            "statement": "The system should process transfers fast.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "performance"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'Fast' has no measurable response-time or throughput target."
+          },
+          {
+            "id": "GT-22",
+            "statement": "The charge for IMPS transfers above INR 1,00,000 shall be TBD.",
+            "kind": "business_rule",
+            "categories": [
+              "business"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "Incomplete: contains 'TBD', so the fee value is not defined."
+          },
+          {
+            "id": "GT-23",
+            "statement": "Customers must be alerted on their phone every time money is debited from their account.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "stakeholder"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-24",
+            "statement": "Customers shall be able to open and prematurely close fixed deposits online, with interest rates fetched from the CBS.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "integration"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-25",
+            "statement": "The app may show personalised product offers based on transaction history, as appropriate.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "business",
+              "privacy"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'As appropriate' leaves the conditions for showing offers undefined; the consent basis is not stated."
+          },
+          {
+            "id": "GT-26",
+            "statement": "Customers shall be able to raise and track service requests and complaints in the app, receiving a reference number on submission.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "operational"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-27",
+            "statement": "Customer interaction events shall be published to the CDP within 5 minutes.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "integration",
+              "data_management"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "Undefined acronym 'CDP': the target system is not identified anywhere in the document."
+          },
+          {
+            "id": "GT-28",
+            "statement": "All customer and payment data, including backups and logs, shall be stored only in data centres located in India.",
+            "kind": "constraint",
+            "categories": [
+              "regulatory",
+              "data_management",
+              "privacy"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-29",
+            "statement": "Transaction records shall be retained for at least 10 years from the date of the transaction.",
+            "kind": "constraint",
+            "categories": [
+              "regulatory",
+              "data_management"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-30",
+            "statement": "To reduce storage costs, transaction history older than 3 years shall be permanently deleted from all systems.",
+            "kind": "business_rule",
+            "categories": [
+              "business",
+              "data_management"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-31",
+            "statement": "The system shall maintain a tamper-evident audit trail of all logins, financial transactions and changes to customer profile data, including user ID, timestamp and device ID.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "auditability",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-32",
+            "statement": "Customers should be able to easily view and withdraw the consents they have given from a privacy dashboard in the app.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "privacy",
+              "usability"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'Easily' is subjective and has no usability measure."
+          },
+          {
+            "id": "GT-33",
+            "statement": "Production customer data shall not be used in test environments unless it is irreversibly masked.",
+            "kind": "constraint",
+            "categories": [
+              "privacy",
+              "security",
+              "data_management"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-34",
+            "statement": "The platform shall be available 99.99% of the time, 24x7, including weekends.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "availability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-35",
+            "statement": "A maintenance window of 4 hours every Sunday night shall be reserved, during which digital banking will be unavailable for CBS batch processing and deployments.",
+            "kind": "constraint",
+            "categories": [
+              "operational",
+              "availability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-36",
+            "statement": "The system shall support 20,000 concurrent users with a response time under 2 seconds at the 95th percentile for interactive requests.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "performance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-37",
+            "statement": "Critical services shall have a recovery time objective of 2 hours and a recovery point objective of 15 minutes, with the disaster recovery site located in India.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "availability",
+              "reliability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-38",
+            "statement": "The back-office admin portal should have minimal downtime.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "availability"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'Minimal downtime' is not quantified as an availability percentage or maintenance window."
+          },
+          {
+            "id": "GT-39",
+            "statement": "All channel requests to the CBS shall be routed through the ESB.",
+            "kind": "constraint",
+            "categories": [
+              "integration"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "Undefined acronym 'ESB': the middleware component is never defined in the document."
+          },
+          {
+            "id": "GT-40",
+            "statement": "New features shall be released to production every two weeks through an automated CI/CD pipeline that runs SAST, DAST and dependency scanning.",
+            "kind": "constraint",
+            "categories": [
+              "maintenance",
+              "security",
+              "operational"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-41",
+            "statement": "The mobile app shall support Android 10 and above and iOS 15 and above.",
+            "kind": "constraint",
+            "categories": [
+              "operational",
+              "maintenance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          }
+        ],
+        "conflicts": [
+          {
+            "ids": [
+              "GT-08",
+              "GT-10"
+            ],
+            "reason": "Session idle timeout is specified as 5 minutes by the Security Team and 30 minutes by the Product Owner."
+          },
+          {
+            "ids": [
+              "GT-29",
+              "GT-30"
+            ],
+            "reason": "Transaction records must be retained for at least 10 years, but another requirement deletes transaction history older than 3 years."
+          },
+          {
+            "ids": [
+              "GT-34",
+              "GT-35"
+            ],
+            "reason": "99.99% availability 24x7 allows roughly 4 minutes of downtime per month, which contradicts a planned 4-hour outage every Sunday."
+          }
+        ],
+        "duplicates": [
+          {
+            "ids": [
+              "GT-09",
+              "GT-15"
+            ],
+            "reason": "Both require locking digital banking access after five consecutive failed login attempts."
+          },
+          {
+            "ids": [
+              "GT-20",
+              "GT-23"
+            ],
+            "reason": "Both require a mobile alert to the customer for every debit transaction."
+          }
+        ],
+        "expected_compliance_topics": [
+          "authentication",
+          "encryption",
+          "audit_logging",
+          "data_localisation",
+          "consent_privacy",
+          "data_retention",
+          "transaction_integrity",
+          "fraud_monitoring",
+          "kyc_cdd",
+          "customer_grievance",
+          "business_continuity",
+          "secure_development",
+          "change_management",
+          "performance_capacity"
+        ],
+        "expected_sdlc": "Hybrid (Agile + DevSecOps)",
+        "acceptable_sdlc": [
+          "Hybrid (Agile + DevSecOps)",
+          "DevSecOps",
+          "Hybrid (Agile + V-Model)"
+        ],
+        "sdlc_rationale": "Customer-facing features are expected to change frequently after launch and are delivered in fortnightly releases, which favours iterative Agile delivery. The system is security-critical and regulated (authentication, encryption, data localisation, audit trails) and already specifies a CI/CD pipeline with SAST, DAST and dependency scanning, so security must be automated into the delivery pipeline. A hybrid of Agile and DevSecOps fits best; pure DevSecOps or an Agile + V-Model hybrid for the regulated core are reasonable alternatives."
+      }
+    },
+    {
+      "key": "loan_processing",
+      "title": "Loan Origination and Processing System",
+      "project": {
+        "name": "Loan Origination and Processing System",
+        "domain": "lending",
+        "description": "A mid-sized Indian bank wants to digitise retail personal loan origination from application through credit appraisal, sanction, documentation and disbursement. Product and eligibility rules come from an approved, documented credit policy that changes at most once a year. The system must integrate with credit bureaus and the core banking system, and internal audit requires full traceability from requirements to test evidence with formal UAT sign-off before each release.",
+        "jurisdiction": "India",
+        "scale": "medium",
+        "budget": "INR 6 crore",
+        "schedule": "Go-live in 12 months, then quarterly releases",
+        "stakeholder_availability": "high"
+      },
+      "requirements_text": "Note: the product rules below are taken from the Board-approved Retail Credit Policy v4.2, which changes at most once a year with Credit Committee approval.\n\nApplication and eligibility:\n1. [Customer] Applicants shall be able to apply for a personal loan through the bank's website and mobile app with minimal documentation.\n2. Applicants must be between 21 and 60 years of age at the time of application to be eligible for a personal loan.\n3. [Business Analyst] The minimum net monthly income for salaried personal loan applicants shall be INR 25,000.\n4. [Compliance Officer] The system shall obtain the applicant's explicit consent before fetching their credit report from a credit bureau.\n5. [Architect] The system shall fetch credit reports from at least two credit bureaus through their APIs and store the bureau score with the application.\n6. [Customer] The application form should be easy to fill.\n\nCredit appraisal and decisioning:\n7. [Risk Management] Applications with a bureau score below 650 shall be automatically declined.\n8. [Business Analyst] Applicants with a bureau score of 600 or above shall be eligible for manual underwriting by a credit officer.\n9. [Compliance Officer] Credit decisions shall not use gender, religion, caste or marital status as inputs.\n10. [Compliance Officer] Every declined application shall record the top three reason codes, and the applicant shall be informed of the decision and the principal reasons within 2 working days.\n11. [Business Analyst] Applications shall be processed within a reasonable time.\n\nDocumentation and disbursement:\n12. [Compliance Officer] A Key Fact Statement showing the annual percentage rate, all fees and charges and the repayment schedule shall be generated and acknowledged by the borrower before the loan agreement is signed.\n13. [Operations] Signed loan documents shall be archived in the DMS within 1 working day of disbursement.\n14. Loan amounts shall be disbursed only to a bank account held in the borrower's own name.\n15. [Customer] Borrowers shall be able to cancel a digital loan within 3 days of disbursement without any prepayment penalty.\n16. [Business Analyst] Borrowers shall be allowed a free-look cancellation period of 7 days from disbursement.\n17. [Business Analyst] The processing fee shall be 1% of the loan amount, subject to a minimum of INR 1,000 and a maximum of TBD.\nNote: the current paper-based process will run in parallel for the first 3 months after go-live.\n\nCompliance, audit and non-functional:\n18. [Compliance Officer] The app, website and Key Fact Statement shall display the grievance redressal officer's contact details, and lending complaints shall be resolved within 30 days.\n19. [Auditor] All changes to application data, credit decisions and sanction approvals shall be recorded in an audit trail with user ID, old value, new value and timestamp.\n20. [Compliance Officer] Personal data of declined applicants shall be deleted 2 years after the decision.\n21. [Security Team] The system shall be hosted in the bank's data centre in India, and staff shall access it only through the corporate network with multi-factor authentication.\n22. The system shall support 500 concurrent staff users with page response times under 3 seconds.\n23. [Auditor] Every requirement shall be traceable to test cases and test evidence, and UAT sign-off by the Credit Committee is mandatory before each release.\n24. [Customer] Applicants shall be able to check the status of their application online at any time using the application reference number.\n25. [Customer] Customers should be able to track their loan application status on the website or app using their reference number.",
+      "ground_truth": {
+        "requirements": [
+          {
+            "id": "GT-01",
+            "statement": "Applicants shall be able to apply for a personal loan through the bank's website and mobile app with minimal documentation.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "usability"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'Minimal documentation' does not specify which documents are required."
+          },
+          {
+            "id": "GT-02",
+            "statement": "Applicants must be between 21 and 60 years of age at the time of application to be eligible for a personal loan.",
+            "kind": "business_rule",
+            "categories": [
+              "business"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-03",
+            "statement": "The minimum net monthly income for salaried personal loan applicants shall be INR 25,000.",
+            "kind": "business_rule",
+            "categories": [
+              "business"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-04",
+            "statement": "The system shall obtain the applicant's explicit consent before fetching their credit report from a credit bureau.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "privacy",
+              "regulatory"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-05",
+            "statement": "The system shall fetch credit reports from at least two credit bureaus through their APIs and store the bureau score with the application.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "integration"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-06",
+            "statement": "The application form should be easy to fill.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "usability",
+              "stakeholder"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'Easy to fill' is subjective with no measurable usability criterion."
+          },
+          {
+            "id": "GT-07",
+            "statement": "Applications with a bureau score below 650 shall be automatically declined.",
+            "kind": "business_rule",
+            "categories": [
+              "business"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-08",
+            "statement": "Applicants with a bureau score of 600 or above shall be eligible for manual underwriting by a credit officer.",
+            "kind": "business_rule",
+            "categories": [
+              "business"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-09",
+            "statement": "Credit decisions shall not use gender, religion, caste or marital status as inputs.",
+            "kind": "constraint",
+            "categories": [
+              "regulatory",
+              "business"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-10",
+            "statement": "Every declined application shall record the top three reason codes, and the applicant shall be informed of the decision and the principal reasons within 2 working days.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "regulatory"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-11",
+            "statement": "Applications shall be processed within a reasonable time.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "performance"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'Reasonable time' has no turnaround target."
+          },
+          {
+            "id": "GT-12",
+            "statement": "A Key Fact Statement showing the annual percentage rate, all fees and charges and the repayment schedule shall be generated and acknowledged by the borrower before the loan agreement is signed.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "regulatory"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-13",
+            "statement": "Signed loan documents shall be archived in the DMS within 1 working day of disbursement.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "data_management"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "Undefined acronym 'DMS': the archive system is never defined in the document."
+          },
+          {
+            "id": "GT-14",
+            "statement": "Loan amounts shall be disbursed only to a bank account held in the borrower's own name.",
+            "kind": "business_rule",
+            "categories": [
+              "business",
+              "regulatory",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-15",
+            "statement": "Borrowers shall be able to cancel a digital loan within 3 days of disbursement without any prepayment penalty.",
+            "kind": "business_rule",
+            "categories": [
+              "business",
+              "regulatory"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-16",
+            "statement": "Borrowers shall be allowed a free-look cancellation period of 7 days from disbursement.",
+            "kind": "business_rule",
+            "categories": [
+              "business"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-17",
+            "statement": "The processing fee shall be 1% of the loan amount, subject to a minimum of INR 1,000 and a maximum of TBD.",
+            "kind": "business_rule",
+            "categories": [
+              "business"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "Incomplete: the maximum processing fee is 'TBD'."
+          },
+          {
+            "id": "GT-18",
+            "statement": "The app, website and Key Fact Statement shall display the grievance redressal officer's contact details, and lending complaints shall be resolved within 30 days.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "regulatory",
+              "operational"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-19",
+            "statement": "All changes to application data, credit decisions and sanction approvals shall be recorded in an audit trail with user ID, old value, new value and timestamp.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "auditability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-20",
+            "statement": "Personal data of declined applicants shall be deleted 2 years after the decision.",
+            "kind": "constraint",
+            "categories": [
+              "regulatory",
+              "data_management",
+              "privacy"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-21",
+            "statement": "The system shall be hosted in the bank's data centre in India, and staff shall access it only through the corporate network with multi-factor authentication.",
+            "kind": "constraint",
+            "categories": [
+              "security",
+              "regulatory",
+              "operational"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-22",
+            "statement": "The system shall support 500 concurrent staff users with page response times under 3 seconds.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "performance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-23",
+            "statement": "Every requirement shall be traceable to test cases and test evidence, and UAT sign-off by the Credit Committee is mandatory before each release.",
+            "kind": "constraint",
+            "categories": [
+              "auditability",
+              "maintenance",
+              "operational"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-24",
+            "statement": "Applicants shall be able to check the status of their application online at any time using the application reference number.",
+            "kind": "functional",
+            "categories": [
+              "functional"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-25",
+            "statement": "Customers should be able to track their loan application status on the website or app using their reference number.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "stakeholder"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          }
+        ],
+        "conflicts": [
+          {
+            "ids": [
+              "GT-07",
+              "GT-08"
+            ],
+            "reason": "Scores from 600 to 649 are automatically declined under one rule but eligible for manual underwriting under another."
+          },
+          {
+            "ids": [
+              "GT-15",
+              "GT-16"
+            ],
+            "reason": "The loan cancellation (cooling-off) period is 3 days in one requirement and 7 days in another."
+          }
+        ],
+        "duplicates": [
+          {
+            "ids": [
+              "GT-24",
+              "GT-25"
+            ],
+            "reason": "Both require applicants to track application status online using the reference number."
+          }
+        ],
+        "expected_compliance_topics": [
+          "consent_privacy",
+          "fair_lending_disclosure",
+          "customer_grievance",
+          "audit_logging",
+          "data_retention",
+          "data_localisation",
+          "authentication",
+          "change_management",
+          "performance_capacity",
+          "third_party_api_security"
+        ],
+        "expected_sdlc": "V-Model",
+        "acceptable_sdlc": [
+          "V-Model",
+          "Hybrid (Agile + V-Model)"
+        ],
+        "sdlc_rationale": "Requirements are derived from an approved credit policy that changes at most once a year, stakeholders are highly available, and releases are quarterly. Heavy compliance obligations (fair lending, Key Fact Statement, audit trails) and the explicit demand for requirement-to-test traceability and formal UAT sign-off match the V-Model's paired verification and validation stages. An Agile + V-Model hybrid is acceptable if the customer-facing application journey is iterated separately."
+      }
+    },
+    {
+      "key": "payment_system",
+      "title": "Real-Time Payments Hub",
+      "project": {
+        "name": "Real-Time Payments Hub",
+        "domain": "payments",
+        "description": "A bank is building a centralised payments hub that processes UPI, IMPS, NEFT and RTGS payments for mobile, internet banking, branch and corporate API channels. The hub routes transactions to NPCI and RBI payment systems, enforces limits and fraud checks, reconciles settlements and posts entries to the core banking system. NPCI and RBI change operating rules periodically, so the hub will be released continuously through an automated, security-gated pipeline and operated 24x7 on a private cloud.",
+        "jurisdiction": "India",
+        "scale": "large",
+        "budget": "INR 12 crore",
+        "schedule": "UPI and IMPS in 6 months, NEFT and RTGS in 10 months, weekly releases thereafter",
+        "stakeholder_availability": "medium"
+      },
+      "requirements_text": "Note: the hub replaces three channel-specific payment engines, and all postings go to the core banking system (CBS).\n\nTransaction processing:\n1. [Product Owner] The payments hub shall process UPI, IMPS, NEFT and RTGS transactions from mobile banking, internet banking, branch and corporate API channels.\n2. [Architect] Every payment request shall carry a unique idempotency key, and a repeated request with the same key within 24 hours shall return the original result without a second debit.\n3. [Business Analyst] The maximum amount per UPI transaction shall be INR 1,00,000 for retail customers.\n4. [Product Owner] Retail customers shall be allowed to send up to INR 2,00,000 in a single UPI payment.\n5. The hub shall process 3,000 transactions per second at peak with end-to-end latency under 500 milliseconds at the 95th percentile.\n6. [Product Owner] Payments should go through instantly.\n\nSecurity and fraud controls:\n7. [Security Team] Every payment shall be scored by the fraud engine before authorisation, with the scoring decision returned within 200 milliseconds.\n8. [Security Team] Payments of INR 50,000 or more shall require step-up authentication.\n9. [Security Team] Connections to NPCI, partner banks and corporate clients shall use mutual TLS, and corporate APIs shall use OAuth 2.0 access tokens valid for no more than 15 minutes.\n10. [Security Team] Card data and authentication credentials shall be protected appropriately.\n11. [Security Team] Every build shall pass SAST, software composition analysis and container image scanning, and builds with critical findings shall be blocked from deployment.\n\nSettlement, disputes and reporting:\n12. Transactions shall be reconciled against NPCI settlement files and the CBS ledger at least daily, and unreconciled items shall be escalated after 2 business days.\n13. [Customer] Failed transactions in which the customer's account was debited but the beneficiary was not credited shall be auto-reversed within T+1 business day.\n14. [Operations] Debited-but-not-credited transactions must be automatically reversed to the customer by the next business day.\n15. [Customer] Customers shall be able to raise a dispute for any transaction in the app and receive a complaint reference on submission.\n16. [Operations] Disputes shall be resolved in a timely manner.\n17. [Compliance Officer] The monthly PSO report shall be generated automatically from transaction data.\n\nPlatform, availability and data:\n18. [Operations] The payments hub shall be available 99.99% of the time with no planned downtime.\n19. [Operations] The hub may be taken offline for up to 2 hours each month for database maintenance.\n20. [Operations] The recovery time objective shall be 30 minutes and the recovery point objective shall be zero, using active-active data centres in India.\n21. [Compliance Officer] All payment system data shall be stored only in systems located in India.\n22. [Auditor] Each payment shall have an end-to-end audit trail linking the request, authentication result, fraud score, network reference number and ledger posting, retained for 10 years.\n23. [Architect] The hub shall be deployed as containers on Kubernetes in the bank's private cloud, with all infrastructure defined as code.\n24. [Product Owner] Changes mandated by NPCI circulars shall be deployable to production within 2 weeks of the circular through the automated pipeline.\n25. Merchant settlement fees shall be TBD.",
+      "ground_truth": {
+        "requirements": [
+          {
+            "id": "GT-01",
+            "statement": "The payments hub shall process UPI, IMPS, NEFT and RTGS transactions from mobile banking, internet banking, branch and corporate API channels.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "integration"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-02",
+            "statement": "Every payment request shall carry a unique idempotency key, and a repeated request with the same key within 24 hours shall return the original result without a second debit.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "reliability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-03",
+            "statement": "The maximum amount per UPI transaction shall be INR 1,00,000 for retail customers.",
+            "kind": "business_rule",
+            "categories": [
+              "business"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-04",
+            "statement": "Retail customers shall be allowed to send up to INR 2,00,000 in a single UPI payment.",
+            "kind": "business_rule",
+            "categories": [
+              "business"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-05",
+            "statement": "The hub shall process 3,000 transactions per second at peak with end-to-end latency under 500 milliseconds at the 95th percentile.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "performance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-06",
+            "statement": "Payments should go through instantly.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "performance"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'Instantly' is not a measurable latency target."
+          },
+          {
+            "id": "GT-07",
+            "statement": "Every payment shall be scored by the fraud engine before authorisation, with the scoring decision returned within 200 milliseconds.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "security",
+              "performance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-08",
+            "statement": "Payments of INR 50,000 or more shall require step-up authentication.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-09",
+            "statement": "Connections to NPCI, partner banks and corporate clients shall use mutual TLS, and corporate APIs shall use OAuth 2.0 access tokens valid for no more than 15 minutes.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "security",
+              "integration"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-10",
+            "statement": "Card data and authentication credentials shall be protected appropriately.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "security"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'Appropriately' does not specify the protection mechanism (for example encryption standard or tokenisation)."
+          },
+          {
+            "id": "GT-11",
+            "statement": "Every build shall pass SAST, software composition analysis and container image scanning, and builds with critical findings shall be blocked from deployment.",
+            "kind": "constraint",
+            "categories": [
+              "security",
+              "maintenance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-12",
+            "statement": "Transactions shall be reconciled against NPCI settlement files and the CBS ledger at least daily, and unreconciled items shall be escalated after 2 business days.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "data_management",
+              "auditability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-13",
+            "statement": "Failed transactions in which the customer's account was debited but the beneficiary was not credited shall be auto-reversed within T+1 business day.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "reliability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-14",
+            "statement": "Debited-but-not-credited transactions must be automatically reversed to the customer by the next business day.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "reliability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-15",
+            "statement": "Customers shall be able to raise a dispute for any transaction in the app and receive a complaint reference on submission.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "operational"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-16",
+            "statement": "Disputes shall be resolved in a timely manner.",
+            "kind": "business_rule",
+            "categories": [
+              "business",
+              "operational"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'In a timely manner' gives no resolution turnaround time."
+          },
+          {
+            "id": "GT-17",
+            "statement": "The monthly PSO report shall be generated automatically from transaction data.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "regulatory"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "Undefined acronym 'PSO': the report and its recipient are not defined."
+          },
+          {
+            "id": "GT-18",
+            "statement": "The payments hub shall be available 99.99% of the time with no planned downtime.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "availability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-19",
+            "statement": "The hub may be taken offline for up to 2 hours each month for database maintenance.",
+            "kind": "constraint",
+            "categories": [
+              "operational",
+              "availability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-20",
+            "statement": "The recovery time objective shall be 30 minutes and the recovery point objective shall be zero, using active-active data centres in India.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "availability",
+              "reliability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-21",
+            "statement": "All payment system data shall be stored only in systems located in India.",
+            "kind": "constraint",
+            "categories": [
+              "regulatory",
+              "data_management"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-22",
+            "statement": "Each payment shall have an end-to-end audit trail linking the request, authentication result, fraud score, network reference number and ledger posting, retained for 10 years.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "auditability",
+              "data_management"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-23",
+            "statement": "The hub shall be deployed as containers on Kubernetes in the bank's private cloud, with all infrastructure defined as code.",
+            "kind": "constraint",
+            "categories": [
+              "operational",
+              "maintenance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-24",
+            "statement": "Changes mandated by NPCI circulars shall be deployable to production within 2 weeks of the circular through the automated pipeline.",
+            "kind": "constraint",
+            "categories": [
+              "maintenance",
+              "regulatory",
+              "operational"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-25",
+            "statement": "Merchant settlement fees shall be TBD.",
+            "kind": "business_rule",
+            "categories": [
+              "business"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "Incomplete: the fee schedule is 'TBD'."
+          }
+        ],
+        "conflicts": [
+          {
+            "ids": [
+              "GT-03",
+              "GT-04"
+            ],
+            "reason": "The retail per-transaction UPI limit is INR 1,00,000 in one requirement and INR 2,00,000 in another."
+          },
+          {
+            "ids": [
+              "GT-18",
+              "GT-19"
+            ],
+            "reason": "Availability with no planned downtime contradicts a monthly maintenance outage of up to 2 hours."
+          }
+        ],
+        "duplicates": [
+          {
+            "ids": [
+              "GT-13",
+              "GT-14"
+            ],
+            "reason": "Both require automatic reversal of debited-but-not-credited transactions by the next business day."
+          }
+        ],
+        "expected_compliance_topics": [
+          "transaction_integrity",
+          "fraud_monitoring",
+          "authentication",
+          "encryption",
+          "third_party_api_security",
+          "secure_development",
+          "change_management",
+          "business_continuity",
+          "data_localisation",
+          "audit_logging",
+          "customer_grievance",
+          "performance_capacity"
+        ],
+        "expected_sdlc": "DevSecOps",
+        "acceptable_sdlc": [
+          "DevSecOps",
+          "Hybrid (Agile + DevSecOps)"
+        ],
+        "sdlc_rationale": "The hub is a security-critical, 24x7 system with near-zero downtime and recovery targets, deployed as containers with infrastructure as code. It must absorb frequent regulatory changes from NPCI within weeks, and the requirements already mandate automated security gates (SAST, SCA, image scanning) that block deployment. Continuous delivery with security and operations built into the pipeline points to DevSecOps; an Agile + DevSecOps hybrid is also acceptable."
+      }
+    },
+    {
+      "key": "fraud_detection",
+      "title": "Fraud Detection Platform",
+      "project": {
+        "name": "Fraud Detection Platform",
+        "domain": "fraud_detection",
+        "description": "The bank wants a real-time fraud detection platform for digital payments and card transactions that combines rules with machine-learning models. Fraud patterns change frequently, labelled fraud data is limited and highly imbalanced, and the modelling approach and vendor components are still undecided. The team plans proof-of-concept iterations with risk reviews before each scale-up, followed by integration with the payments hub, card switch and case management tools.",
+        "jurisdiction": "India",
+        "scale": "medium",
+        "budget": "INR 4 crore for the proof of concept and pilot; further funding depends on pilot results",
+        "schedule": "3-month proof of concept, 6-month pilot, then phased rollout",
+        "stakeholder_availability": "low"
+      },
+      "requirements_text": "Context: historical fraud labels are available for only 18 months of transactions, and confirmed fraud makes up less than 0.1% of transactions.\nNote: the modelling approach and vendor components have not been finalised; the team will run proof-of-concept iterations and review risks before each scale-up.\n\nDetection and scoring:\n[Risk Management] The platform shall score every UPI, IMPS and card transaction before it is authorised.\n[Architect] The fraud score shall be returned to the payments hub within 100 milliseconds at the 99th percentile.\nThe platform shall combine configurable business rules with machine-learning model scores to produce a single risk score from 0 to 1000.\n[Product Owner] The fraud engine may take up to 2 seconds to return a score so that complex models can be evaluated.\n[Risk Management] Transactions with a risk score of 800 or above shall be blocked automatically, and those scoring between 500 and 799 shall be routed to the fraud operations queue for review.\n[Risk Management] During the pilot, the model shall detect at least 80% of confirmed fraud value while raising alerts on fewer than 0.5% of transactions.\n[Risk Management] The model should adapt to new fraud patterns as appropriate.\n\nModels and experimentation:\n[Architect] The platform shall support champion-challenger testing in which a new model scores live traffic in shadow mode before promotion.\n[Business Analyst] The choice of modelling technique shall be TBD after the proof of concept.\n[Risk Management] Every model shall be validated by an independent model risk team before deployment, and its population stability index shall be monitored monthly.\nProduction models shall be retrained at least monthly.\n[Architect] To keep results reproducible, production models shall be retrained no more than once per quarter.\n[Business Analyst] The platform should use a large number of features from device, location and behavioural data.\n[Risk Management] Each alert shall display the top three reasons contributing to the risk score so that analysts can understand the decision.\n\nOperations, case management and data:\n[Operations] Fraud analysts shall be able to review, annotate and close alerts in the case management tool, and every action shall be logged.\n[Product Owner] The analyst dashboard should be intuitive.\n[Customer] Customers shall receive an SMS and in-app prompt to confirm or deny a held transaction within 60 seconds of it being held.\n[Compliance Officer] Confirmed frauds shall be reported through the FMR process within the prescribed timelines.\n[Compliance Officer] Model training data shall be pseudonymised and stored only in India.\n[Operations] Analysts must be able to review and close fraud alerts and add notes, with all actions recorded in an audit log.\nThe platform shall integrate with the payments hub, the card switch and the case management tool through published APIs.",
+      "ground_truth": {
+        "requirements": [
+          {
+            "id": "GT-01",
+            "statement": "The platform shall score every UPI, IMPS and card transaction before it is authorised.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-02",
+            "statement": "The fraud score shall be returned to the payments hub within 100 milliseconds at the 99th percentile.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "performance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-03",
+            "statement": "The platform shall combine configurable business rules with machine-learning model scores to produce a single risk score from 0 to 1000.",
+            "kind": "functional",
+            "categories": [
+              "functional"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-04",
+            "statement": "The fraud engine may take up to 2 seconds to return a score so that complex models can be evaluated.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "performance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-05",
+            "statement": "Transactions with a risk score of 800 or above shall be blocked automatically, and those scoring between 500 and 799 shall be routed to the fraud operations queue for review.",
+            "kind": "business_rule",
+            "categories": [
+              "business",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-06",
+            "statement": "During the pilot, the model shall detect at least 80% of confirmed fraud value while raising alerts on fewer than 0.5% of transactions.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "performance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-07",
+            "statement": "The model should adapt to new fraud patterns as appropriate.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "maintenance"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'As appropriate' does not define how or how quickly the model must adapt."
+          },
+          {
+            "id": "GT-08",
+            "statement": "The platform shall support champion-challenger testing in which a new model scores live traffic in shadow mode before promotion.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "maintenance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-09",
+            "statement": "The choice of modelling technique shall be TBD after the proof of concept.",
+            "kind": "constraint",
+            "categories": [
+              "business"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "Incomplete: the modelling technique is 'TBD'."
+          },
+          {
+            "id": "GT-10",
+            "statement": "Every model shall be validated by an independent model risk team before deployment, and its population stability index shall be monitored monthly.",
+            "kind": "constraint",
+            "categories": [
+              "regulatory",
+              "maintenance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-11",
+            "statement": "Production models shall be retrained at least monthly.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "maintenance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-12",
+            "statement": "To keep results reproducible, production models shall be retrained no more than once per quarter.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "maintenance"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-13",
+            "statement": "The platform should use a large number of features from device, location and behavioural data.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "data_management"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'A large number of features' is not quantified and the feature set is not defined."
+          },
+          {
+            "id": "GT-14",
+            "statement": "Each alert shall display the top three reasons contributing to the risk score so that analysts can understand the decision.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "usability",
+              "auditability"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-15",
+            "statement": "Fraud analysts shall be able to review, annotate and close alerts in the case management tool, and every action shall be logged.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "auditability",
+              "operational"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-16",
+            "statement": "The analyst dashboard should be intuitive.",
+            "kind": "non_functional",
+            "categories": [
+              "non_functional",
+              "usability"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "'Intuitive' is subjective with no usability measure."
+          },
+          {
+            "id": "GT-17",
+            "statement": "Customers shall receive an SMS and in-app prompt to confirm or deny a held transaction within 60 seconds of it being held.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "security"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-18",
+            "statement": "Confirmed frauds shall be reported through the FMR process within the prescribed timelines.",
+            "kind": "constraint",
+            "categories": [
+              "regulatory"
+            ],
+            "ambiguous": true,
+            "ambiguity_reason": "Undefined acronym 'FMR', and 'prescribed timelines' are not stated."
+          },
+          {
+            "id": "GT-19",
+            "statement": "Model training data shall be pseudonymised and stored only in India.",
+            "kind": "constraint",
+            "categories": [
+              "privacy",
+              "regulatory",
+              "data_management"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-20",
+            "statement": "Analysts must be able to review and close fraud alerts and add notes, with all actions recorded in an audit log.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "auditability",
+              "operational"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          },
+          {
+            "id": "GT-21",
+            "statement": "The platform shall integrate with the payments hub, the card switch and the case management tool through published APIs.",
+            "kind": "functional",
+            "categories": [
+              "functional",
+              "integration"
+            ],
+            "ambiguous": false,
+            "ambiguity_reason": ""
+          }
+        ],
+        "conflicts": [
+          {
+            "ids": [
+              "GT-02",
+              "GT-04"
+            ],
+            "reason": "Scoring latency is 100 milliseconds at the 99th percentile in one requirement but may be up to 2 seconds in another."
+          },
+          {
+            "ids": [
+              "GT-11",
+              "GT-12"
+            ],
+            "reason": "Models must be retrained at least monthly, but another requirement limits retraining to once per quarter."
+          }
+        ],
+        "duplicates": [
+          {
+            "ids": [
+              "GT-15",
+              "GT-20"
+            ],
+            "reason": "Both require analysts to review, annotate and close alerts with every action logged."
+          }
+        ],
+        "expected_compliance_topics": [
+          "fraud_monitoring",
+          "transaction_integrity",
+          "audit_logging",
+          "consent_privacy",
+          "data_localisation",
+          "change_management",
+          "performance_capacity",
+          "breach_incident_reporting"
+        ],
+        "expected_sdlc": "Spiral",
+        "acceptable_sdlc": [
+          "Spiral",
+          "Hybrid (Agile + DevSecOps)"
+        ],
+        "sdlc_rationale": "The project has high technical uncertainty: the modelling technique is undecided, labelled data is scarce and imbalanced, and detection targets must be proven in a pilot before funding continues. Proof-of-concept iterations with explicit risk reviews before each scale-up match the Spiral model's risk-driven cycles. Because the platform sits in the real-time payment path and needs continuous model retraining and deployment, an Agile + DevSecOps hybrid is an acceptable alternative."
+      }
+    }
+  ]
+}

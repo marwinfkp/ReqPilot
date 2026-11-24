@@ -1,0 +1,22 @@
+﻿# PostgreSQL 16 with the pgvector extension (used for the RAG knowledge base).
+# Start with:  docker compose up -d
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: reqpilot2-db
+    environment:
+      POSTGRES_USER: reqpilot
+      POSTGRES_PASSWORD: reqpilot
+      POSTGRES_DB: reqpilot
+    ports:
+      - "5433:5432"
+    volumes:
+      - reqpilot_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reqpilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  reqpilot_pgdata:
