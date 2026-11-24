@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from app import llm
 from app.agents import valid_ids
+from app.agents.clarification_context import is_open, supplementary_text
 from app.rules import find_keywords
 from app.security import mask_sensitive, wrap_untrusted
 
@@ -203,11 +204,13 @@ def _ids(ctx: dict, *categories: str, limit: int = 8) -> list[str]:
 
 
 def _has_words(ctx: dict, words: list[str]) -> bool:
-    return any(find_keywords(r["statement"], words) for r in ctx["requirements"])
+    # Requirements plus the clarification information linked to them.
+    return any(find_keywords(supplementary_text(r), words) for r in ctx["requirements"])
 
 
 def _findings(ctx: dict, *types: str) -> list[dict]:
-    return [f for f in ctx["findings"] if f["issue_type"] in types or f["kind"] in types]
+    """Findings of these types that are still open (not fully resolved by clarification)."""
+    return [f for f in ctx["findings"] if (f["issue_type"] in types or f["kind"] in types) and is_open(f)]
 
 
 def customisations(ctx: dict) -> list[tuple[str, str, str, str]]:
@@ -274,6 +277,18 @@ def customisations(ctx: dict) -> list[tuple[str, str, str, str]]:
     if high_risks:
         add("High risks", "plan", "activities",
             f"Risk response planning for {len(high_risks)} high/critical risk(s) ({', '.join(r['risk_id'] for r in high_risks[:5])})")
+    # Clarification follow-up (Stage 1 questions).
+    questions = ctx.get("clarifications", [])
+    unanswered = [q for q in questions if q["status"] != "answered"]
+    if unanswered:
+        add("Open clarification questions", "plan", "activities",
+            f"Obtain answers to {len(unanswered)} open clarification question(s) "
+            f"({', '.join(q['code'] for q in unanswered[:6])}) before baselining")
+    answered_qs = [q for q in questions if q["status"] == "answered"]
+    if answered_qs:
+        add("Clarification answers", "plan", "compliance",
+            f"Formalise {len(answered_qs)} clarification answer(s) ({', '.join(q['code'] for q in answered_qs[:6])}) "
+            "as approved requirement changes")
     return items
 
 

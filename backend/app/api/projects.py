@@ -4,6 +4,7 @@ POST /api/analyses is the single "Analyse Requirements" action: it validates
 the input, stores the project and the original submission, and starts the
 agent pipeline in the background. The frontend then polls /status.
 """
+import hashlib
 import json
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -102,10 +103,15 @@ async def start_analysis(
     jurisdiction: str = Form("India"), scale: str = Form("medium"), budget: str = Form(""),
     schedule: str = Form(""), stakeholder_availability: str = Form(""),
     requirements_text: str = Form(""),
+    interactive_clarification: bool = Form(False),
     files: list[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
     user: User = Depends(require("analysis:run")),
 ):
+    """Stage 1. Every submission first gets a preliminary analysis and clarification
+    questions. With interactive_clarification=true (the web UI) the analysis then waits
+    in the Clarification Centre; otherwise (scripts, existing API clients) the full
+    12-agent pipeline starts immediately and every question stays unresolved."""
     # 1. Validate the submission (pasted text and/or uploaded documents).
     sources = []
     if requirements_text.strip():
@@ -119,6 +125,18 @@ async def start_analysis(
         raise HTTPException(400, "Provide requirements as text or upload at least one document")
     if sum(len(s["text"]) for s in sources) > config.MAX_REQUIREMENTS_CHARS:
         raise HTTPException(413, f"Submission exceeds {config.MAX_REQUIREMENTS_CHARS:,} characters")
+
+    # Duplicate-submission guard: the same user re-submitting identical input while the
+    # first submission is still being processed gets the existing analysis back.
+    fingerprint = hashlib.sha256(json.dumps(
+        [user.email, project_id, name, domain, description, jurisdiction, scale, budget, schedule,
+         stakeholder_availability, [(s["name"], s["text"]) for s in sources]], sort_keys=True).encode()).hexdigest()
+    running = db.scalar(select(Analysis).where(Analysis.submission_hash == fingerprint, Analysis.created_by == user.email,
+                                               Analysis.status.in_(["preliminary", "awaiting_clarification", "queued",
+                                                                    "running"])))
+    if running:
+        raise HTTPException(409, {"message": "This submission is already being processed.",
+                                  "analysis_id": running.id})
 
     # 2. Create or reuse the project.
     if project_id:
@@ -140,16 +158,20 @@ async def start_analysis(
         db.flush()
 
     # 3. Store the original submission and start the agent pipeline.
-    analysis = Analysis(project_id=project.id, created_by=user.email, status="queued",
+    analysis = Analysis(project_id=project.id, created_by=user.email, status="preliminary",
                         mode="openai" if llm.enabled() else "demo",
                         model_name=config.OPENAI_MODEL if llm.enabled() else "rule-based agents (demonstration)",
-                        input_text=requirements_text, input_sources=sources, current_stage="Queued")
+                        input_text=requirements_text, input_sources=sources, current_stage="Preliminary analysis",
+                        stage1_status="preliminary", preliminary={"interactive": interactive_clarification},
+                        submission_hash=fingerprint)
     db.add(analysis)
     db.commit()
     audit(db, "analysis.started", user, "analysis", analysis.id,
-          {"project": project.name, "sources": [s["name"] for s in sources], "mode": analysis.mode}, request)
+          {"project": project.name, "sources": [s["name"] for s in sources], "mode": analysis.mode,
+           "interactive_clarification": interactive_clarification}, request)
     pipeline.start_in_background(analysis.id)
-    return {"analysis_id": analysis.id, "project_id": project.id, "mode": analysis.mode}
+    return {"analysis_id": analysis.id, "project_id": project.id, "mode": analysis.mode,
+            "interactive_clarification": interactive_clarification}
 
 
 @router.get("/analyses")

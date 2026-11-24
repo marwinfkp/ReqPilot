@@ -40,8 +40,10 @@ def init_db() -> None:
     keep the project small; it only creates tables that do not exist yet.
     """
     from app import models  # noqa: F401  (register the ORM classes)
+    from app.migrations import migrate
 
     if IS_POSTGRES:
         with engine.begin() as conn:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    migrate(engine)  # add columns introduced after a table was first created
     Base.metadata.create_all(engine)

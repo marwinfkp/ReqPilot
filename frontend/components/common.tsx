@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, CircleDashed, Info, Loader2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleDashed, Clock, Info, Loader2, MessageCircleQuestion, Users, XCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +92,23 @@ const STATUS_STYLES: Record<string, { cls: string; icon: LucideIcon }> = {
   pending_review: { cls: "bg-slate-50 text-slate-700 border-slate-200", icon: CircleDashed },
   pending_approval: { cls: "bg-slate-50 text-slate-700 border-slate-200", icon: CircleDashed },
   draft: { cls: "bg-slate-50 text-slate-700 border-slate-200", icon: CircleDashed },
+  // Two-stage analysis
+  preliminary: { cls: "bg-blue-50 text-blue-800 border-blue-200", icon: Loader2 },
+  awaiting_clarification: { cls: "bg-violet-50 text-violet-800 border-violet-200", icon: MessageCircleQuestion },
+  analysing: { cls: "bg-blue-50 text-blue-800 border-blue-200", icon: Loader2 },
+  answered: { cls: "bg-emerald-50 text-emerald-800 border-emerald-200", icon: CheckCircle2 },
+  open: { cls: "bg-slate-50 text-slate-700 border-slate-200", icon: CircleDashed },
+  deferred: { cls: "bg-amber-50 text-amber-900 border-amber-200", icon: Clock },
+  needs_stakeholder: { cls: "bg-violet-50 text-violet-800 border-violet-200", icon: Users },
+  resolved: { cls: "bg-emerald-50 text-emerald-800 border-emerald-200", icon: CheckCircle2 },
+  partially_resolved: { cls: "bg-amber-50 text-amber-900 border-amber-200", icon: AlertTriangle },
+  unresolved: { cls: "bg-red-50 text-red-800 border-red-200", icon: XCircle },
+  not_started: { cls: "bg-slate-50 text-slate-700 border-slate-200", icon: CircleDashed },
+  in_progress: { cls: "bg-blue-50 text-blue-800 border-blue-200", icon: Info },
+  regenerating: { cls: "bg-blue-50 text-blue-800 border-blue-200", icon: Loader2 },
+  regenerated: { cls: "bg-emerald-50 text-emerald-800 border-emerald-200", icon: CheckCircle2 },
+  obsolete: { cls: "bg-slate-100 text-slate-500 border-slate-200", icon: XCircle },
+  open_risk: { cls: "bg-slate-50 text-slate-700 border-slate-200", icon: CircleDashed },
   covered: { cls: "bg-emerald-50 text-emerald-800 border-emerald-200", icon: CheckCircle2 },
   partial_coverage: { cls: "bg-amber-50 text-amber-900 border-amber-200", icon: AlertTriangle },
   missing: { cls: "bg-red-50 text-red-800 border-red-200", icon: XCircle },
@@ -102,7 +119,7 @@ export function StatusPill({ status, text }: { status: string; text?: string }) 
   const Icon = style.icon;
   return (
     <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium", style.cls)}>
-      <Icon className={cn("size-3", status === "running" && "animate-spin")} />
+      <Icon className={cn("size-3", ["running", "preliminary", "analysing", "regenerating"].includes(status) && "animate-spin")} />
       {text ?? label(status)}
     </span>
   );

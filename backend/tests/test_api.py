@@ -292,7 +292,11 @@ def test_results_payload(client, auth, shared_analysis):
     assert data["status"] == "completed" and data["mode"] == "demo" and data["baseline_status"] == "draft"
     assert data["input_text"] == case["requirements_text"]  # the original submission is preserved
     assert data["input_sources"] == [{"name": "Pasted requirements", "chars": len(case["requirements_text"])}]
-    assert [run["status"] for run in data["agent_runs"]] == ["completed"] * 12
+    # Stage 1 log: preliminary analysis + question generation + (non-interactive) responses, then the 12 agents.
+    preliminary = [run for run in data["agent_runs"] if run["order"] == 0]
+    assert [run["agent"] for run in preliminary] == ["Preliminary Analysis", "Clarification Question Generator",
+                                                     "Clarification Responses"]
+    assert [run["status"] for run in data["agent_runs"] if run["order"] > 0] == ["completed"] * 12
 
     reqs = data["requirements"]
     assert len(reqs) == data["metrics"]["extracted"] == data["submitted_count"] > 30
@@ -488,7 +492,8 @@ def test_pending_approvals_lists_open_decisions(client, auth, create_analysis):
     analysis_id = create_analysis("loan_processing")
     items = [i for i in client.get("/api/approvals/pending", headers=auth("pm")).json()["items"]
              if i["analysis_id"] == analysis_id]
-    assert {i["type"] for i in items} == {"requirements", "baseline", "mappings", "sdlc", "workflow"}
+    # Stage 2 added human acceptance of high/critical risks to the queue.
+    assert {i["type"] for i in items} == {"requirements", "baseline", "mappings", "sdlc", "workflow", "risks"}
 
 
 # --------------------------------------------------------------------------

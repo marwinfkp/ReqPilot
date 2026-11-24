@@ -15,6 +15,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from app import llm
+from app.agents.clarification_context import supplementary_text
 from app.rules import CATEGORIES, CATEGORY_KEYWORDS, NON_FUNCTIONAL_CATEGORIES, find_keywords
 from app.security import mask_sensitive, wrap_untrusted
 
@@ -32,7 +33,9 @@ _ID_REFERENCE = re.compile(r"\b(?:FR|NFR|BR|CON)-[A-Z]{3}-\d{3}\b")
 
 
 def classify_with_rules(req: dict) -> None:
-    text = req["statement"]
+    # Clarification answers linked to the requirement add context for the categories;
+    # the obligation word (priority) is always taken from the requirement itself.
+    text = supplementary_text(req) if req.get("supplementary") else req["statement"]
     categories = list(_KIND_CATEGORIES.get(req["kind"], ["functional"]))
     hits = 0
     for category, keywords in CATEGORY_KEYWORDS.items():
@@ -45,7 +48,7 @@ def classify_with_rules(req: dict) -> None:
             and req["kind"] != "functional":
         categories.append("non_functional")
     req["categories"] = categories
-    req["priority"] = rule_priority(text, categories)
+    req["priority"] = rule_priority(req["statement"], categories)
     req["confidence"] = round(min(0.75, 0.55 + 0.03 * hits), 2)
     req["dependencies"] = sorted(set(_ID_REFERENCE.findall(text)) - {req["req_id"]})
 
@@ -80,21 +83,25 @@ the classification is. dependencies: IDs of other listed requirements that must 
 
 
 def _classify_batch_llm(batch: list[dict], all_ids: list[str], log: list) -> list[ClassifiedRequirement]:
-    listing = "\n".join(f"{r['req_id']} ({r['kind']}): {mask_sensitive(r['statement'])[0]}" for r in batch)
+    listing = "\n".join(mask_sensitive(f"{r['req_id']} ({r['kind']}): {r['statement']}"
+                                       + "".join(f" [Clarified {s['ref']}: {s['text']}]"
+                                                 for s in r.get("supplementary", [])))[0] for r in batch)
     data = (f"All requirement IDs in this project: {', '.join(all_ids)}\n\n"
             + wrap_untrusted("requirements", listing))
     return llm.structured("requirement classification", _INSTRUCTIONS, data, ClassificationOutput, log).items
 
 
 def run(ctx: dict) -> tuple[str, str]:
-    requirements = ctx["requirements"]
+    # Stage 2 regeneration may limit the work to changed requirements; the rest keep their classification.
+    only = ctx.get("only_requirement_ids")
+    requirements = [r for r in ctx["requirements"] if only is None or r["req_id"] in only]
     for req in requirements:  # deterministic baseline for every requirement
         classify_with_rules(req)
     if not llm.enabled():
         return "completed", f"Classified {len(requirements)} requirements with keyword rules."
 
     by_id = {r["req_id"]: r for r in requirements}
-    all_ids = list(by_id)
+    all_ids = [r["req_id"] for r in ctx["requirements"]]
     batches = llm.batched(requirements)
     results = llm.map_parallel(lambda b: _classify_batch_llm(b, all_ids, ctx["llm_log"]), batches)
     failed = 0
@@ -110,7 +117,7 @@ def run(ctx: dict) -> tuple[str, str]:
             req["categories"] = categories
             req["priority"] = item.priority
             req["confidence"] = round(max(0.0, min(1.0, item.confidence)), 2)
-            req["dependencies"] = sorted({d for d in item.dependencies if d in by_id and d != req["req_id"]})
+            req["dependencies"] = sorted({d for d in item.dependencies if d in all_ids and d != req["req_id"]})
             req["generated_by"] = llm.model_label()
     if failed:
         return "partial", f"OpenAI failed for {failed}/{len(batches)} batches; keyword rules kept for those."

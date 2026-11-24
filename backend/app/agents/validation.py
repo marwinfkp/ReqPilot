@@ -89,6 +89,23 @@ def run(ctx: dict) -> tuple[str, str]:
     checks.append(_check("Agent execution", "fail" if failed else ("warn" if partial else "pass"),
                          f"{len(runs)} agent stages ran before validation. Failed: {', '.join(failed) or 'none'}. "
                          f"Partial (fallback used): {', '.join(partial) or 'none'}."))
+    questions = ctx.get("clarifications", [])
+    if questions:
+        answered_qs = [q for q in questions if q["status"] == "answered"]
+        linked = [q for q in answered_qs if q.get("requirement_ids")]
+        lost = [q["code"] for q in answered_qs if q.get("lines") and not q.get("requirement_ids")]
+        critical_open = [q["code"] for q in questions if q["priority"] == "Critical" and q["status"] != "answered"]
+        status = "warn" if lost or critical_open else "pass"
+        checks.append(_check("Clarification provenance", status,
+                             f"{len(questions)} clarification question(s): {len(answered_qs)} answered "
+                             f"({len(linked)} linked to requirements, {len(answered_qs) - len(linked)} project-level), "
+                             f"{sum(q['status'] == 'deferred' for q in questions)} deferred, "
+                             f"{sum(q['status'] in ('open', 'needs_stakeholder') for q in questions)} open. Original "
+                             "requirement text is unchanged; answers are stored as supplementary information."
+                             + (f" Answers that could not be linked to an extracted requirement: {', '.join(lost)}."
+                                if lost else "")
+                             + (f" Critical questions still unanswered: {', '.join(critical_open)}."
+                                if critical_open else "")))
     checks.append(_check("Human approval required", "info",
                          f"The requirement baseline, {len(mappings)} compliance mapping(s), the SDLC recommendation "
                          "and the workflow await approval by authorised reviewers. AI agents never auto-approve."))

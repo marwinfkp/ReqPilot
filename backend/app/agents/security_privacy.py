@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from app import llm
 from app.agents import finding, valid_ids
+from app.agents.clarification_context import AREA_TOPIC, is_open, resolve_topic_gap
 from app.rules import LOG_WORDS, SECURITY_AREAS, find_keywords
 from app.security import mask_sensitive, wrap_untrusted
 
@@ -141,16 +142,23 @@ retention, profiling, masking) with recommendations (max 8). Use only requiremen
 
 def run(ctx: dict) -> tuple[str, str]:
     requirements, domain = ctx["requirements"], ctx["project"]["domain"]
-    ambiguous = {i for f in ctx["findings"] if f["issue_type"] == "ambiguity" for i in f["requirement_ids"]}
+    # A requirement whose vague wording a clarification fully resolved no longer counts as vague.
+    ambiguous = {i for f in ctx["findings"] if f["issue_type"] == "ambiguity" and is_open(f)
+                 for i in f["requirement_ids"]}
     cov = coverage(requirements, ambiguous)
     ctx["security_coverage"] = cov
     findings = gap_findings(cov, domain)
+    for gap in findings:  # gaps a clarification talked about stay open but are marked partially resolved
+        resolve_topic_gap(ctx, gap, {gap["issue_type"], AREA_TOPIC.get(gap["issue_type"], "")},
+                          SECURITY_AREAS[gap["issue_type"]]["keywords"])
     status, note = "completed", ""
 
     if llm.enabled() and requirements:
         relevant = [r for r in requirements if {"security", "privacy", "integration", "data_management",
                                                 "auditability", "regulatory"} & set(r["categories"])] or requirements
-        listing = "\n".join(f"{r['req_id']}: {mask_sensitive(r['statement'])[0]}" for r in relevant[:150])
+        listing = "\n".join(mask_sensitive(f"{r['req_id']}: {r['statement']}" + "".join(
+            f" [Clarification {s['ref']}: {s['text']}]" for s in r.get("supplementary", [])))[0]
+            for r in relevant[:150])
         gaps = ", ".join(a["label"] for a in cov if a["status"] != "covered") or "none"
         data = (f"Project: {ctx['project']['name']} ({domain}). Security areas without adequate "
                 f"requirements: {gaps}\n\n" + wrap_untrusted("requirements", listing))

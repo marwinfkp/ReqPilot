@@ -1,15 +1,77 @@
 "use client";
 
-import { AlertTriangle, ArrowRight, Bug, Compass, FileText, ListChecks, ShieldAlert, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowRight, Bug, Compass, FileText, ListChecks, MessageCircleQuestion, ShieldAlert, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 import { useLoadedAnalysis } from "@/components/analysis-context";
 import { ColumnBars } from "@/components/charts";
 import { BulletList, GeneratedBy, Section, StatTile, StatusPill } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { api } from "@/lib/api";
 import { label, pct } from "@/lib/format";
+import type { ClarificationQuestion } from "@/lib/types";
+
+/** Clarification provenance: what was asked before the analysis and how it influenced the results. */
+function ClarificationCard() {
+  const { analysis: a } = useLoadedAnalysis();
+  const c = a.clarification;
+  const [qs, setQs] = useState<ClarificationQuestion[] | null>(null);
+  if (!c || c.total + c.stage2_questions === 0) return null;
+  const load = () => api<{ questions: ClarificationQuestion[] }>(`/api/analyses/${a.id}/clarifications`).then((d) => setQs(d.questions)).catch(() => setQs([]));
+  const tiles: [string, number | string][] = [
+    ["Questions asked", c.total + c.stage2_questions], ["Answered", c.answered + c.stage2_answered], ["Deferred", c.deferred],
+    ["Awaiting stakeholder", c.needs_stakeholder], ["Issues resolved", c.issues_resolved],
+    ["Partially resolved", c.issues_partially_resolved], ["Still unresolved", c.issues_unresolved + c.open],
+  ];
+  return (
+    <Section title="Requirements clarification"
+      description={c.influenced_analysis
+        ? "Clarification answers were used by the agents as supplementary information (the original requirements were not changed)."
+        : "No clarification answers were given - unresolved questions are reported, nothing was assumed."}
+      actions={
+        <Dialog onOpenChange={(open) => open && !qs && load()}>
+          <DialogTrigger asChild><Button size="sm" variant="outline"><MessageCircleQuestion className="size-4" /> Questions &amp; answers</Button></DialogTrigger>
+          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+            <DialogHeader><DialogTitle>Clarification questions and answers</DialogTitle></DialogHeader>
+            {!qs ? <p className="text-sm text-muted-foreground">Loading…</p> : (
+              <ul className="space-y-3">
+                {qs.map((q) => (
+                  <li key={q.id} className="rounded-md border p-3 text-sm">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs text-muted-foreground">{q.code}</span>
+                      <StatusPill status={q.status} />
+                      {q.resolution && <StatusPill status={q.resolution} />}
+                      {q.requirement_ids.length > 0 && <span className="font-mono text-xs text-muted-foreground">{q.requirement_ids.join(", ")}</span>}
+                    </div>
+                    <p className="font-medium">{q.question}</p>
+                    <p className={q.answer ? "mt-1" : "mt-1 text-muted-foreground"}>{q.answer || "No answer"}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </DialogContent>
+        </Dialog>
+      }>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
+        {tiles.map(([text, value]) => (
+          <div key={text} className="rounded-lg border p-3">
+            <p className="text-xs text-muted-foreground">{text}</p>
+            <p className="text-xl font-semibold tabular-nums">{value}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Influenced the analysis: <strong className="text-foreground">{c.influenced_analysis ? "yes" : "no"}</strong> ·
+        {" "}{c.requirements_with_clarifications} requirement(s) carry supplementary clarification information.
+        {c.critical_unanswered > 0 && ` ${c.critical_unanswered} critical question(s) remain unanswered.`}
+      </p>
+    </Section>
+  );
+}
 
 export default function OverviewPage() {
   const { analysis: a } = useLoadedAnalysis();
@@ -95,27 +157,46 @@ export default function OverviewPage() {
         </Section>
       </div>
 
-      <Section title="Agent pipeline log" description="Every agent run is recorded with its status, mode and LLM usage. Failed agents are never replaced by fabricated output.">
+      <ClarificationCard />
+
+      <Section title="Agent pipeline log" description="Every agent run is recorded with its stage, status, mode and LLM usage. Failed agents are never replaced by fabricated output; 'skipped' in Stage 2 means the output was retained from the previous version.">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow><TableHead>#</TableHead><TableHead>Agent</TableHead><TableHead>Status</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Time</TableHead><TableHead className="text-right">LLM calls</TableHead><TableHead>Result</TableHead></TableRow>
+              <TableRow><TableHead>#</TableHead><TableHead>Agent / operation</TableHead><TableHead>Status</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Time</TableHead><TableHead className="text-right">LLM calls</TableHead><TableHead>Result</TableHead></TableRow>
             </TableHeader>
             <TableBody>
-              {a.agent_runs.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="text-muted-foreground">{r.order}</TableCell>
-                  <TableCell className="whitespace-nowrap font-medium">{r.agent}</TableCell>
-                  <TableCell><StatusPill status={r.status} /></TableCell>
-                  <TableCell className="text-xs">{r.mode === "rules" ? "Rules only" : "OpenAI + rules"}</TableCell>
-                  <TableCell className="text-right tabular-nums">{r.duration_ms} ms</TableCell>
-                  <TableCell className="text-right tabular-nums">{r.llm_calls.length}</TableCell>
-                  <TableCell className="min-w-[320px] whitespace-normal text-xs text-muted-foreground">{r.message}</TableCell>
-                </TableRow>
-              ))}
+              {(["stage1", "stage2"] as const).map((stage) => {
+                const runs = a.agent_runs.filter((r) => (r.stage ?? "stage1") === stage);
+                if (!runs.length) return null;
+                return [
+                  <TableRow key={`${stage}-header`} className="bg-muted/50 hover:bg-muted/50">
+                    <TableCell colSpan={7} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {stage === "stage1" ? "Stage 1 - preliminary analysis, clarification and full 12-agent analysis"
+                        : `Stage 2 - refinement${a.version > 1 ? ` (regeneration that created version ${a.version})` : ""}`}
+                    </TableCell>
+                  </TableRow>,
+                  ...runs.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="text-muted-foreground">{r.order || "–"}</TableCell>
+                      <TableCell className="whitespace-nowrap font-medium">{r.agent}</TableCell>
+                      <TableCell><StatusPill status={r.status} text={r.status === "partial" ? "Partially completed" : undefined} /></TableCell>
+                      <TableCell className="text-xs">{r.mode === "rules" ? "Rules only" : r.mode === "human" ? "Human input" : "OpenAI + rules"}</TableCell>
+                      <TableCell className="text-right tabular-nums">{r.duration_ms} ms</TableCell>
+                      <TableCell className="text-right tabular-nums">{r.llm_calls.length}</TableCell>
+                      <TableCell className="min-w-[320px] whitespace-normal text-xs text-muted-foreground">{r.message}</TableCell>
+                    </TableRow>
+                  )),
+                ];
+              })}
             </TableBody>
           </Table>
         </div>
+        {a.version > 1 && !a.agent_runs.some((r) => r.stage === "stage1") && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            The Stage 1 log of this analysis is on <Link className="underline" href={`/analyses/${a.root_analysis_id}`}>version 1</Link>.
+          </p>
+        )}
       </Section>
 
       <Section title="Submitted input" description="The original submission is stored unchanged.">

@@ -1,14 +1,41 @@
 "use client";
 
 import { useLoadedAnalysis } from "@/components/analysis-context";
-import { AuthenticityBadge, EmptyState, GeneratedBy, Notice, ReqIds, Section, SeverityBadge } from "@/components/common";
+import { useEffect, useState } from "react";
+
+import { AuthenticityBadge, EmptyState, GeneratedBy, Notice, ReqIds, Section, SeverityBadge, StatusPill } from "@/components/common";
 import { FindingCard } from "@/components/finding-card";
 import { label } from "@/lib/format";
-import type { Finding } from "@/lib/types";
+import { api } from "@/lib/api";
+import type { ClarificationQuestion, Finding } from "@/lib/types";
 
 function FindingList({ findings, empty }: { findings: Finding[]; empty: string }) {
   return findings.length ? <ul className="grid gap-3 xl:grid-cols-2">{findings.map((f) => <FindingCard key={f.id} f={f} />)}</ul>
     : <EmptyState title={empty} />;
+}
+
+function OpenClarifications({ analysisId }: { analysisId: number }) {
+  const [qs, setQs] = useState<ClarificationQuestion[] | null>(null);
+  useEffect(() => {
+    api<{ questions: ClarificationQuestion[] }>(`/api/analyses/${analysisId}/clarifications`)
+      .then((d) => setQs(d.questions.filter((q) => q.status !== "answered"))).catch(() => setQs([]));
+  }, [analysisId]);
+  if (!qs || qs.length === 0) return null;
+  return (
+    <Section title={`Clarification questions still open (${qs.length})`}
+      description="Unanswered, deferred or waiting for stakeholder input. They can be answered in the Refinement Centre and applied by a regeneration.">
+      <ul className="space-y-2">
+        {qs.map((q) => (
+          <li key={q.id} className="flex flex-wrap items-start gap-2 rounded-md border p-3 text-sm">
+            <span className="font-mono text-xs text-muted-foreground">{q.code}</span>
+            <span className="min-w-[240px] flex-1">{q.question}</span>
+            <SeverityBadge severity={q.priority} />
+            <StatusPill status={q.status} text={q.status === "needs_stakeholder" ? "Needs stakeholder input" : undefined} />
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
 }
 
 export default function IssuesPage() {
@@ -27,6 +54,8 @@ export default function IssuesPage() {
         These open items did <strong>not</strong> block the analysis: ReqPilot documented assumptions and produced the best possible
         recommendation from the available information. Stakeholders should resolve them before the requirement baseline is approved.
       </Notice>
+
+      <OpenClarifications analysisId={a.id} />
 
       <Section title={`Questions stakeholders should answer (${questions.length})`} description="Generated from the quality, compliance and security findings.">
         {questions.length ? (

@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from app import llm
 from app.agents import check_reference, finding, valid_ids
+from app.agents.clarification_context import resolve_topic_gap, supplementary_text
 from app.rules import TOPICS, detect_topics, expected_topics
 from app.security import mask_sensitive, wrap_untrusted
 from app.services import rag
@@ -44,7 +45,7 @@ def _mapping(req: dict, hit: dict, evidence: str, verified: bool, confidence: fl
 
 
 def map_with_rules(req: dict, hits: list[dict]) -> list[dict]:
-    req_topics = set(detect_topics(req["statement"]))
+    req_topics = set(detect_topics(supplementary_text(req)))
     mappings = []
     for hit in hits:
         shared = req_topics & set(hit["topics"])
@@ -122,17 +123,26 @@ def detect_gaps(ctx: dict) -> list[dict]:
             evidence=cited, suggestion=f"Add explicit requirement(s) for {label.lower()} and confirm the "
                                        "applicable obligations with the compliance team.",
             question=f"Which {label.lower()} obligations apply to this application?"))
+        # A clarification about this topic addresses the gap only partially (see clarification_context).
+        resolve_topic_gap(ctx, gaps[-1], {topic}, TOPICS[topic]["keywords"])
     return gaps
 
 
 def run(ctx: dict) -> tuple[str, str]:
-    db, project, requirements = ctx["db"], ctx["project"], ctx["requirements"]
-    queries = [mask_sensitive(r["statement"])[0] for r in requirements]
-    hits_per_req, method = rag.retrieve_many(db, queries, project["jurisdiction"], k=4)
+    db, project = ctx["db"], ctx["project"]
+    # Stage 2 regeneration may limit mapping to changed requirements; other mappings are retained.
+    only = ctx.get("only_requirement_ids")
+    requirements = [r for r in ctx["requirements"] if only is None or r["req_id"] in only]
+    retained = [m for m in ctx.get("mappings", []) if only is not None and m["requirement_id"] not in only
+                and m["requirement_id"] in ctx["requirement_ids"]]
+    # Retrieval uses the requirement plus any clarification linked to it.
+    queries = [mask_sensitive(supplementary_text(r))[0] for r in requirements]
+    hits_per_req, method = rag.retrieve_many(db, queries, project["jurisdiction"], k=4) if queries else ([], None)
     # Evidence for each expected topic (used to cite sources for gaps).
     topics = expected_topics(project["domain"])
-    topic_hits, _ = rag.retrieve_many(db, [TOPICS[t]["label"] for t in topics], project["jurisdiction"], k=3)
+    topic_hits, topic_method = rag.retrieve_many(db, [TOPICS[t]["label"] for t in topics], project["jurisdiction"], k=3)
     ctx["topic_evidence"] = {t: [h for h in hits if t in h["topics"]] for t, hits in zip(topics, topic_hits)}
+    method = method or topic_method  # a scoped Stage 2 run may have no requirement to map
     ctx["retrieval_method"] = method
 
     if method == "none":
@@ -186,6 +196,7 @@ def run(ctx: dict) -> tuple[str, str]:
     else:
         mappings = [m for req, hits in zip(requirements, hits_per_req) for m in map_with_rules(req, hits)]
 
+    mappings = retained + mappings
     ctx["mappings"] = mappings
     ctx["findings"].extend(detect_gaps(ctx))
     used = {}

@@ -2,12 +2,11 @@
 
 import { ChevronDown, FileText, FileUp, Info, Loader2, Sparkles, Upload, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/components/auth";
 import { Notice, PageHeader } from "@/components/common";
-import { ProgressPanel } from "@/components/progress-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,8 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { api, errorMessage } from "@/lib/api";
-import type { AnalysisBrief, Project } from "@/lib/types";
+import { ApiError, api, errorMessage } from "@/lib/api";
+import type { Project } from "@/lib/types";
 
 const ALLOWED = [".txt", ".md", ".csv", ".pdf", ".docx"];
 const MAX_MB = 10;
@@ -44,7 +43,6 @@ function AnalysePage() {
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [analysisId, setAnalysisId] = useState<number | null>(null);
 
   useEffect(() => {
     api<{ key: string; label: string }[]>("/api/domains").then(setDomains).catch(() => {});
@@ -95,43 +93,29 @@ function AnalysePage() {
     if (existing) data.append("project_id", String(existing.id));
     else Object.entries(form).forEach(([k, v]) => data.append(k, v));
     data.append("requirements_text", text);
+    // Stage 1: preliminary analysis + clarification questions before the full 12-agent analysis.
+    data.append("interactive_clarification", "true");
     files.forEach((file) => data.append("files", file));
     try {
       const result = await api<{ analysis_id: number }>("/api/analyses", { form: data });
-      setAnalysisId(result.analysis_id);
+      router.push(`/analyses/${result.analysis_id}`);
     } catch (e) {
+      const existingId = e instanceof ApiError && e.status === 409 ? (e.detail as { analysis_id?: number })?.analysis_id : undefined;
+      if (existingId) {
+        toast.info("This submission is already being processed - opening it.");
+        router.push(`/analyses/${existingId}`);
+        return;
+      }
       toast.error(errorMessage(e));
       setSubmitting(false);
     }
   };
 
-  const finished = useCallback((status: AnalysisBrief) => {
-    if (status.status === "failed") {
-      toast.error("The analysis failed", { description: status.error });
-      setSubmitting(false);
-      return;
-    }
-    toast.success("Analysis complete");
-    router.push(`/analyses/${status.id}`);
-  }, [router]);
-
-  if (analysisId) {
-    return (
-      <div className="mx-auto max-w-4xl">
-        <PageHeader title="Analysing requirements" description={`${existing?.name ?? form.name} · the agents run automatically; you will be taken to the results when they finish.`} />
-        <ProgressPanel analysisId={analysisId} onFinished={finished} />
-        {!submitting && (
-          <Button variant="outline" className="mt-4" onClick={() => { setAnalysisId(null); }}>Back to the form</Button>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div>
       <PageHeader
         title="Analyse Requirements"
-        description="Describe the financial application, paste or upload its requirements, and click one button. ReqPilot's agents extract, classify, check, map, score and generate the SDLC workflow without asking you anything."
+        description="Describe the financial application, paste or upload its requirements, and click Analyse. ReqPilot first asks a few targeted clarification questions, then its 12 agents extract, classify, check, map, score and generate the SDLC workflow."
         actions={examples.length > 0 && (
           // Non-modal menu: a modal Select left <body> with pointer-events:none after loading an example,
           // which swallowed the next click (e.g. on ANALYSE REQUIREMENTS).
@@ -280,7 +264,9 @@ function AnalysePage() {
             <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Info className="size-4 text-primary" /> What happens next</CardTitle></CardHeader>
             <CardContent>
               <ol className="space-y-2 text-sm text-muted-foreground">
-                {["Requirements are extracted, normalised and given IDs", "Each requirement is classified (multi-label) and prioritised",
+                {["A quick preliminary analysis finds what needs clarifying (at most 12 questions)",
+                  "You answer, defer or skip questions - then continue to the full analysis",
+                  "Requirements are extracted, normalised and given IDs", "Each requirement is classified (multi-label) and prioritised",
                   "Ambiguity, gaps, duplicates and conflicts are detected", "Regulatory evidence is retrieved and controls are mapped",
                   "Security, privacy and project risks are assessed", "13 project factors are scored to rank 7 SDLC models",
                   "A project-specific SDLC workflow and traceability matrix are generated", "Everything is validated and stored"].map((step, i) => (
@@ -290,8 +276,9 @@ function AnalysePage() {
             </CardContent>
           </Card>
           <Notice>
-            ReqPilot never interrupts the analysis with questions. Unclear or conflicting requirements are reported with assumptions and
-            clarification questions in the results. Human approval happens afterwards in the Approval Centre.
+            Answering the clarification questions is optional: unanswered questions stay unresolved and are reported in the
+            results - nothing is assumed. Once the full analysis has started it runs without interruption. Human approval happens
+            afterwards in the Approval Centre, and optional refinement in the Refinement Centre.
           </Notice>
           <Notice tone="warning">Use synthetic data only. E-mail, card, Aadhaar, PAN, phone and account numbers are masked before any text is sent to the AI model.</Notice>
         </aside>

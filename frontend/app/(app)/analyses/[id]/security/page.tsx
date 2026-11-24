@@ -3,13 +3,18 @@
 import { Fingerprint, Lock, ShieldAlert, ShieldX, TriangleAlert } from "lucide-react";
 
 import { useLoadedAnalysis } from "@/components/analysis-context";
+import { useAuth } from "@/components/auth";
+import { ReviewDialog } from "@/components/review-dialog";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import { ColumnBars, RiskMatrix, SeverityBars } from "@/components/charts";
 import { EmptyState, GeneratedBy, ReqIds, Section, SeverityBadge, StatTile, StatusPill } from "@/components/common";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { label } from "@/lib/format";
 
 export default function SecurityRiskPage() {
-  const { analysis: a } = useLoadedAnalysis();
+  const { analysis: a, reload } = useLoadedAnalysis();
+  const { can } = useAuth();
   const securityReqs = a.requirements.filter((r) => r.categories.includes("security"));
   const privacyReqs = a.requirements.filter((r) => r.categories.includes("privacy"));
   const gaps = a.findings.filter((f) => f.kind === "security_gap");
@@ -118,7 +123,7 @@ export default function SecurityRiskPage() {
       <Section title={`Risk register (${a.risks.length})`}>
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>Risk</TableHead><TableHead>Category</TableHead><TableHead className="text-center">L</TableHead><TableHead className="text-center">I</TableHead><TableHead className="text-center">Score</TableHead><TableHead>Severity</TableHead><TableHead>Mitigation</TableHead><TableHead>Requirements</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>Risk</TableHead><TableHead>Category</TableHead><TableHead className="text-center">L</TableHead><TableHead className="text-center">I</TableHead><TableHead className="text-center">Score</TableHead><TableHead>Severity</TableHead><TableHead>Mitigation</TableHead><TableHead>Requirements</TableHead><TableHead>Decision</TableHead></TableRow></TableHeader>
             <TableBody>
               {a.risks.map((r) => (
                 <TableRow key={r.id}>
@@ -131,6 +136,17 @@ export default function SecurityRiskPage() {
                   <TableCell><SeverityBadge severity={r.severity} /></TableCell>
                   <TableCell className="min-w-[260px] whitespace-normal text-sm">{r.mitigation}</TableCell>
                   <TableCell className="min-w-[150px]"><ReqIds ids={r.requirement_ids} max={3} /></TableCell>
+                  <TableCell className="min-w-[150px]">
+                    {r.severity === "High" || r.severity === "Critical" ? (
+                      r.status === "open" ? (
+                        <ReviewDialog title={`Accept risk ${r.risk_id}`} confirmLabel="Accept risk" commentRequired
+                          description="Record a human decision to accept this high/critical risk (with its mitigation). Security risks need a Security Officer."
+                          disabled={!can("risk:accept")}
+                          trigger={<Button size="sm" variant="outline" disabled={!can("risk:accept")}>Accept risk</Button>}
+                          onSubmit={async (comment) => { await api(`/api/risks/${r.id}/review`, { body: { action: "accept", comment } }); await reload(); }} />
+                      ) : <StatusPill status={r.status === "accepted" ? "approved" : "rejected"} text={r.status === "accepted" ? "Accepted" : "Rejected"} />
+                    ) : <span className="text-xs text-muted-foreground">not required</span>}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -55,7 +55,7 @@ export default function TraceabilityPage() {
               <TableRow>
                 <TableHead>Requirement</TableHead><TableHead>Stakeholder statement</TableHead><TableHead>Regulatory controls</TableHead>
                 <TableHead>Security controls</TableHead><TableHead>User story</TableHead><TableHead>Acceptance criteria</TableHead>
-                <TableHead>Tests</TableHead><TableHead>Workflow phase</TableHead><TableHead>Missing links</TableHead><TableHead>Coverage</TableHead>
+                <TableHead>Tests</TableHead><TableHead>Workflow phase</TableHead><TableHead>Clarifications</TableHead><TableHead>Missing links</TableHead><TableHead>Coverage</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -72,6 +72,9 @@ export default function TraceabilityPage() {
                     <TableCell className="min-w-[220px] whitespace-normal"><Cell items={t.acceptance_criteria} /></TableCell>
                     <TableCell className="min-w-[180px] whitespace-normal"><Cell items={t.tests} /></TableCell>
                     <TableCell className="min-w-[140px] whitespace-normal"><Cell items={t.workflow_phases} /></TableCell>
+                    <TableCell className="min-w-[180px] whitespace-normal">
+                      {t.clarifications?.length ? <Cell items={t.clarifications} /> : <span className="text-muted-foreground">–</span>}
+                    </TableCell>
                     <TableCell className="min-w-[120px] whitespace-normal">{t.missing_links.length ? <span className="text-red-700">{t.missing_links.join(", ")}</span> : <span className="text-emerald-700">none</span>}</TableCell>
                     <TableCell className="w-28"><Meter value={t.coverage} /></TableCell>
                   </TableRow>

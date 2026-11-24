@@ -55,13 +55,24 @@ ROLES = ["admin", "business_analyst", "compliance_officer", "security_officer", 
 ROLE_PERMISSIONS: dict[str, set[str]] = {
     "admin": {"*"},
     "business_analyst": {"project:write", "analysis:run", "requirement:review", "baseline:approve",
-                         "kb:upload", "evaluation:run"},
-    "compliance_officer": {"mapping:review", "kb:upload", "kb:manage", "requirement:review_security"},
-    "security_officer": {"requirement:review_security", "kb:upload"},
+                         "kb:upload", "evaluation:run", "clarification:answer", "change:propose",
+                         "change:approve", "stakeholder:record", "stakeholder:review", "regeneration:run"},
+    "compliance_officer": {"mapping:review", "kb:upload", "kb:manage", "requirement:review_security",
+                           "clarification:answer", "change:propose", "stakeholder:record"},
+    "security_officer": {"requirement:review_security", "kb:upload", "clarification:answer", "change:propose",
+                         "stakeholder:record", "risk:accept"},
     "project_manager": {"project:write", "analysis:run", "requirement:review", "baseline:approve",
-                        "sdlc:approve", "workflow:approve", "evaluation:run"},
+                        "sdlc:approve", "workflow:approve", "evaluation:run", "clarification:answer",
+                        "change:propose", "change:approve", "stakeholder:record", "stakeholder:review",
+                        "regeneration:run", "risk:accept"},
     "auditor": {"audit:view"},
 }
+# Two-stage analysis permissions:
+#   clarification:answer - answer / defer clarification questions
+#   change:propose / change:approve - requirement change requests (an approver can never approve their own)
+#   stakeholder:record / stakeholder:review - stakeholder interviews
+#   regeneration:run - selective regeneration of an analysis (Stage 2)
+#   risk:accept - human acceptance of high/critical risks
 # Every authenticated user can view results and download exports.
 
 

@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from app import llm
 from app.agents import valid_ids
+from app.agents.clarification_context import is_open
 from app.rules import find_keywords
 from app.security import mask_sensitive, wrap_untrusted
 
@@ -46,22 +47,25 @@ def make_risk(description: str, category: str, likelihood: int, impact: int, mit
 def rule_risks(ctx: dict) -> list[dict]:
     reqs, findings, project = ctx["requirements"], ctx["findings"], ctx["project"]
     high_impact = 5 if project["domain"] in ("payments", "digital_banking", "lending") else 4
-    of = lambda *types: [f for f in findings if f["issue_type"] in types or f["kind"] in types]  # noqa: E731
+    # Only issues still open after clarification count (resolved ones are reported separately).
+    of = lambda *types: [f for f in findings if (f["issue_type"] in types or f["kind"] in types)  # noqa: E731
+                         and is_open(f)]
     ids_of = lambda fs: sorted({i for f in fs for i in f["requirement_ids"]})[:15]  # noqa: E731
+    clarified = lambda fs: bool(fs) and all(f.get("resolution") == "partially_resolved" for f in fs)  # noqa: E731
     risks = []
 
     security_gaps = [f for f in findings if f["kind"] == "security_gap"]
     if security_gaps:
         labels = ", ".join(f["title"].split(": ", 1)[-1] for f in security_gaps[:5])
         risks.append(make_risk(f"Security controls are not specified for: {labels}", "security",
-                               4 if len(security_gaps) >= 2 else 3, high_impact,
+                               (4 if len(security_gaps) >= 2 else 3) - clarified(security_gaps), high_impact,
                                "Add explicit security requirements and verify them in threat modelling and "
                                "security testing.", ids_of(security_gaps)))
     compliance_gaps = [f for f in findings if f["kind"] == "compliance_gap"]
     if compliance_gaps:
         labels = ", ".join(f["title"].split(": ", 1)[-1] for f in compliance_gaps[:4])
         risks.append(make_risk(f"Regulatory obligations may be missed: {labels}", "regulatory",
-                               4 if len(compliance_gaps) >= 3 else 3, 5,
+                               (4 if len(compliance_gaps) >= 3 else 3) - clarified(compliance_gaps), 5,
                                "Compliance officer to confirm applicable obligations before the requirement "
                                "baseline; add missing requirements.", ids_of(compliance_gaps)))
     conflicts = of("conflict", "stakeholder_conflict")
@@ -70,6 +74,22 @@ def rule_risks(ctx: dict) -> list[dict]:
                                "delivery", 4 if len(conflicts) >= 3 else 3, 3,
                                "Resolve conflicts with the stakeholders before baselining requirements.",
                                ids_of(conflicts)))
+    settled = [f for f in findings if f["issue_type"] in ("conflict", "stakeholder_conflict")
+               and f.get("resolution") == "resolved"]
+    if settled:
+        risks.append(make_risk(f"{len(settled)} conflict(s) settled in clarification are not yet reflected in the "
+                               "requirement text", "delivery", 2, 3,
+                               "Update the conflicting requirements through an approved requirement change.",
+                               ids_of(settled)))
+    open_questions = [q for q in ctx.get("clarifications", [])
+                      if q["priority"] in ("Critical", "High") and q["status"] != "answered"]
+    if open_questions:
+        risks.append(make_risk(f"{len(open_questions)} critical/high clarification question(s) remain unanswered "
+                               f"({', '.join(q['code'] for q in open_questions[:6])})", "delivery",
+                               4 if len(open_questions) >= 3 else 3, 4,
+                               "Answer the outstanding questions (Refinement Centre) and regenerate the affected "
+                               "analysis before baselining.", sorted({i for q in open_questions
+                                                                      for i in q.get("requirement_ids", [])})[:15]))
     ambiguous = of("ambiguity")
     if reqs and len(ambiguous) / len(reqs) > 0.1:
         risks.append(make_risk(f"Scope misinterpretation: {len(ambiguous)} requirements use vague wording",
@@ -164,7 +184,7 @@ def run(ctx: dict) -> tuple[str, str]:
     ctx["risks"] = risks
 
     findings_by_req: dict[str, list[dict]] = {}
-    for f in ctx["findings"]:
+    for f in (f for f in ctx["findings"] if is_open(f)):  # resolved issues no longer raise a requirement's risk
         for rid in f["requirement_ids"]:
             findings_by_req.setdefault(rid, []).append(f)
     for req in ctx["requirements"]:

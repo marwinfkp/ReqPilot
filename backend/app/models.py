@@ -6,7 +6,7 @@ Nested, display-only structures (e.g. a workflow's phases) are stored as JSON.
 """
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app import config
@@ -119,6 +119,17 @@ class Analysis(Base):
     baseline_status: Mapped[str] = mapped_column(String(30), default="draft")  # draft | approved
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # --- Two-stage analysis (see app/clarification.py and app/regeneration.py) -------------
+    # Stage 1: preliminary | awaiting_clarification | analysing | completed | failed
+    stage1_status: Mapped[str] = mapped_column(String(30), default="preliminary")
+    # Stage 2 (optional refinement): not_started | in_progress | regenerating | regenerated | failed
+    stage2_status: Mapped[str] = mapped_column(String(30), default="not_started")
+    # Versions: a regeneration creates a NEW analysis row; earlier versions are never changed.
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    parent_analysis_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # previous version
+    root_analysis_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # version 1 (None = itself)
+    preliminary: Mapped[dict] = mapped_column(JSON, default=dict)  # preliminary findings + question note
+    submission_hash: Mapped[str] = mapped_column(String(64), default="")  # duplicate-submission guard
 
     project: Mapped[Project] = relationship(back_populates="analyses")
 
@@ -136,6 +147,7 @@ class AgentRun(Base):
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
     message: Mapped[str] = mapped_column(Text, default="")
     llm_calls: Mapped[list] = mapped_column(JSON, default=list)
+    stage: Mapped[str] = mapped_column(String(20), default="stage1")  # stage1 | stage2
 
 
 class Requirement(Base):
@@ -156,7 +168,10 @@ class Requirement(Base):
     acceptance_criteria: Mapped[list] = mapped_column(JSON, default=list)
     test_recommendations: Mapped[list] = mapped_column(JSON, default=list)
     generated_by: Mapped[str] = mapped_column(String(60), default="rules")
-    status: Mapped[str] = mapped_column(String(20), default="pending_review")  # accepted | rejected | modified
+    status: Mapped[str] = mapped_column(String(20), default="pending_review")  # accepted | rejected | modified | obsolete
+    # Information added AFTER submission (clarification answers, stakeholder responses, agreed
+    # acceptance criteria), kept apart from the original text: [{kind, ref, text}]
+    supplementary: Mapped[list] = mapped_column(JSON, default=list)
 
 
 class Finding(Base):
@@ -176,6 +191,9 @@ class Finding(Base):
     question: Mapped[str] = mapped_column(Text, default="")
     requirement_ids: Mapped[list] = mapped_column(JSON, default=list)
     generated_by: Mapped[str] = mapped_column(String(60), default="rules")
+    # After clarification: "" (not asked) | resolved | partially_resolved | unresolved | deferred
+    resolution: Mapped[str] = mapped_column(String(30), default="")
+    clarification_refs: Mapped[list] = mapped_column(JSON, default=list)  # e.g. ["Q-03"]
 
 
 class ComplianceMapping(Base):
@@ -215,6 +233,7 @@ class Risk(Base):
     mitigation: Mapped[str] = mapped_column(Text, default="")
     requirement_ids: Mapped[list] = mapped_column(JSON, default=list)
     generated_by: Mapped[str] = mapped_column(String(60), default="rules")
+    status: Mapped[str] = mapped_column(String(30), default="open")  # open | accepted | rejected (human decision)
 
 
 class SdlcRecommendation(Base):
@@ -263,6 +282,7 @@ class TraceRecord(Base):
     workflow_phases: Mapped[list] = mapped_column(JSON, default=list)
     missing_links: Mapped[list] = mapped_column(JSON, default=list)
     coverage: Mapped[float] = mapped_column(Float, default=0.0)
+    clarifications: Mapped[list] = mapped_column(JSON, default=list)  # supplementary info linked to the requirement
 
 
 class Approval(Base):
@@ -280,6 +300,139 @@ class Approval(Base):
     previous_value: Mapped[dict] = mapped_column(JSON, default=dict)
     new_value: Mapped[dict] = mapped_column(JSON, default=dict)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# --------------------------------------------------------------------------
+# Two-stage analysis: clarification, stakeholder interviews, change requests,
+# selective regeneration (Stage 1 = app/clarification.py, Stage 2 = app/regeneration.py)
+# --------------------------------------------------------------------------
+class ClarificationQuestion(Base):
+    """A question generated from the actual submission (Stage 1: at most 12;
+    Stage 2: further batches). Requirement references made before the full
+    analysis are *provisional* (rule extraction) and are mapped to the final IDs."""
+
+    __tablename__ = "clarification_questions"
+    __table_args__ = (UniqueConstraint("analysis_id", "code"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    analysis_id: Mapped[int] = mapped_column(ForeignKey("analyses.id", ondelete="CASCADE"), index=True)
+    code: Mapped[str] = mapped_column(String(12))  # Q-01 ... (Stage 2: R2-01 ...)
+    stage: Mapped[int] = mapped_column(Integer, default=1)
+    batch: Mapped[int] = mapped_column(Integer, default=1)
+    order: Mapped[int] = mapped_column(Integer, default=0)  # priority rank within the batch
+    question: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(40))  # conflict | ambiguity | security | compliance | ...
+    issue_type: Mapped[str] = mapped_column(String(40), default="")  # contradiction vs missing information
+    priority: Mapped[str] = mapped_column(String(10))  # Critical | High | Medium | Low
+    reason: Mapped[str] = mapped_column(Text, default="")
+    impact: Mapped[str] = mapped_column(Text, default="")
+    answer_format: Mapped[str] = mapped_column(String(20), default="short_text")
+    options: Mapped[list] = mapped_column(JSON, default=list)
+    stakeholder_role: Mapped[str] = mapped_column(String(60), default="")
+    related_requirements: Mapped[list] = mapped_column(JSON, default=list)  # [{ref, line, text}]
+    requirement_ids: Mapped[list] = mapped_column(JSON, default=list)  # final IDs once known
+    topic: Mapped[str] = mapped_column(String(60), default="")  # compliance topic / security area / SDLC factor
+    # open | answered | deferred | needs_stakeholder
+    status: Mapped[str] = mapped_column(String(30), default="open")
+    # after the analysis: resolved | partially_resolved | unresolved | deferred
+    resolution: Mapped[str] = mapped_column(String(30), default="")
+    parent_question_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # follow-up of
+    generated_by: Mapped[str] = mapped_column(String(60), default="rules")
+    applied_in_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    response: Mapped["ClarificationResponse | None"] = relationship(
+        back_populates="question", cascade="all, delete-orphan", uselist=False)
+
+
+class ClarificationResponse(Base):
+    """The current answer to one question (one per question - edits update it and
+    the previous value is kept in the audit log)."""
+
+    __tablename__ = "clarification_responses"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    question_id: Mapped[int] = mapped_column(ForeignKey("clarification_questions.id", ondelete="CASCADE"),
+                                             unique=True)
+    answer: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # accepted | pending | deferred
+    affects_requirements: Mapped[bool] = mapped_column(Boolean, default=False)
+    stage: Mapped[int] = mapped_column(Integer, default=1)  # stage in which it was answered
+    responded_by: Mapped[str] = mapped_column(String(200))
+    responder_role: Mapped[str] = mapped_column(String(40))
+    responded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    question: Mapped[ClarificationQuestion] = relationship(back_populates="response")
+
+
+class StakeholderInteraction(Base):
+    """A structured stakeholder interview recorded by an authorised user. ReqPilot
+    never contacts stakeholders itself - it only collects what the user records."""
+
+    __tablename__ = "stakeholder_interactions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    analysis_id: Mapped[int] = mapped_column(ForeignKey("analyses.id", ondelete="CASCADE"), index=True)
+    stakeholder_role: Mapped[str] = mapped_column(String(60))
+    interviewee: Mapped[str] = mapped_column(String(200), default="")  # name given by the recorder
+    topic: Mapped[str] = mapped_column(String(300), default="")
+    requirement_ids: Mapped[list] = mapped_column(JSON, default=list)
+    entries: Mapped[list] = mapped_column(JSON, default=list)  # [{question, answer}]
+    recorded_by: Mapped[str] = mapped_column(String(200))
+    recorder_role: Mapped[str] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(30), default="pending_review")  # accepted | rejected | changes_requested
+    reviewed_by: Mapped[str] = mapped_column(String(200), default="")
+    review_comment: Mapped[str] = mapped_column(Text, default="")
+    applied_in_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class RequirementChange(Base):
+    """A proposed change to the requirement set. The original requirement is never
+    overwritten: an approved change is applied in a NEW analysis version."""
+
+    __tablename__ = "requirement_changes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    analysis_id: Mapped[int] = mapped_column(ForeignKey("analyses.id", ondelete="CASCADE"), index=True)
+    code: Mapped[str] = mapped_column(String(12))  # RC-01 ...
+    requirement_id: Mapped[str] = mapped_column(String(30), default="")  # empty for a new requirement
+    # edit | acceptance_criteria | new | resolve_conflict | business_rule | constraint | obsolete
+    change_type: Mapped[str] = mapped_column(String(30))
+    new_kind: Mapped[str] = mapped_column(String(30), default="")  # kind of an added requirement
+    original_text: Mapped[str] = mapped_column(Text, default="")
+    proposed_text: Mapped[str] = mapped_column(Text, default="")
+    approved_text: Mapped[str] = mapped_column(Text, default="")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(200), default="user")  # user | clarification Q-.. | interview #..
+    proposed_by: Mapped[str] = mapped_column(String(200))
+    proposer_role: Mapped[str] = mapped_column(String(40))
+    # draft | pending_review | approved | rejected | changes_requested
+    status: Mapped[str] = mapped_column(String(30), default="pending_review")
+    reviewed_by: Mapped[str] = mapped_column(String(200), default="")
+    review_comment: Mapped[str] = mapped_column(Text, default="")
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    applied_in_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class RegenerationRun(Base):
+    """One selective regeneration: which agents were re-run and why."""
+
+    __tablename__ = "regeneration_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_analysis_id: Mapped[int] = mapped_column(ForeignKey("analyses.id", ondelete="CASCADE"), index=True)
+    new_analysis_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    previous_version: Mapped[int] = mapped_column(Integer)
+    new_version: Mapped[int] = mapped_column(Integer)
+    changed_requirements: Mapped[list] = mapped_column(JSON, default=list)
+    inputs: Mapped[dict] = mapped_column(JSON, default=dict)  # change / question / interview ids applied
+    affected_agents: Mapped[list] = mapped_column(JSON, default=list)  # plan: [{agent, reasons}]
+    agents_rerun: Mapped[list] = mapped_column(JSON, default=list)
+    outputs_retained: Mapped[list] = mapped_column(JSON, default=list)
+    outputs_updated: Mapped[list] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String(20), default="running")  # running | completed | failed
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_by: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 # --------------------------------------------------------------------------

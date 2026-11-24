@@ -39,6 +39,7 @@ from pydantic import BaseModel
 
 from app import llm
 from app.agents import finding, valid_ids
+from app.agents.clarification_context import answer_for_topic, clarification_text, is_open
 from app.rules import find_keywords
 from app.security import mask_sensitive, wrap_untrusted
 
@@ -184,10 +185,12 @@ def _bucket(count: int, thresholds: list[int]) -> int:
 def derive_factors(ctx: dict) -> list[dict]:
     project, reqs, findings = ctx["project"], ctx["requirements"], ctx["findings"]
     n = max(1, len(reqs))
+    # Evidence = project details + requirements + clarification answers (kept as separate context).
     text = "\n".join([project.get("description", ""), project.get("schedule", ""), project.get("budget", "")]
-                     + [r["statement"] for r in reqs])
+                     + [r["statement"] for r in reqs] + [clarification_text(ctx)])
     count_cat = lambda c: sum(1 for r in reqs if c in r["categories"])  # noqa: E731
-    count_issue = lambda *t: sum(1 for f in findings if f["issue_type"] in t)  # noqa: E731
+    # Issues fully resolved by clarification no longer lower requirement stability.
+    count_issue = lambda *t: sum(1 for f in findings if f["issue_type"] in t and is_open(f))  # noqa: E731
     hits = lambda words: len(find_keywords(text, words))  # noqa: E731
     domain = project["domain"]
     factors: dict[str, tuple[int, str, bool]] = {}  # id -> (value, explanation, is_assumption)
@@ -232,11 +235,24 @@ def derive_factors(ctx: dict) -> list[dict]:
     cd = hits(_CD_WORDS)
     factors["continuous_delivery"] = (_bucket(cd, [0, 1, 2, 3]), f"{cd} continuous-delivery indicator(s) "
                                       "(e.g. 'mobile app', 'CI/CD', 'frequent releases').", False)
+    cadence = answer_for_topic(ctx, "release_cadence")
+    if cadence:
+        value = next((v for word, v in (("fortnight", 5), ("weekly", 5), ("monthly", 4), ("quarter", 3),
+                                        ("one major", 1), ("single", 1)) if word in cadence["answer"].lower()), None)
+        if value:
+            factors["continuous_delivery"] = (value, f"Release cadence from clarification {cadence['code']}: "
+                                                     f"'{cadence['answer']}'.", False)
 
     availability = (project.get("stakeholder_availability") or "").lower()
+    clarified = answer_for_topic(ctx, "stakeholder_availability")
     if availability in ("low", "medium", "high", "very high"):
         factors["stakeholder_availability"] = ({"low": 2, "medium": 3, "high": 4, "very high": 5}[availability],
                                                f"Declared stakeholder availability '{availability}'.", False)
+    elif clarified and clarified["answer"].split(" ")[0].lower() in ("low", "medium", "high", "very"):
+        level = "very high" if clarified["answer"].lower().startswith("very") else clarified["answer"].split(" ")[0].lower()
+        factors["stakeholder_availability"] = ({"low": 2, "medium": 3, "high": 4, "very high": 5}[level],
+                                               f"From clarification {clarified['code']}: '{clarified['answer']}'.",
+                                               False)
     else:
         factors["stakeholder_availability"] = (3, "Not provided - moderate availability assumed.", True)
 
@@ -246,13 +262,17 @@ def derive_factors(ctx: dict) -> list[dict]:
                                         f"criticality {factors['regulatory_criticality'][0]}/5.", False)
 
     plan = f"{project.get('schedule', '')} {project.get('budget', '')}".lower()
+    budget_answer = answer_for_topic(ctx, "budget_schedule")
+    source = "Schedule/budget"
+    if not plan.strip() and budget_answer:
+        plan, source = budget_answer["answer"].lower(), f"From clarification {budget_answer['code']}"
     months = [int(m) for m in re.findall(r"(\d+)\s*month", plan)]
     if plan.strip():
         v = 3
         if months:
             v = 5 if min(months) <= 3 else 4 if min(months) <= 6 else 2 if min(months) >= 18 else 3
         v += ("fixed" in plan or "tight" in plan) - ("flexible" in plan)
-        factors["budget_schedule_constraints"] = (clamp(v), f"Schedule/budget: '{plan.strip()[:120]}'.", False)
+        factors["budget_schedule_constraints"] = (clamp(v), f"{source}: '{plan.strip()[:120]}'.", False)
     else:
         factors["budget_schedule_constraints"] = (3, "Budget and schedule not provided - moderate constraints "
                                                      "assumed.", True)
@@ -389,6 +409,9 @@ probabilities."""
 def _review_factors(ctx: dict, factors: list[dict]) -> str:
     table = "\n".join(f"{f['id']}: {f['value']}/5 - {f['explanation']}" for f in factors)
     listing = "\n".join(f"{r['req_id']}: {r['statement']}" for r in ctx["requirements"][:120])
+    clarified = clarification_text(ctx)
+    if clarified:
+        listing += f"\n\nAnswers given during clarification (supplementary, not requirements): {clarified[:4000]}"
     data = (f"Project: {ctx['project']['name']} ({ctx['project']['domain']}): {ctx['project']['description']}\n"
             f"Factors:\n{table}\n\n" + wrap_untrusted("requirements", mask_sensitive(listing)[0]))
     review = llm.structured("SDLC factor review", _REVIEW_INSTRUCTIONS, data, FactorReview, ctx["llm_log"])

@@ -24,6 +24,7 @@ from pydantic import BaseModel
 
 from app import llm
 from app.agents import finding, valid_ids
+from app.agents.clarification_context import resolve_findings
 from app.rules import (INCOMPLETE_MARKERS, INFEASIBLE_MARKERS, KNOWN_ACRONYMS, WEAK_WORDS, find_keywords,
                        has_number, jaccard)
 from app.security import mask_sensitive, wrap_untrusted
@@ -124,7 +125,8 @@ def single_requirement_checks(req: dict) -> list[dict]:
             suggestion="Replace with a realistic, measurable target, e.g. '99.95% availability per month'.",
             question=f"What realistic target is acceptable for {rid}?"))
     quality_attribute = {"performance", "availability", "reliability", "usability"} & set(req["categories"])
-    if quality_attribute and not has_number(text) and not weak:
+    agreed = any(s.get("kind") == "acceptance_criterion" for s in req.get("supplementary", []))
+    if quality_attribute and not has_number(text) and not weak and not agreed:
         results.append(finding(
             "quality", "missing_acceptance_criteria", "Medium", f"No measurable acceptance criterion in {rid}",
             [rid], explanation=f"A {'/'.join(sorted(quality_attribute))} requirement without a target value "
@@ -257,9 +259,14 @@ Also list the assumptions you had to make to interpret the requirements."""
 
 def _review_llm(group: list[dict], project: dict, log: list) -> QualityOutput:
     # The whole line is masked: a stakeholder tag can also contain personal data.
-    listing = "\n".join(mask_sensitive(f"{r['req_id']} [source: {r['source']}]: {r['statement']}")[0]
+    # Clarification answers are shown separately from the original requirement text.
+    listing = "\n".join(mask_sensitive(f"{r['req_id']} [source: {r['source']}]: {r['statement']}"
+                                       + "".join(f" [Clarification {s['ref']}: {s['text']}]"
+                                                 for s in r.get("supplementary", [])))[0]
                         for r in group)
-    data = f"Project: {project['name']} - {project['description']}\n\n" + wrap_untrusted("requirements", listing)
+    data = (f"Project: {project['name']} - {project['description']}\n"
+            "Text in [Clarification ...] brackets was supplied by stakeholders after submission; treat an issue as "
+            "resolved only if the clarification really settles it.\n\n" + wrap_untrusted("requirements", listing))
     return llm.structured("requirement quality review", _INSTRUCTIONS, data, QualityOutput, log)
 
 
@@ -317,6 +324,12 @@ def run(ctx: dict) -> tuple[str, str]:
         if failed:
             status, note = "partial", f" OpenAI review failed for {failed}/{len(groups)} groups; rule checks kept."
 
+    # Re-evaluate against the clarification answers: issues are marked, never discarded.
+    resolve_findings(ctx, findings)
     ctx["findings"].extend(findings)
     issue_count = sum(1 for f in findings if f["kind"] == "quality")
-    return status, f"Identified {issue_count} requirement quality issues.{note}"
+    resolved = sum(1 for f in findings if f.get("resolution") == "resolved")
+    partly = sum(1 for f in findings if f.get("resolution") == "partially_resolved")
+    clar = f" Clarifications resolved {resolved} and partially resolved {partly} of them." if ctx.get(
+        "clarifications") else ""
+    return status, f"Identified {issue_count} requirement quality issues.{clar}{note}"

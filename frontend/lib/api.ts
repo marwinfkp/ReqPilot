@@ -4,9 +4,11 @@
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  detail: unknown;
+  constructor(status: number, message: string, detail?: unknown) {
     super(message);
     this.status = status;
+    this.detail = detail;
   }
 }
 
@@ -30,17 +32,20 @@ export async function api<T = unknown>(path: string, options: Options = {}): Pro
   }
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
+    let detail: unknown;
     try {
       const data = await response.json();
+      detail = data.detail;
       if (typeof data.detail === "string") message = data.detail;
       else if (Array.isArray(data.detail)) message = data.detail.map((d: { msg: string }) => d.msg).join("; ");
+      else if (data.detail && typeof data.detail.message === "string") message = data.detail.message;
     } catch {
       /* not JSON */
     }
     if (response.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
       window.location.href = "/login";
     }
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, message, detail);
   }
   return response.json() as Promise<T>;
 }

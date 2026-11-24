@@ -70,11 +70,24 @@ def rule_story(req: dict) -> tuple[str, list[str], list[str]]:
     if {"security", "functional"} & set(req["categories"]):
         criteria.append("Given invalid or unauthorised input, when the action is attempted, then it is rejected "
                         "and an audit log entry is recorded.")
+    criteria += supplementary_criteria(req)
     tests = ["Functional test: positive and negative scenarios"] if req["kind"] != "non_functional" else []
     tests += [t for c, t in _TESTS if c in req["categories"]]
     if req["kind"] == "business_rule":
         tests.append("Boundary-value tests for limits and thresholds")
     return story, criteria, tests[:4]
+
+
+def supplementary_criteria(req: dict) -> list[str]:
+    """Acceptance criteria agreed after submission (approved changes, or clarification
+    answers that state a measurable value) - always labelled with their source."""
+    result = []
+    for s in req.get("supplementary", []):
+        if s.get("kind") == "acceptance_criterion":
+            result.append(f"Agreed criterion ({s['ref']}): {s['text']}")
+        elif s.get("kind") in ("clarification", "stakeholder") and re.search(r"\d", s["text"]):
+            result.append(f"Clarified target ({s['ref']}): {s['text']}")
+    return result
 
 
 def rule_use_cases(requirements: list[dict]) -> list[dict]:
@@ -138,10 +151,22 @@ the requirements it covers (only IDs from the input)."""
 
 
 def run_artefacts(ctx: dict) -> tuple[str, str]:
-    requirements = ctx["requirements"]
+    # Stage 2 regeneration may limit stories/criteria to changed requirements; use cases cover all.
+    only = ctx.get("only_requirement_ids")
+    requirements = [r for r in ctx["requirements"] if only is None or r["req_id"] in only]
     for req in requirements:  # baseline for every requirement
         req["user_story"], req["acceptance_criteria"], req["test_recommendations"] = rule_story(req)
-    ctx["use_cases"] = rule_use_cases(requirements)
+    if only is None or not ctx.get("use_cases"):
+        ctx["use_cases"] = rule_use_cases(ctx["requirements"])
+    else:  # Stage 2: keep the existing use cases, drop obsolete IDs, add new functional requirements
+        active = {r["req_id"] for r in ctx["requirements"]}
+        for uc in ctx["use_cases"]:
+            uc["requirement_ids"] = [i for i in uc["requirement_ids"] if i in active]
+        covered = {i for uc in ctx["use_cases"] for i in uc["requirement_ids"]}
+        added = [r for r in requirements if r["req_id"] not in covered and r["kind"] in ("functional", "business_rule")]
+        if added:
+            extra = rule_use_cases([dict(r, section="Requirements added during refinement") for r in added])[0]
+            ctx["use_cases"].append(extra | {"id": f"UC-{len(ctx['use_cases']) + 1:02d}"})
     if not llm.enabled():
         return "completed", (f"Generated {len(requirements)} user stories and {len(ctx['use_cases'])} use "
                              "cases from templates.")
@@ -149,7 +174,9 @@ def run_artefacts(ctx: dict) -> tuple[str, str]:
 
     def stories(batch: list[dict]) -> list[StoryItem]:
         # The whole line is masked: a stakeholder tag can also contain personal data.
-        listing = "\n".join(mask_sensitive(f"{r['req_id']} ({r['kind']}; source {r['source']}): {r['statement']}")[0]
+        listing = "\n".join(mask_sensitive(f"{r['req_id']} ({r['kind']}; source {r['source']}): {r['statement']}"
+                                           + "".join(f" [Clarification {s['ref']}: {s['text']}]"
+                                                     for s in r.get("supplementary", [])))[0]
                             for r in batch)
         return llm.structured("user stories", _STORY_INSTRUCTIONS, wrap_untrusted("requirements", listing),
                               StoryOutput, ctx["llm_log"]).items
@@ -164,10 +191,11 @@ def run_artefacts(ctx: dict) -> tuple[str, str]:
             req = by_id.get(item.req_id)
             if req and valid_ids(ctx, "documentation", [item.req_id]):
                 req["user_story"] = item.user_story
-                req["acceptance_criteria"] = item.acceptance_criteria
+                req["acceptance_criteria"] = item.acceptance_criteria + [
+                    c for c in supplementary_criteria(req) if c not in item.acceptance_criteria]
                 req["test_recommendations"] = item.test_recommendations
     try:
-        functional = [r for r in requirements if r["kind"] in ("functional", "business_rule")][:150]
+        functional = [r for r in ctx["requirements"] if r["kind"] in ("functional", "business_rule")][:150]
         listing = "\n".join(f"{r['req_id']}: {mask_sensitive(r['statement'])[0]}" for r in functional)
         output = llm.structured("use cases", _USE_CASE_INSTRUCTIONS, wrap_untrusted("requirements", listing),
                                 UseCaseOutput, ctx["llm_log"])
@@ -212,7 +240,9 @@ def run_traceability(ctx: dict) -> tuple[str, str]:
             "categories": req["categories"], "regulatory_controls": regulatory, "security_controls": security,
             "user_story": req["user_story"], "acceptance_criteria": req["acceptance_criteria"],
             "tests": req["test_recommendations"], "workflow_phases": workflow_phases, "missing_links": missing,
-            "coverage": round(1 - len(missing) / len(expected), 2)})
+            "coverage": round(1 - len(missing) / len(expected), 2),
+            # Clarified information stays linked to - but separate from - the stakeholder statement.
+            "clarifications": [f"{s['ref']}: {s['text']}" for s in req.get("supplementary", [])]})
     ctx["traceability"] = records
     coverage = sum(r["coverage"] for r in records) / len(records) if records else 0
     return "completed", (f"Built {len(records)} traceability records; average link coverage {coverage:.0%}, "
@@ -235,7 +265,11 @@ def run_summary(ctx: dict) -> tuple[str, str]:
         f"{m['compliance_mappings']} compliance mappings with {m['compliance_gaps']} compliance gaps, identified "
         f"{m['security_gaps']} security gaps and registered {m['risks']} risks ({m['high_risks']} high or critical). "
         + (f"The recommended SDLC model is {sdlc['recommended_model']} with a suitability score of "
-           f"{m['sdlc_score']}/100." if sdlc else "No SDLC recommendation could be produced."))
+           f"{m['sdlc_score']}/100." if sdlc else "No SDLC recommendation could be produced.")
+        + (f" Before the analysis, {m.get('clarification_questions', 0)} clarification question(s) were asked: "
+           f"{m.get('clarification_answered', 0)} answered, {m.get('clarification_deferred', 0)} deferred and "
+           f"{m.get('clarification_unresolved', 0)} still open; {m.get('issues_resolved', 0)} issue(s) were "
+           "resolved through clarification." if m.get("clarification_questions") else ""))
     findings = [f["title"] for f in ctx["findings"] if f["severity"] in ("High", "Critical")][:5]
     ctx["summary"], ctx["key_findings"] = rule_summary, findings
     if not llm.enabled():

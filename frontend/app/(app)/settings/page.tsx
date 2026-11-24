@@ -45,11 +45,27 @@ type ManagedUser = { id: number; email: string; name: string; role: string; is_a
 // Read-only mirror of ROLE_PERMISSIONS in backend/app/security.py (the backend enforces it).
 const ROLE_PERMISSIONS: [string, string[]][] = [
   ["admin", ["All permissions (*)"]],
-  ["business_analyst", ["project:write", "analysis:run", "requirement:review", "baseline:approve", "kb:upload", "evaluation:run"]],
-  ["compliance_officer", ["mapping:review", "kb:upload", "kb:manage", "requirement:review_security"]],
-  ["security_officer", ["requirement:review_security", "kb:upload"]],
-  ["project_manager", ["project:write", "analysis:run", "requirement:review", "baseline:approve", "sdlc:approve", "workflow:approve", "evaluation:run"]],
+  ["business_analyst", ["project:write", "analysis:run", "requirement:review", "baseline:approve", "kb:upload", "evaluation:run",
+    "clarification:answer", "change:propose", "change:approve", "stakeholder:record", "stakeholder:review", "regeneration:run"]],
+  ["compliance_officer", ["mapping:review", "kb:upload", "kb:manage", "requirement:review_security", "clarification:answer",
+    "change:propose", "stakeholder:record"]],
+  ["security_officer", ["requirement:review_security", "kb:upload", "clarification:answer", "change:propose", "stakeholder:record",
+    "risk:accept"]],
+  ["project_manager", ["project:write", "analysis:run", "requirement:review", "baseline:approve", "sdlc:approve", "workflow:approve",
+    "evaluation:run", "clarification:answer", "change:propose", "change:approve", "stakeholder:record", "stakeholder:review",
+    "regeneration:run", "risk:accept"]],
   ["auditor", ["audit:view"]],
+];
+
+// Two-stage analysis permissions (Stage 1 clarification and Stage 2 refinement).
+const TWO_STAGE_PERMISSIONS: [string, string][] = [
+  ["clarification:answer", "Answer, edit, defer or flag clarification questions (Stage 1 and Stage 2)."],
+  ["change:propose", "Propose a requirement change request (the original requirement is never overwritten)."],
+  ["change:approve", "Approve, reject or request changes on a change request - never one you proposed yourself (four-eyes)."],
+  ["stakeholder:record", "Record a stakeholder interview you conducted (ReqPilot never contacts stakeholders)."],
+  ["stakeholder:review", "Accept, reject or request changes on recorded stakeholder interviews."],
+  ["regeneration:run", "Confirm a dependency-aware selective regeneration that creates a new analysis version."],
+  ["risk:accept", "Formally accept or reject high/critical risks (security risks: Security Officer or Administrator)."],
 ];
 
 function affinityClass(value: number) {
@@ -445,6 +461,17 @@ export default function SettingsPage() {
                 ))}
               </TableBody>
             </Table>
+            <div className="mt-4 border-t pt-4">
+              <p className="mb-2 text-sm font-medium">Two-stage analysis permissions</p>
+              <ul className="space-y-1.5 text-sm">
+                {TWO_STAGE_PERMISSIONS.map(([perm, text]) => (
+                  <li key={perm} className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
+                    <Badge variant="secondary" className="w-fit font-mono text-[11px] font-normal">{perm}</Badge>
+                    <span className="text-muted-foreground">{text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </Section>
         </div>
       )}

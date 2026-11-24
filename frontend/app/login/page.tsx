@@ -51,7 +51,7 @@ export default function LoginPage() {
           </h1>
           <ul className="space-y-4 text-sm">
             {[
-              [Bot, "Nine specialised AI agents analyse your full requirement set in one run"],
+              [Bot, "Targeted clarification questions, then twelve AI agents analyse your full requirement set"],
               [ShieldCheck, "Evidence-linked compliance, security and risk analysis with human approval"],
               [GitBranch, "Explainable, deterministic SDLC ranking and a project-specific workflow"],
             ].map(([Icon, text], i) => {

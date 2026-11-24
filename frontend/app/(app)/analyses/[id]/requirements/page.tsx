@@ -96,7 +96,7 @@ export default function RequirementsPage() {
           <FilterSelect value={category} onChange={setCategory} placeholder="All categories" options={categories} />
           <FilterSelect value={priority} onChange={setPriority} placeholder="All priorities" options={["High", "Medium", "Low"]} />
           <FilterSelect value={risk} onChange={setRisk} placeholder="All risk levels" options={["High", "Medium", "Low"]} />
-          <FilterSelect value={status} onChange={setStatus} placeholder="All statuses" options={["pending_review", "accepted", "modified", "rejected"]} />
+          <FilterSelect value={status} onChange={setStatus} placeholder="All statuses" options={["pending_review", "accepted", "modified", "rejected", "obsolete"]} />
         </div>
         <p className="mb-2 text-xs text-muted-foreground">Showing {rows.length} of {a.requirements.length}</p>
         <div className="overflow-x-auto">
@@ -142,6 +142,19 @@ export default function RequirementsPage() {
                 <div><p className="mb-1 text-xs font-medium text-muted-foreground">Requirement statement</p><p className="text-base">{selected.statement}</p></div>
                 <div><p className="mb-1 text-xs font-medium text-muted-foreground">Original stakeholder text (preserved)</p>
                   <p className="rounded-md bg-muted p-2 font-mono text-xs">{selected.original_text}</p></div>
+                {selected.supplementary?.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">Supplementary information (added after submission - the original text above is unchanged)</p>
+                    <ul className="space-y-1">
+                      {selected.supplementary.map((s, i) => (
+                        <li key={i} className="rounded-md border border-violet-200 bg-violet-50/60 px-2 py-1 text-xs">
+                          <span className="mr-1 font-mono font-medium">{s.ref}</span>
+                          <span className="mr-1 text-muted-foreground">({label(s.kind)})</span>{s.text}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <div><p className="mb-1 text-xs font-medium text-muted-foreground">Categories</p><Chips items={selected.categories} max={20} /></div>
                 <div className="grid grid-cols-2 gap-4">
                   <div><p className="mb-1 text-xs font-medium text-muted-foreground">Confidence</p><Meter value={selected.confidence} /></div>

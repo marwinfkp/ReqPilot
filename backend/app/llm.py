@@ -9,10 +9,12 @@
   run record so that the audit trail shows exactly which agent used the LLM.
 """
 import hashlib
+import ssl
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, TypeVar
 
+import httpx
 import openai
 from pydantic import BaseModel, ValidationError
 
@@ -55,8 +57,23 @@ def get_client() -> openai.OpenAI:
             api_key=config.OPENAI_API_KEY,
             timeout=config.OPENAI_TIMEOUT_SECONDS,
             max_retries=config.OPENAI_MAX_RETRIES,
+            http_client=_http_client(),
         )
     return _client
+
+
+def _http_client() -> httpx.Client:
+    """TLS certificates are verified against the operating-system trust store
+    (via `truststore`). On machines where antivirus or a corporate proxy inspects
+    HTTPS with its own root certificate, Python's bundled list would otherwise
+    reject api.openai.com ("Connection error"). Verification is never disabled."""
+    try:
+        import truststore
+
+        verify = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    except ImportError:  # fall back to Python's default certificate bundle
+        verify = True
+    return httpx.Client(verify=verify, timeout=config.OPENAI_TIMEOUT_SECONDS)
 
 
 def _record(log: list | None, task: str, prompt: str, started: float, ok: bool,

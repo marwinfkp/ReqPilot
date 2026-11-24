@@ -18,9 +18,10 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app import llm
+from app import clarification, llm
 from app.agents import (classification, compliance, documentation, extraction, finding, quality, risk,
                         sdlc_selection, security_privacy, validation, workflow)
+from app.agents.clarification_context import attach_to_requirements
 from app.database import SessionLocal
 from app.models import (AgentRun, Analysis, ComplianceMapping, Finding, Requirement, Risk, SdlcRecommendation,
                         Setting, TraceRecord, Workflow)
@@ -62,12 +63,21 @@ def start_in_background(analysis_id: int) -> None:
     threading.Thread(target=run_analysis, args=(analysis_id,), daemon=True).start()
 
 
-def new_context(db: Session, project: dict, sources: list[dict]) -> dict:
+def new_context(db: Session, project: dict, sources: list[dict], clarifications: list[dict] | None = None) -> dict:
+    """The shared agent context. `clarifications` (Stage 1 questions + answers) is
+    kept separate from `sources`, so the original submission is never rewritten."""
     return {"db": db, "project": project, "sources": sources, "requirements": [], "requirement_ids": set(),
             "findings": [], "mappings": [], "applicable_sources": [], "security_coverage": [], "risks": [],
             "use_cases": [], "traceability": [], "validation": [], "summary": "", "key_findings": [],
             "reference_checks": [], "agent_runs": [], "llm_log": [], "submitted_count": 0,
-            "sdlc_weights": get_setting(db, "sdlc_factor_weights", {}), "metrics": {}}
+            "sdlc_weights": get_setting(db, "sdlc_factor_weights", {}), "metrics": {},
+            "clarifications": clarifications or [], "project_clarifications": [], "stage": "stage1"}
+
+
+def project_dict(project) -> dict:
+    return {"name": project.name, "domain": project.domain, "description": project.description,
+            "jurisdiction": project.jurisdiction, "scale": project.scale, "budget": project.budget,
+            "schedule": project.schedule, "stakeholder_availability": project.stakeholder_availability}
 
 
 def input_safety_checks(ctx: dict) -> None:
@@ -110,9 +120,12 @@ def run_pipeline(ctx: dict, progress=None) -> dict:
                 traceback.print_exc()
         ctx["agent_runs"].append({"order": index + 1, "agent": agent, "status": status, "mode": mode,
                                   "duration_ms": int((time.perf_counter() - t0) * 1000), "message": message,
-                                  "llm_calls": ctx["llm_log"]})
+                                  "llm_calls": ctx["llm_log"], "stage": ctx.get("stage", "stage1")})
         if agent == "Requirement Extraction Agent":
             ctx["requirement_ids"] = {r["req_id"] for r in ctx["requirements"]}
+            # Link clarification answers to the extracted requirements (as supplementary
+            # information - the extracted statements themselves are not changed).
+            attach_to_requirements(ctx)
             if status == "failed" or not ctx["requirements"]:
                 ctx["fatal"] = "No requirements could be extracted from the submission."
                 break
@@ -159,6 +172,14 @@ def compute_metrics(ctx: dict, seconds: float) -> dict:
         "llm_invalid_references": sum(1 for c in ctx["reference_checks"] if not c["valid"]),
         "masked_values": ctx.get("masked_values", 0),
         "duration_seconds": round(seconds, 2),
+        # Clarification provenance (Stage 1)
+        "clarification_questions": len(ctx.get("clarifications", [])),
+        "clarification_answered": sum(1 for q in ctx.get("clarifications", []) if q["status"] == "answered"),
+        "clarification_deferred": sum(1 for q in ctx.get("clarifications", []) if q["status"] == "deferred"),
+        "clarification_unresolved": sum(1 for q in ctx.get("clarifications", [])
+                                        if q["status"] in ("open", "needs_stakeholder")),
+        "issues_resolved": sum(1 for f in findings if f.get("resolution") == "resolved"),
+        "issues_open": sum(1 for f in findings if f["kind"] == "quality" and f.get("resolution") != "resolved"),
     }
 
 
@@ -166,36 +187,62 @@ def compute_metrics(ctx: dict, seconds: float) -> dict:
 # Background job: load the submission, run, store
 # --------------------------------------------------------------------------
 def run_analysis(analysis_id: int) -> None:
+    """Background job for Stage 1. Depending on the analysis state it runs
+    1. the preliminary analysis + clarification questions (status "preliminary"), then
+       - interactive submissions stop at "awaiting_clarification" until the user continues;
+       - other API submissions continue immediately with every question left unresolved;
+    2. the complete, unchanged 12-agent pipeline with the clarification context."""
     db = SessionLocal()
     try:
         analysis = db.get(Analysis, analysis_id)
-        project = analysis.project
-        project_dict = {"name": project.name, "domain": project.domain, "description": project.description,
-                        "jurisdiction": project.jurisdiction, "scale": project.scale, "budget": project.budget,
-                        "schedule": project.schedule, "stakeholder_availability": project.stakeholder_availability}
-        analysis.status = "running"
+        project = project_dict(analysis.project)
+        if analysis.stage1_status == "preliminary":
+            analysis.status, analysis.current_stage, analysis.progress = "preliminary", "Preliminary requirements analysis", 0
+            db.commit()
+            clarification.run_preliminary(db, analysis, project)
+            if (analysis.preliminary or {}).get("interactive"):
+                analysis.status = analysis.stage1_status = "awaiting_clarification"
+                analysis.current_stage = "Awaiting clarification"
+                db.commit()
+                return
+            clarification.log_run(db, analysis.id, "Clarification Responses", "skipped", "human", time.perf_counter(),
+                                  "Non-interactive submission: the full analysis started immediately. All "
+                                  f"{analysis.preliminary.get('questions', 0)} question(s) remain unresolved; nothing "
+                                  "was assumed.")
+        analysis.status, analysis.stage1_status, analysis.error = "running", "analysing", ""
         db.commit()
 
         def progress(percent: int, stage: str) -> None:
             analysis.progress, analysis.current_stage = percent, stage
             db.commit()
 
-        ctx = new_context(db, project_dict, analysis.input_sources)
+        ctx = new_context(db, project, analysis.input_sources, clarification.context_for_pipeline(db, analysis.id))
         run_pipeline(ctx, progress)
         save_results(db, analysis, ctx)
         audit(db, "analysis.completed", entity_type="analysis", entity_id=analysis.id,
               details={"status": analysis.status, "mode": analysis.mode, "requirements": len(ctx["requirements"]),
-                       "recommended_sdlc": ctx["metrics"].get("recommended_sdlc")})
+                       "recommended_sdlc": ctx["metrics"].get("recommended_sdlc"), "stage": "stage1",
+                       "clarifications_answered": ctx["metrics"].get("clarification_answered")})
     except Exception as exc:
         traceback.print_exc()
         db.rollback()
         analysis = db.get(Analysis, analysis_id)
         if analysis:
             analysis.status, analysis.error = "failed", f"{type(exc).__name__}: {exc}"
+            analysis.stage1_status = "failed"
             analysis.finished_at = datetime.now(timezone.utc)
             db.commit()
     finally:
         db.close()
+
+
+def clear_results(db: Session, analysis_id: int) -> None:
+    """Remove the outputs of a failed pipeline run before a retry (the preliminary
+    analysis log, questions and answers are kept)."""
+    for model in (Requirement, Finding, ComplianceMapping, Risk, SdlcRecommendation, Workflow, TraceRecord):
+        db.query(model).filter(model.analysis_id == analysis_id).delete()
+    db.query(AgentRun).filter(AgentRun.analysis_id == analysis_id, AgentRun.order > 0).delete()
+    db.commit()
 
 
 def save_results(db: Session, analysis: Analysis, ctx: dict) -> None:
@@ -208,7 +255,8 @@ def save_results(db: Session, analysis: Analysis, ctx: dict) -> None:
                            categories=r["categories"], priority=r["priority"], risk_level=r["risk_level"],
                            confidence=r["confidence"], dependencies=r["dependencies"], user_story=r["user_story"],
                            acceptance_criteria=r["acceptance_criteria"],
-                           test_recommendations=r["test_recommendations"], generated_by=r["generated_by"]))
+                           test_recommendations=r["test_recommendations"], generated_by=r["generated_by"],
+                           status=r.get("status", "pending_review"), supplementary=r.get("supplementary", [])))
     for f in ctx["findings"]:
         db.add(Finding(analysis_id=aid, **f))
     for m in ctx["mappings"]:
@@ -234,11 +282,17 @@ def save_results(db: Session, analysis: Analysis, ctx: dict) -> None:
     analysis.applicable_sources, analysis.use_cases = ctx["applicable_sources"], ctx["use_cases"]
     analysis.validation_report = ctx["validation"]
     analysis.progress, analysis.finished_at = 100, datetime.now(timezone.utc)
+    clarification.save_resolutions(db, aid, ctx)
     if ctx.get("fatal"):
         analysis.status, analysis.error, analysis.current_stage = "failed", ctx["fatal"], "Failed"
+        analysis.stage1_status = "failed" if ctx.get("stage", "stage1") == "stage1" else analysis.stage1_status
     else:
-        degraded = any(r["status"] != "completed" for r in ctx["agent_runs"]) or \
+        # "skipped" here means "not re-run, output retained" (Stage 2 regeneration) - not a degradation.
+        retained = ctx.get("retained_agents", set())
+        degraded = any(r["status"] != "completed" and r["agent"] not in retained for r in ctx["agent_runs"]) or \
             any(c["status"] == "fail" for c in ctx["validation"])
         analysis.status = "completed_with_warnings" if degraded else "completed"
         analysis.current_stage = "Completed"
+        if ctx.get("stage", "stage1") == "stage1":
+            analysis.stage1_status = "completed"
     db.commit()

@@ -74,13 +74,24 @@ def header_blocks(a: dict, title: str) -> list:
             ["Project", pr["name"]], ["Domain", pr["domain_label"]], ["Jurisdiction", pr["jurisdiction"]],
             ["Scale", pr["scale"]], ["Budget", pr["budget"] or "not provided"],
             ["Schedule", pr["schedule"] or "not provided"], ["Analysis ID", a["id"]],
+            ["Version", f"{a.get('version', 1)}" + (" (created by Stage 2 refinement)" if a.get("version", 1) > 1 else "")],
             ["Analysis status", a["status"]], ["Requirement baseline", a["baseline_status"]],
+            ["Clarification", _clarification_line(a)],
             ["Generated", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")]]),
         note(mode),
         note("AI-assisted analysis: all results require review and approval by authorised people. ReqPilot does "
              "not provide legal advice. 'Illustrative' sources are fictional demonstration policies; 'reference' "
              "sources are document-level summaries, not regulatory text."),
     ]
+
+
+def _clarification_line(a: dict) -> str:
+    c = a.get("clarification") or {}
+    if not c.get("total") and not c.get("stage2_questions"):
+        return "no clarification questions"
+    return (f"{c.get('total', 0) + c.get('stage2_questions', 0)} question(s); "
+            f"{c.get('answered', 0) + c.get('stage2_answered', 0)} answered, {c.get('deferred', 0)} deferred; "
+            f"{c.get('issues_resolved', 0)} issue(s) resolved through clarification")
 
 
 def summary_section(a: dict) -> list:

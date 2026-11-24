@@ -13,8 +13,8 @@ from sqlalchemy.orm import Session
 from app.agents import workflow as workflow_agent
 from app.agents.sdlc_selection import MODELS
 from app.database import get_db
-from app.models import (Analysis, Approval, ComplianceMapping, Finding, Requirement, Risk, SdlcRecommendation,
-                        User, Workflow)
+from app.models import (Analysis, Approval, ComplianceMapping, Finding, Requirement, RequirementChange, Risk,
+                        SdlcRecommendation, StakeholderInteraction, User, Workflow)
 from app.schemas import CommentBody, MappingReview, RequirementReview, SdlcReview, WorkflowReview
 from app.security import audit, get_current_user, has_permission, require
 from app.serializers import row_dict
@@ -212,7 +212,7 @@ def pending_approvals(db: Session = Depends(get_db), _: User = Depends(get_curre
                           .order_by(Analysis.id.desc()).limit(50)).all()
     items = []
     for a in analyses:
-        base = {"analysis_id": a.id, "project_name": a.project.name,
+        base = {"analysis_id": a.id, "project_name": a.project.name, "version": a.version,
                 "finished_at": a.finished_at.isoformat() if a.finished_at else None}
         pending_reqs = db.scalar(select(func.count()).select_from(Requirement).where(
             Requirement.analysis_id == a.id, Requirement.status == "pending_review"))
@@ -240,4 +240,25 @@ def pending_approvals(db: Session = Depends(get_db), _: User = Depends(get_curre
             items.append({**base, "type": "workflow", "count": 1, "role": "Project Manager",
                           "description": f"{wf.sdlc_model} workflow ({wf.status}) awaiting approval",
                           "sdlc_status": sdlc.status if sdlc else None})
+        # Stage 2 (refinement) decisions
+        changes = db.scalars(select(RequirementChange).where(RequirementChange.analysis_id == a.id,
+                                                             RequirementChange.status == "pending_review")).all()
+        if changes:
+            items.append({**base, "type": "requirement_changes", "count": len(changes),
+                          "role": "Business Analyst / PM (not the proposer)",
+                          "description": f"{len(changes)} requirement change request(s) awaiting review",
+                          "changes": [row_dict(c) for c in changes]})
+        interviews = db.scalars(select(StakeholderInteraction).where(
+            StakeholderInteraction.analysis_id == a.id, StakeholderInteraction.status == "pending_review")).all()
+        if interviews:
+            items.append({**base, "type": "stakeholder_interactions", "count": len(interviews),
+                          "role": "Business Analyst / PM",
+                          "description": f"{len(interviews)} stakeholder interview(s) awaiting review",
+                          "interviews": [row_dict(i) for i in interviews]})
+        risks = db.scalars(select(Risk).where(Risk.analysis_id == a.id, Risk.status == "open",
+                                              Risk.severity.in_(["High", "Critical"]))).all()
+        if risks:
+            items.append({**base, "type": "risks", "count": len(risks), "role": "Project Manager / Security Officer",
+                          "description": f"{len(risks)} high/critical risk(s) awaiting acceptance or mitigation decision",
+                          "risks": [row_dict(r) for r in risks]})
     return {"items": items, "generated_at": datetime.now(timezone.utc).isoformat()}

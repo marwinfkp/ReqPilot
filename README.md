@@ -16,9 +16,20 @@ clicks **ANALYSE REQUIREMENTS**, and ReqPilot automatically produces:
 - user stories, acceptance criteria, use cases and a requirements traceability matrix
 - 12 downloadable reports in DOCX and PDF
 
-There is **no mandatory interaction** between submission and results. Unclear requirements are reported as
-findings, assumptions and stakeholder questions. Human approval (requirement baseline, compliance
-interpretations, SDLC adoption, workflow) happens **after** the analysis, in the Approval Centre.
+Analysis happens in **two stages**:
+
+* **Stage 1 (mandatory)** — after *Analyse Requirements*, a lightweight preliminary analysis generates **at
+  most 12 prioritised clarification questions** from the actual submission (conflicts, vague wording, missing
+  targets, compliance/security/privacy gaps, SDLC-relevant unknowns). The user may answer, defer or flag them
+  for stakeholder input — none is mandatory — and clicks **Continue to Full Analysis**. The complete
+  12-agent pipeline then runs with the clarified context. Stage 1 ends with the full results, including the
+  SDLC recommendation and workflow.
+* **Stage 2 (optional)** — the **Refinement Centre** (button on the results page) offers further questions,
+  stakeholder interviews, requirement change requests with four-eyes approval, and **dependency-aware
+  selective regeneration** that creates a new analysis *version* (earlier versions stay unchanged).
+
+Human approval (requirement baseline, compliance interpretations, SDLC adoption, workflow, requirement
+changes, high-risk acceptance) happens after the analysis, in the Approval Centre.
 
 > Academic prototype. Use synthetic data only. ReqPilot does not provide legal advice; the bundled "Demo Bank"
 > policies are fictional and the regulatory catalogue contains document-level summaries, not regulatory text.
@@ -81,6 +92,57 @@ flowchart LR
 
 Scores are **suitability scores, not probabilities**, and the LLM never sets them. Weights are editable by an
 administrator in **Settings**; the full matrix and rules are shown there and in the API (`GET /api/sdlc/config`).
+
+### Two-stage analysis
+
+```mermaid
+flowchart LR
+    S[Submit] --> P[Preliminary analysis<br/>rules only, no pipeline] --> Q[≤ 12 questions<br/>Clarification Centre]
+    Q -- answer / defer / skip --> C[Continue to Full Analysis] --> F[Complete 12-agent pipeline<br/>+ clarification context] --> R[Results v1]
+    R -. optional .-> RC[Refinement Centre] --> X[Questions · interviews ·<br/>change requests + approval] --> G[Selective regeneration] --> V2[Results v2]
+```
+
+**Stage 1** (`app/clarification.py`, `app/agents/clarification_context.py`)
+
+* The preliminary analysis reuses existing deterministic agent logic (rule extraction, keyword classification,
+  quality checks, security coverage, compliance topic gaps) and adds checks for missing performance/availability
+  targets, integration behaviour, transaction limits and SDLC-relevant unknowns (stakeholder availability,
+  budget/schedule, release cadence). Each candidate issue gets a priority score (impact on security, regulation,
+  money movement, conflicts, architecture, SDLC choice). One question per topic, highest impact first, max 12.
+  If fewer than 7 genuine issues exist, fewer questions are asked and the reason is shown — nothing is invented.
+* With OpenAI, the model rewrites/merges the rule-detected candidates into questions; invented requirement IDs
+  and topics are dropped, duplicates removed, the cap enforced; on failure the rule templates are used
+  (logged as *partial*).
+* Answers never overwrite requirements. After extraction they are linked to the final requirement IDs as
+  `supplementary` information; agents read them as context. Findings get a **resolution** (`resolved`,
+  `partially_resolved`, `deferred`, `unresolved`); an answer without a number cannot resolve a "vague target"
+  issue; compliance/security gaps answered in clarification stay *partially resolved* until a formal requirement
+  exists. Unanswered questions stay unresolved (and raise a delivery risk) — nothing is assumed.
+* Agents that use the context: Classification (categories), Quality (re-evaluation + resolution), Compliance
+  (retrieval queries, topic gaps), Security (coverage, gaps), Risk (only open issues count; unanswered critical
+  questions become a risk), SDLC (factor evidence; explicit answers for stakeholder availability, budget/schedule
+  and release cadence replace default assumptions and are cited), Workflow (clarification follow-up tasks),
+  Documentation (agreed/clarified criteria as labelled acceptance criteria), Traceability (clarification column),
+  Validation (clarification provenance check), Summary.
+* The UI uses `interactive_clarification=true`. API clients that omit it keep the previous one-call behaviour:
+  questions are still generated, then the pipeline runs immediately with every question unresolved.
+
+**Stage 2** (`app/regeneration.py`, `app/api/refinement.py`)
+
+* Inputs: Stage 2 answers, accepted stakeholder interviews (recorded by a user — ReqPilot contacts nobody) and
+  **approved** requirement changes (edit, acceptance criteria, new, resolve conflict, business rule, constraint,
+  obsolete). The proposer can never approve their own change (four-eyes).
+* **Selective regeneration** creates a new analysis row (`version` + 1, linked via `parent/root_analysis_id`):
+  1. *direct triggers* — each input is classified by what it touches (e.g. a wording change → Classification,
+     Quality, Documentation; Compliance only if regulatory topics changed; Risk/SDLC only if a measurable target
+     or SDLC-relevant wording changed; an answer about release cadence → SDLC);
+  2. *propagation* — after an agent re-runs its output is fingerprinted; a downstream agent re-runs only if an
+     artefact it reads changed (e.g. Risk reads *open conflict/ambiguity counts*, not every quality finding);
+  3. Validation and Summary always re-run; Extraction never re-runs (the requirement set changes only through
+     approved changes). Retained agents are logged as `skipped` with the reason.
+  The plan (will re-run / may re-run / retained, with reasons) is shown and must be confirmed. Unchanged human
+  decisions (SDLC approval, workflow approval, risk acceptance) carry over; changed outputs need new approval.
+* Versions can be selected on the results page and compared in the Refinement Centre.
 
 ### How the workflow is generated (`agents/workflow.py`)
 
@@ -165,6 +227,12 @@ The key is read only by the backend and is never returned by any endpoint. After
 backend and click **Re-index embeddings** in the Knowledge Base (or call `POST /api/knowledge/reindex`) so the
 seeded documents get pgvector embeddings for semantic retrieval.
 
+TLS certificates of `api.openai.com` are verified against the **operating-system trust store** (package
+`truststore`). This matters on machines where antivirus software or a corporate proxy inspects HTTPS with its
+own root certificate: Python's bundled certificate list would reject the connection ("Connection error" in the
+agent log). Certificate verification is never disabled. If OpenAI is unreachable, every agent falls back to its
+rule-based baseline and is logged as *partial* — the log shows the error.
+
 ### Environment variables (`backend/.env`)
 
 | Variable | Default | Purpose |
@@ -183,11 +251,14 @@ seeded documents get pgvector embeddings for semantic retrieval.
 
 Frontend: optional `BACKEND_URL` (default `http://127.0.0.1:8000`) for the `/api` proxy.
 
-### Database setup and "migrations"
+### Database setup and migrations
 
 `docker compose up -d` starts PostgreSQL 16 with pgvector on host port **5433** (container `reqpilot2-db`).
 ReqPilot deliberately has no migration framework: on startup `init_db()` runs `CREATE EXTENSION IF NOT EXISTS
-vector` and SQLAlchemy `create_all`, which creates any missing tables. To run this step on its own:
+vector`, then `app/migrations.py` (idempotent `ALTER TABLE ... ADD COLUMN` for columns added after a table was
+first created - e.g. the two-stage analysis fields), then SQLAlchemy `create_all`, which creates any missing
+tables. Existing data is never deleted; analyses created before the upgrade become "Stage 1 completed, version 1".
+To run this step on its own:
 
 ```powershell
 cd backend; .\.venv\Scripts\python.exe -m app.seed
@@ -242,16 +313,24 @@ cd frontend; npm run build; npm run start
 
 1. Sign in as **analyst@reqpilot.local** → **Analyse Requirements**.
 2. *Load an example requirement set* → **Digital Banking Application** (or paste your own list / upload files).
-3. Click **ANALYSE REQUIREMENTS**. The progress panel shows the 12 agent stages; no questions are asked.
-4. Results open automatically: Overview (executive summary, KPIs, agent log, validation report),
-   Requirements, Quality, Compliance, Security & Risk, **SDLC Recommendation**, **SDLC Workflow**,
+3. Click **ANALYSE REQUIREMENTS**. After a short preliminary analysis the **Initial Requirements Clarification**
+   page shows up to 12 prioritised questions (e.g. the two contradictory session timeouts). Answer a few, defer
+   one, leave the rest, and click **Continue to Full Analysis** (a warning appears if critical questions are
+   unanswered - continuing is still allowed). You can leave and resume later; answers are saved immediately.
+4. The 12 agents run; results open automatically: Overview (executive summary, clarification card, agent log
+   grouped by stage, validation report), Requirements (supplementary clarification info per requirement),
+   Quality (resolution badges), Compliance, Security & Risk, **SDLC Recommendation**, **SDLC Workflow**,
    Traceability and Open Issues.
-5. **Reports & Exports**: download any of the 12 reports as PDF or DOCX.
-6. Sign in as **pm@reqpilot.local** → **Approval Centre** → approve (or override) the SDLC recommendation, then
+5. Optional Stage 2: **Open Refinement Centre** → generate more questions, record a stakeholder interview,
+   propose a requirement change (sign in as **pm@reqpilot.local** to approve it - the proposer cannot), review
+   the regeneration plan, confirm it, and compare version 1 with version 2.
+6. **Reports & Exports**: download any of the 12 reports as PDF or DOCX (for any version).
+7. Sign in as **pm@reqpilot.local** → **Approval Centre** → approve (or override) the SDLC recommendation, then
    approve the workflow (blocked until the SDLC decision is made).
-7. Sign in as **compliance@reqpilot.local** → approve or flag compliance mappings.
-8. Sign in as **auditor@reqpilot.local** → **Audit Logs** shows every login, analysis, approval and export.
-9. **Evaluation** → *Run evaluation* runs the 4-case synthetic benchmark and shows the calculated metrics.
+8. Sign in as **compliance@reqpilot.local** → approve or flag compliance mappings.
+9. Sign in as **auditor@reqpilot.local** → **Audit Logs** shows every login, analysis, clarification answer,
+   approval, regeneration and export.
+10. **Evaluation** → *Run evaluation* runs the 4-case synthetic benchmark and shows the calculated metrics.
 
 ---
 
@@ -261,7 +340,7 @@ cd frontend; npm run build; npm run start
 cd backend; .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-254 tests (SDLC scoring maths, every agent, the full pipeline on all benchmark cases, security helpers, file
+269 tests (two-stage clarification and selective regeneration, SDLC scoring maths, every agent, the full pipeline on all benchmark cases, security helpers, file
 validation, RAG, every API endpoint and role, approvals, all 12 exports in both formats, evaluation) run in about
 20 seconds. The suite uses a temporary SQLite database and never calls the real OpenAI API: OpenAI-mode behaviour
 is tested with a fake OpenAI client (verifying the client is called, invented IDs/quotes are rejected, sensitive

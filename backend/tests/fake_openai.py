@@ -207,7 +207,29 @@ def _summary(text, schema):
                                   "key_findings": [f"Fake finding {i}" for i in range(1, 9)]})  # max 6 kept
 
 
+def _questions(text, schema):
+    """Clarification questions. Deliberately returns too many (14), one invented
+    requirement ID, one duplicate, one unknown topic and a choice question with a
+    single option - the app must cap, validate and repair these."""
+    ids = _requirement_ids(text) or ["FR-XXX-001"]
+    base = {"category": "ambiguity", "issue_type": "vague_wording", "reason": "Fake reason.", "priority": "High",
+            "impact": "Fake impact.", "answer_format": "short_text", "options": [], "stakeholder_role": "Business Analyst",
+            "topic": ""}
+    items = [dict(base, question=f"Fake question {i} about {ids[i % len(ids)]}?", priority="Medium" if i > 5 else "High",
+                  related_requirement_ids=[ids[i % len(ids)]]) for i in range(10)]
+    items.append(dict(base, question="Which session timeout applies?", category="conflict", issue_type="contradiction",
+                      priority="Critical", answer_format="single_choice", options=["5 minutes", "30 minutes"],
+                      related_requirement_ids=ids[:2]))
+    items.append(dict(base, question="Question with an invented requirement?", related_requirement_ids=["FR-ZZZ-999"],
+                      topic="bogus_topic"))
+    items.append(dict(base, question="Fake question 0 about " + ids[0] + "?", related_requirement_ids=[ids[0]]))
+    items.append(dict(base, question="Pick one?", answer_format="single_choice", options=["Only option"],
+                      related_requirement_ids=[ids[0]]))
+    return schema.model_validate({"questions": items})
+
+
 FACTORIES = {
+    "QuestionOutput": _questions,
     "ExtractionOutput": _extraction,
     "ClassificationOutput": _classification,
     "QualityOutput": _quality,

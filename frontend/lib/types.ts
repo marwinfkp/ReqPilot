@@ -32,7 +32,7 @@ export type AnalysisBrief = {
   project_id: number;
   project_name: string;
   domain: string;
-  status: "queued" | "running" | "completed" | "completed_with_warnings" | "failed";
+  status: "preliminary" | "awaiting_clarification" | "queued" | "running" | "completed" | "completed_with_warnings" | "failed";
   mode: "openai" | "demo";
   model_name: string;
   progress: number;
@@ -42,6 +42,12 @@ export type AnalysisBrief = {
   started_at: string | null;
   finished_at: string | null;
   created_by: string;
+  // Two-stage analysis
+  stage1_status: "preliminary" | "awaiting_clarification" | "analysing" | "completed" | "failed";
+  stage2_status: "not_started" | "in_progress" | "regenerating" | "regenerated" | "failed";
+  version: number;
+  parent_analysis_id: number | null;
+  root_analysis_id: number;
 };
 
 export type Requirement = {
@@ -60,8 +66,12 @@ export type Requirement = {
   acceptance_criteria: string[];
   test_recommendations: string[];
   generated_by: string;
-  status: "pending_review" | "accepted" | "rejected" | "modified";
+  status: "pending_review" | "accepted" | "rejected" | "modified" | "obsolete";
+  supplementary: Supplementary[];
 };
+
+/** Information added after submission, kept apart from the original requirement text. */
+export type Supplementary = { kind: "clarification" | "stakeholder" | "acceptance_criterion" | "change"; ref: string; question?: string; text: string };
 
 export type Finding = {
   id: number;
@@ -75,6 +85,8 @@ export type Finding = {
   question: string;
   requirement_ids: string[];
   generated_by: string;
+  resolution: "" | "resolved" | "partially_resolved" | "unresolved" | "deferred";
+  clarification_refs: string[];
 };
 
 export type Mapping = {
@@ -110,6 +122,7 @@ export type Risk = {
   mitigation: string;
   requirement_ids: string[];
   generated_by: string;
+  status: "open" | "accepted" | "rejected";
 };
 
 export type Factor = {
@@ -213,11 +226,12 @@ export type TraceRecord = {
   workflow_phases: string[];
   missing_links: string[];
   coverage: number;
+  clarifications: string[];
 };
 
 export type Approval = {
   id: number;
-  analysis_id: number;
+  analysis_id?: number;
   target_type: string;
   target_id: string;
   action: string;
@@ -237,7 +251,8 @@ export type AgentRun = {
   mode: string;
   duration_ms: number;
   message: string;
-  llm_calls: { task: string; model: string; input_tokens: number | null; output_tokens: number | null; duration_ms: number; ok: boolean }[];
+  llm_calls: { task: string; model: string; input_tokens: number | null; output_tokens: number | null; duration_ms: number; ok: boolean; error?: string }[];
+  stage: "stage1" | "stage2";
 };
 
 export type SecurityArea = {
@@ -302,4 +317,96 @@ export type AnalysisPayload = AnalysisBrief & {
   approvals: Approval[];
   sdlc: Sdlc | null;
   workflow: Workflow | null;
+  clarification: ClarificationSummary;
+  versions: VersionInfo[];
+};
+
+// ---------------------------------------------------------------------------
+// Two-stage analysis
+// ---------------------------------------------------------------------------
+export type AnswerFormat = "single_choice" | "multiple_choice" | "numeric" | "short_text" | "long_text" | "yes_no";
+
+export type ClarificationQuestion = {
+  id: number;
+  code: string;
+  stage: 1 | 2;
+  batch: number;
+  order: number;
+  question: string;
+  category: string;
+  issue_type: string;
+  priority: "Critical" | "High" | "Medium" | "Low";
+  reason: string;
+  impact: string;
+  answer_format: AnswerFormat;
+  options: string[];
+  stakeholder_role: string;
+  related_requirements: { ref: string; line: number | null; text: string }[];
+  requirement_ids: string[];
+  topic: string;
+  status: "open" | "answered" | "deferred" | "needs_stakeholder";
+  resolution: "" | "resolved" | "partially_resolved" | "unresolved" | "deferred";
+  parent_question_id: number | null;
+  generated_by: string;
+  applied_in_version: number | null;
+  answer: string;
+  response_status: string;
+  responded_by: string;
+  responder_role: string;
+  responded_at: string | null;
+  answered_in_stage: number | null;
+  affects_requirements: boolean;
+};
+
+export type QuestionCounts = {
+  total: number; critical: number; high: number; answered: number; deferred: number;
+  needs_stakeholder: number; open: number; critical_unanswered: number;
+};
+
+export type ClarificationSummary = QuestionCounts & {
+  stage2_questions: number;
+  stage2_answered: number;
+  issues_resolved: number;
+  issues_partially_resolved: number;
+  issues_unresolved: number;
+  requirements_with_clarifications: number;
+  influenced_analysis: boolean;
+  note: string;
+};
+
+export type VersionInfo = {
+  id: number; version: number; status: string; stage2_status: string; baseline_status: string;
+  parent_analysis_id: number | null; recommended_sdlc: string; created_by: string;
+  started_at: string | null; finished_at: string | null;
+};
+
+export type RequirementChange = {
+  id: number; analysis_id: number; code: string; requirement_id: string;
+  change_type: "edit" | "acceptance_criteria" | "new" | "resolve_conflict" | "business_rule" | "constraint" | "obsolete";
+  new_kind: string; original_text: string; proposed_text: string; approved_text: string; reason: string; source: string;
+  proposed_by: string; proposer_role: string;
+  status: "draft" | "pending_review" | "approved" | "rejected" | "changes_requested";
+  reviewed_by: string; review_comment: string; reviewed_at: string | null; applied_in_version: number | null; created_at: string;
+};
+
+export type StakeholderInteraction = {
+  id: number; analysis_id: number; stakeholder_role: string; interviewee: string; topic: string;
+  requirement_ids: string[]; entries: { question: string; answer: string }[];
+  recorded_by: string; recorder_role: string; status: "pending_review" | "accepted" | "rejected" | "changes_requested";
+  reviewed_by: string; review_comment: string; applied_in_version: number | null; created_at: string; updated_at: string;
+};
+
+export type RegenerationRunInfo = {
+  id: number; source_analysis_id: number; new_analysis_id: number | null; previous_version: number; new_version: number;
+  changed_requirements: string[]; inputs: Record<string, number[]>; affected_agents: { agent: string; reasons: string[] }[];
+  agents_rerun: string[]; outputs_retained: string[]; outputs_updated: string[];
+  status: "running" | "completed" | "failed"; error: string; created_by: string; created_at: string; finished_at: string | null;
+};
+
+export type PlanEntry = { key: string; agent: string; reasons: string[]; output: string };
+export type RegenerationPlan = {
+  source_analysis_id: number; source_version: number; is_latest: boolean; has_inputs: boolean;
+  inputs: { changes: { id: number; code: string; type: string; requirement_id: string }[]; questions: { id: number; code: string }[]; interviews: { id: number; role: string }[] };
+  changed_requirements: string[]; notes: string[];
+  will_rerun: PlanEntry[]; may_rerun: PlanEntry[]; always_rerun: PlanEntry[]; retained: PlanEntry[];
 };
