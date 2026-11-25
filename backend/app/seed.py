@@ -13,7 +13,7 @@ from app.security import hash_password
 from app.services import rag
 
 DEMO_USERS = [
-    ("admin@reqpilot.local", "Asha Admin", "admin"),
+    ("admin@reqpilot.local", "Admin", "admin"),
     ("analyst@reqpilot.local", "Ravi Business Analyst", "business_analyst"),
     ("compliance@reqpilot.local", "Meera Compliance Officer", "compliance_officer"),
     ("security@reqpilot.local", "Kiran Security Officer", "security_officer"),

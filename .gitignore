@@ -15,3 +15,8 @@ frontend/next-env.d.ts
 # Editor / OS
 .DS_Store
 Thumbs.db
+
+# Local-only files: kept on disk, never tracked
+.claude/
+IMPLEMENTATION_STATUS.md
+/Problem Statement.docx

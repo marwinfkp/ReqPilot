@@ -254,7 +254,7 @@ export function ClarificationCentre({ analysisId, filter, onContinue, refreshKey
     <div className="space-y-5">
       {header}
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <StatTile label="Questions" value={shown.length} hint={stage === 1 ? "maximum 12" : undefined} />
+        <StatTile label="Questions" value={shown.length} />
         <StatTile label="Critical" value={count((q) => q.priority === "Critical")} tone={count((q) => q.priority === "Critical") ? "danger" : "default"} />
         <StatTile label="High priority" value={count((q) => q.priority === "High")} tone="warning" />
         <StatTile label="Answered" value={count((q) => q.status === "answered")} tone="good" />
